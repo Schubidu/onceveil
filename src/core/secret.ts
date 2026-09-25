@@ -148,10 +148,7 @@ export function consumeSecret(
   }
 }
 
-export function revokeSecret(
-  record: SecretRecord,
-  nowMs: number,
-): SecretTransition<RevokeResult> {
+export function revokeSecret(record: SecretRecord, nowMs: number): SecretTransition<RevokeResult> {
   const current = expireSecret(record, nowMs)
 
   if (current.state !== 'AVAILABLE') {
