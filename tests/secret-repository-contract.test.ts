@@ -68,7 +68,10 @@ class AsyncAtomicInMemorySecretRepository implements SecretRepository {
     const current = new Promise<void>((resolve) => {
       release = resolve
     })
-    this.queues.set(id, previous.then(() => current))
+    this.queues.set(
+      id,
+      previous.then(() => current),
+    )
 
     await previous
 
