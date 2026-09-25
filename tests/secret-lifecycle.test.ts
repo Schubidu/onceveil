@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_SECRET_POLICY,
   consumeSecret,
-  expireSecret,
+  effectiveState,
   revokeSecret,
   type SecretId,
   type SecretRecord,
@@ -28,8 +28,8 @@ function available(overrides: Partial<SecretRecord> = {}): SecretRecord {
 describe('secret lifecycle', () => {
   it('consumes an available secret exactly once', () => {
     const first = consumeSecret(available(), 500)
+    expect(first.nextState).toBe('CONSUMED')
     expect(first.result.kind).toBe('revealed')
-    expect(first.record.state).toBe('CONSUMED')
 
     if (first.result.kind !== 'revealed') {
       throw new Error('expected reveal')
@@ -38,52 +38,54 @@ describe('secret lifecycle', () => {
     expect(first.result.ciphertext).toEqual(new Uint8Array([1, 2, 3]))
     expect(first.result.status.state).toBe('CONSUMED')
 
-    const second = consumeSecret(first.record, 600)
+    const second = consumeSecret(available({ state: first.nextState }), 600)
     expect(second.result).toEqual({ kind: 'unavailable', state: 'CONSUMED' })
     expect('ciphertext' in second.result).toBe(false)
   })
 
-  it('expires an available secret at its deadline', () => {
-    expect(expireSecret(available(), 999).state).toBe('AVAILABLE')
-    expect(expireSecret(available(), 1_000).state).toBe('EXPIRED')
+  it('treats an available secret as expired at its deadline', () => {
+    expect(effectiveState(available(), 999)).toBe('AVAILABLE')
+    expect(effectiveState(available(), 1_000)).toBe('EXPIRED')
   })
 
-  it.each(terminalStates)('keeps terminal state %s unchanged on expiration checks', (state) => {
-    expect(expireSecret(available({ state }), 2_000).state).toBe(state)
+  it.each(terminalStates)('keeps terminal state %s unchanged', (state) => {
+    expect(effectiveState(available({ state }), 2_000)).toBe(state)
   })
 
   it.each(terminalStates)('never returns ciphertext for %s secrets', (state) => {
-    const transition = consumeSecret(available({ state }), 500)
-    expect(transition.result).toEqual({ kind: 'unavailable', state })
-    expect('ciphertext' in transition.result).toBe(false)
+    const decision = consumeSecret(available({ state }), 500)
+    expect(decision.result).toEqual({ kind: 'unavailable', state })
+    expect('ciphertext' in decision.result).toBe(false)
   })
 
   it('never returns ciphertext for an expired available secret', () => {
-    const transition = consumeSecret(available(), 1_000)
-    expect(transition.result).toEqual({ kind: 'unavailable', state: 'EXPIRED' })
-    expect('ciphertext' in transition.result).toBe(false)
+    const decision = consumeSecret(available(), 1_000)
+    expect(decision.nextState).toBe('EXPIRED')
+    expect(decision.result).toEqual({ kind: 'unavailable', state: 'EXPIRED' })
+    expect('ciphertext' in decision.result).toBe(false)
   })
 
   it('revokes an available, unexpired secret without returning ciphertext', () => {
-    const transition = revokeSecret(available(), 500)
-    expect(transition.record.state).toBe('REVOKED')
-    expect(transition.result).toMatchObject({
+    const decision = revokeSecret(available(), 500)
+    expect(decision.nextState).toBe('REVOKED')
+    expect(decision.result).toMatchObject({
       kind: 'revoked',
       status: { state: 'REVOKED' },
     })
-    expect('ciphertext' in transition.result).toBe(false)
+    expect('ciphertext' in decision.result).toBe(false)
   })
 
   it.each(terminalStates)('does not revoke terminal state %s', (state) => {
-    const transition = revokeSecret(available({ state }), 500)
-    expect(transition.result).toEqual({ kind: 'unavailable', state })
-    expect('ciphertext' in transition.result).toBe(false)
+    const decision = revokeSecret(available({ state }), 500)
+    expect(decision.nextState).toBe(state)
+    expect(decision.result).toEqual({ kind: 'unavailable', state })
+    expect('ciphertext' in decision.result).toBe(false)
   })
 
   it('expires instead of revoking at the expiry deadline', () => {
-    const transition = revokeSecret(available(), 1_000)
-    expect(transition.record.state).toBe('EXPIRED')
-    expect(transition.result).toEqual({ kind: 'unavailable', state: 'EXPIRED' })
+    const decision = revokeSecret(available(), 1_000)
+    expect(decision.nextState).toBe('EXPIRED')
+    expect(decision.result).toEqual({ kind: 'unavailable', state: 'EXPIRED' })
   })
 })
 
