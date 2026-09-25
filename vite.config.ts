@@ -7,9 +7,5 @@ export default defineConfig({
   server: {
     port: 3000,
   },
-  plugins: [
-    cloudflare({ viteEnvironment: { name: 'ssr' } }),
-    tanstackStart(),
-    react(),
-  ],
+  plugins: [cloudflare({ viteEnvironment: { name: 'ssr' } }), tanstackStart(), react()],
 })
