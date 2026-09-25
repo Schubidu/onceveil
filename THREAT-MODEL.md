@@ -54,6 +54,8 @@ Secret identifiers must be unpredictable and non-enumerable. Generators must use
 
 Sequential identifiers, timestamps, counters, database row IDs, and non-cryptographic randomness are not acceptable.
 
+Creation is insert-only. A duplicate identifier must be rejected atomically and must never replace an existing `AVAILABLE` or terminal record.
+
 ## Default limits
 
 The domain default is:
