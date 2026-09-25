@@ -26,7 +26,7 @@ Prerequisites:
 - npm
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 

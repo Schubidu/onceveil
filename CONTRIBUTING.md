@@ -15,7 +15,7 @@ Thanks for helping improve Onceveil.
 Use Node.js 24 and run:
 
 ```sh
-npm install
+npm ci
 npm run ci
 ```
 

@@ -30,17 +30,7 @@ jobs:
           package-manager-cache: false
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Validate
         run: npm run ci
-
-      # Temporary bootstrap step. The generated lockfile is captured from this
-      # first CI run, committed, and this step is then removed in the same PR.
-      - name: Emit initial lockfile
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          printf '%s\n' 'LOCKFILE_BASE64_BEGIN'
-          base64 -w0 package-lock.json
-          printf '\n%s\n' 'LOCKFILE_BASE64_END'
