@@ -1,0 +1,38 @@
+{
+  "name": "onceveil",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Preview-safe, one-time secret sharing with zero-knowledge encryption, MCP support, and self-hosted deployment.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "check:generated": "git diff --exit-code -- src/routeTree.gen.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "biome lint .",
+    "format": "biome format . --write",
+    "format:check": "biome format .",
+    "check": "npm run build && npm run check:generated && npm run typecheck && npm run test && npm run lint && npm run format:check",
+    "ci": "npm run check"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "1.170.39",
+    "@tanstack/react-start": "1.168.58",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13",
+    "@types/node": "24.13.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "typescript": "6.0.3",
+    "vite": "8.3.1",
+    "vitest": "5.0.1"
+  }
+}
