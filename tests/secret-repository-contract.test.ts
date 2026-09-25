@@ -21,7 +21,7 @@ class AsyncAtomicInMemorySecretRepository implements SecretRepository {
   }
 
   async consume(id: SecretId, nowMs: number): Promise<ConsumeResult | { kind: 'not_found' }> {
-    return this.mutate(id, async (record) => {
+    const result = await this.mutate(id, async (record) => {
       await Promise.resolve()
       const decision = consumeSecret(record, nowMs)
       return {
@@ -29,10 +29,12 @@ class AsyncAtomicInMemorySecretRepository implements SecretRepository {
         result: decision.result,
       }
     })
+
+    return result ?? { kind: 'not_found' }
   }
 
   async revoke(id: SecretId, nowMs: number): Promise<RevokeResult | { kind: 'not_found' }> {
-    return this.mutate(id, async (record) => {
+    const result = await this.mutate(id, async (record) => {
       await Promise.resolve()
       const decision = revokeSecret(record, nowMs)
       return {
@@ -40,6 +42,8 @@ class AsyncAtomicInMemorySecretRepository implements SecretRepository {
         result: decision.result,
       }
     })
+
+    return result ?? { kind: 'not_found' }
   }
 
   async getStatus(id: SecretId, nowMs: number) {
@@ -58,7 +62,7 @@ class AsyncAtomicInMemorySecretRepository implements SecretRepository {
     mutation: (
       record: SecretRecord,
     ) => Promise<{ nextState: SecretRecord['state']; result: Result }>,
-  ): Promise<Result | { kind: 'not_found' }> {
+  ): Promise<Result | undefined> {
     const previous = this.queues.get(id) ?? Promise.resolve()
     let release: (() => void) | undefined
     const current = new Promise<void>((resolve) => {
@@ -71,7 +75,7 @@ class AsyncAtomicInMemorySecretRepository implements SecretRepository {
     try {
       const record = this.records.get(id)
       if (!record) {
-        return { kind: 'not_found' }
+        return undefined
       }
 
       const outcome = await mutation(record)
