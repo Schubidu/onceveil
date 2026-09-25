@@ -53,6 +53,8 @@ One-time Cloudflare dashboard setup:
 5. Enable Preview Builds and use `npx wrangler preview` as the Preview command.
 6. Keep Production and Preview variables, secrets, and bindings configured separately in Cloudflare.
 
+Cloudflare posts the Preview build status and Preview URL back to the pull request; subsequent pushes update the branch Preview without touching Production.
+
 The repository contains only non-sensitive Worker structure in `wrangler.jsonc`. **Do not put Cloudflare API tokens, account credentials, Turnstile secrets, application secrets, or other secret values in GitHub Secrets/Variables, workflow files, `wrangler.jsonc`, or committed environment files.** Sensitive runtime configuration belongs in Cloudflare.
 
 At this stage the Worker is intentionally stateless: there is no D1 binding, Turnstile configuration, or secret storage.
