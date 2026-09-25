@@ -24,6 +24,13 @@ export interface SecretRecord {
   state: SecretState
 }
 
+export interface SecretStatus {
+  id: SecretId
+  createdAtMs: number
+  expiresAtMs: number
+  state: SecretState
+}
+
 export interface SecretIdGenerator {
   /**
    * Generate an unpredictable, non-enumerable identifier with at least
@@ -37,12 +44,17 @@ export type CreateSecretValidation =
   | { ok: false; reason: 'INVALID_POLICY' | 'INVALID_TTL' | 'PAYLOAD_TOO_LARGE' }
 
 export type ConsumeResult =
-  | { kind: 'revealed'; ciphertext: Uint8Array; record: SecretRecord }
-  | { kind: 'unavailable'; state: Exclude<SecretState, 'AVAILABLE'>; record: SecretRecord }
+  | { kind: 'revealed'; ciphertext: Uint8Array; status: SecretStatus }
+  | { kind: 'unavailable'; state: Exclude<SecretState, 'AVAILABLE'> }
 
 export type RevokeResult =
-  | { kind: 'revoked'; record: SecretRecord }
-  | { kind: 'unavailable'; state: Exclude<SecretState, 'AVAILABLE'>; record: SecretRecord }
+  | { kind: 'revoked'; status: SecretStatus }
+  | { kind: 'unavailable'; state: Exclude<SecretState, 'AVAILABLE'> }
+
+export interface SecretTransition<Result> {
+  record: SecretRecord
+  result: Result
+}
 
 export interface SecretRepository {
   create(record: SecretRecord): Promise<void>
@@ -55,7 +67,11 @@ export interface SecretRepository {
 
   revoke(id: SecretId, nowMs: number): Promise<RevokeResult | { kind: 'not_found' }>
 
-  get(id: SecretId, nowMs: number): Promise<SecretRecord | undefined>
+  /**
+   * Read lifecycle metadata only. Ciphertext is intentionally unavailable
+   * outside the winning consume result.
+   */
+  getStatus(id: SecretId, nowMs: number): Promise<SecretStatus | undefined>
 }
 
 export function validateCreateSecret(
@@ -75,7 +91,11 @@ export function validateCreateSecret(
     return { ok: false, reason: 'INVALID_POLICY' }
   }
 
-  if (!Number.isSafeInteger(payloadBytes) || payloadBytes < 0 || payloadBytes > policy.maxPayloadBytes) {
+  if (
+    !Number.isSafeInteger(payloadBytes) ||
+    payloadBytes < 0 ||
+    payloadBytes > policy.maxPayloadBytes
+  ) {
     return { ok: false, reason: 'PAYLOAD_TOO_LARGE' }
   }
 
@@ -87,6 +107,15 @@ export function validateCreateSecret(
   return { ok: true, ttlMs }
 }
 
+export function toSecretStatus(record: SecretRecord): SecretStatus {
+  return {
+    id: record.id,
+    createdAtMs: record.createdAtMs,
+    expiresAtMs: record.expiresAtMs,
+    state: record.state,
+  }
+}
+
 export function expireSecret(record: SecretRecord, nowMs: number): SecretRecord {
   if (record.state !== 'AVAILABLE' || nowMs < record.expiresAtMs) {
     return record
@@ -95,23 +124,46 @@ export function expireSecret(record: SecretRecord, nowMs: number): SecretRecord 
   return { ...record, state: 'EXPIRED' }
 }
 
-export function consumeSecret(record: SecretRecord, nowMs: number): ConsumeResult {
+export function consumeSecret(
+  record: SecretRecord,
+  nowMs: number,
+): SecretTransition<ConsumeResult> {
   const current = expireSecret(record, nowMs)
 
   if (current.state !== 'AVAILABLE') {
-    return { kind: 'unavailable', state: current.state, record: current }
+    return {
+      record: current,
+      result: { kind: 'unavailable', state: current.state },
+    }
   }
 
   const consumed = { ...current, state: 'CONSUMED' as const }
-  return { kind: 'revealed', ciphertext: consumed.ciphertext, record: consumed }
+  return {
+    record: consumed,
+    result: {
+      kind: 'revealed',
+      ciphertext: consumed.ciphertext,
+      status: toSecretStatus(consumed),
+    },
+  }
 }
 
-export function revokeSecret(record: SecretRecord, nowMs: number): RevokeResult {
+export function revokeSecret(
+  record: SecretRecord,
+  nowMs: number,
+): SecretTransition<RevokeResult> {
   const current = expireSecret(record, nowMs)
 
   if (current.state !== 'AVAILABLE') {
-    return { kind: 'unavailable', state: current.state, record: current }
+    return {
+      record: current,
+      result: { kind: 'unavailable', state: current.state },
+    }
   }
 
-  return { kind: 'revoked', record: { ...current, state: 'REVOKED' } }
+  const revoked = { ...current, state: 'REVOKED' as const }
+  return {
+    record: revoked,
+    result: { kind: 'revoked', status: toSecretStatus(revoked) },
+  }
 }
