@@ -43,6 +43,8 @@ export type CreateSecretValidation =
   | { ok: true; ttlMs: number }
   | { ok: false; reason: 'INVALID_POLICY' | 'INVALID_TTL' | 'PAYLOAD_TOO_LARGE' }
 
+export type CreateResult = { kind: 'created' } | { kind: 'duplicate' }
+
 export type ConsumeResult =
   | { kind: 'revealed'; ciphertext: Uint8Array; status: SecretStatus }
   | { kind: 'unavailable'; state: Exclude<SecretState, 'AVAILABLE'> }
@@ -66,7 +68,11 @@ export type RevokeDecision =
     }
 
 export interface SecretRepository {
-  create(record: SecretRecord): Promise<void>
+  /**
+   * Atomically insert a new secret. Existing identifiers are never overwritten,
+   * including terminal records.
+   */
+  create(record: SecretRecord): Promise<CreateResult>
 
   /**
    * Atomically evaluate expiry and transition AVAILABLE -> CONSUMED.
