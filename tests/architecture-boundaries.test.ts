@@ -14,6 +14,8 @@ function isForbiddenImport(specifier: string) {
   return (
     specifier === 'react' ||
     specifier.startsWith('react/') ||
+    specifier === 'react-dom' ||
+    specifier.startsWith('react-dom/') ||
     specifier.startsWith('@tanstack/') ||
     specifier.startsWith('@cloudflare/') ||
     specifier.startsWith('cloudflare:') ||
@@ -69,6 +71,20 @@ async function sourceFiles(directory: string): Promise<string[]> {
 }
 
 describe('core architecture boundary', () => {
+  it.each([
+    'react',
+    'react/jsx-runtime',
+    'react-dom',
+    'react-dom/client',
+    '@tanstack/react-router',
+    '@cloudflare/workers-types',
+    'cloudflare:workers',
+    'node:fs',
+    'fs',
+  ])('rejects runtime or framework import %s', (specifier) => {
+    expect(isForbiddenImport(specifier)).toBe(true)
+  })
+
   it('does not depend on framework or runtime modules', async () => {
     const files = await sourceFiles(coreDirectory)
 
