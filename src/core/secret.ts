@@ -120,7 +120,12 @@ export function validateCreateSecret(
   }
 
   const ttlMs = requestedTtlMs === undefined ? policy.defaultTtlMs : requestedTtlMs
-  if (!Number.isSafeInteger(ttlMs) || ttlMs <= 0 || ttlMs > policy.maxTtlMs) {
+  if (
+    typeof ttlMs !== 'number' ||
+    !Number.isSafeInteger(ttlMs) ||
+    ttlMs <= 0 ||
+    ttlMs > policy.maxTtlMs
+  ) {
     return { ok: false, reason: 'INVALID_TTL' }
   }
 
