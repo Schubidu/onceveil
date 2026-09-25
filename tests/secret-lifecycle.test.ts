@@ -104,12 +104,15 @@ describe('secret creation policy', () => {
     })
   })
 
-  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])('rejects invalid TTL %s', (ttlMs) => {
-    expect(validateCreateSecret(1024, ttlMs)).toEqual({
-      ok: false,
-      reason: 'INVALID_TTL',
-    })
-  })
+  it.each([null, 0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+    'rejects invalid TTL %s',
+    (ttlMs) => {
+      expect(validateCreateSecret(1024, ttlMs)).toEqual({
+        ok: false,
+        reason: 'INVALID_TTL',
+      })
+    },
+  )
 
   it('rejects payloads beyond the configured maximum', () => {
     expect(validateCreateSecret(DEFAULT_SECRET_POLICY.maxPayloadBytes + 1, undefined)).toEqual({
