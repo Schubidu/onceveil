@@ -96,7 +96,7 @@ export interface SecretRepository {
 
 export function validateCreateSecret(
   payloadBytes: number,
-  requestedTtlMs: number | undefined,
+  requestedTtlMs: number | null | undefined,
   policy: SecretPolicy = DEFAULT_SECRET_POLICY,
 ): CreateSecretValidation {
   if (
@@ -119,7 +119,7 @@ export function validateCreateSecret(
     return { ok: false, reason: 'PAYLOAD_TOO_LARGE' }
   }
 
-  const ttlMs = requestedTtlMs ?? policy.defaultTtlMs
+  const ttlMs = requestedTtlMs === undefined ? policy.defaultTtlMs : requestedTtlMs
   if (!Number.isSafeInteger(ttlMs) || ttlMs <= 0 || ttlMs > policy.maxTtlMs) {
     return { ok: false, reason: 'INVALID_TTL' }
   }
