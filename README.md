@@ -48,10 +48,11 @@ One-time Cloudflare dashboard setup:
 
 1. In **Workers & Pages**, choose **Create application → Import a repository** and connect `Schubidu/onceveil`.
 2. Use `main` as the production branch.
-3. Set the build command to `npm run build`.
-4. Set the production deploy command to `npx wrangler deploy`.
-5. Enable Preview Builds and use `npx wrangler preview` as the Preview command.
-6. Keep Production and Preview variables, secrets, and bindings configured separately in Cloudflare.
+3. In the GitHub `Main` ruleset, require the `validate` status check and keep strict/up-to-date checks enabled before allowing merges to `main`.
+4. Set the build command to `npm run build`.
+5. Set the production deploy command to `npx wrangler deploy`.
+6. Enable Preview Builds and use `npx wrangler preview` as the Preview command.
+7. Keep Production and Preview variables, secrets, and bindings configured separately in Cloudflare.
 
 Cloudflare posts the Preview build status and Preview URL back to the pull request; subsequent pushes update the branch Preview without touching Production.
 
