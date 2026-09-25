@@ -16,7 +16,7 @@ MCP support is planned with secure browser handoff so secret material does not e
 
 ## Current status
 
-Issue #1 establishes the project and engineering baseline only. Secret creation, encryption, storage, reveal protection, and MCP are intentionally not implemented yet.
+The application bootstrap and Cloudflare Worker runtime are being established first. Secret creation, encryption, storage, reveal protection, and MCP are intentionally not implemented yet.
 
 ## Development
 
@@ -39,6 +39,26 @@ npm run ci
 ```
 
 Individual checks are available as `build`, `typecheck`, `test`, `lint`, and `format:check`.
+
+## Cloudflare deployment
+
+Onceveil uses **Cloudflare Workers Builds with the direct GitHub integration**. GitHub Actions validates the code but does not deploy it and receives no Cloudflare credentials.
+
+One-time Cloudflare dashboard setup:
+
+1. In **Workers & Pages**, choose **Create application → Import a repository** and connect `Schubidu/onceveil`.
+2. Use `main` as the production branch.
+3. In the GitHub `Main` ruleset, require the `validate` status check and keep strict/up-to-date checks enabled before allowing merges to `main`.
+4. Set the build command to `npm run build`.
+5. Set the production deploy command to `npx wrangler deploy`.
+6. Enable Preview Builds and use `npx wrangler preview` as the Preview command.
+7. Keep Production and Preview variables, secrets, and bindings configured separately in Cloudflare.
+
+Cloudflare posts the Preview build status and Preview URL back to the pull request; subsequent pushes update the branch Preview without touching Production.
+
+The repository contains only non-sensitive Worker structure in `wrangler.jsonc`. **Do not put Cloudflare API tokens, account credentials, Turnstile secrets, application secrets, or other secret values in GitHub Secrets/Variables, workflow files, `wrangler.jsonc`, or committed environment files.** Sensitive runtime configuration belongs in Cloudflare.
+
+At this stage the Worker is intentionally stateless: there is no D1 binding, Turnstile configuration, or secret storage.
 
 ## Architecture boundary
 

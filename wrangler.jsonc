@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "onceveil",
+  "main": "@tanstack/react-start/server-entry",
+  "compatibility_date": "2026-09-25",
+  "compatibility_flags": ["nodejs_compat"],
+  "preview_urls": true,
+  "previews": {}
+}
