@@ -7,10 +7,12 @@ import {
   revokeSecret,
   type SecretId,
   type SecretRecord,
+  type SecretState,
   validateCreateSecret,
 } from '../src/core/secret'
 
 const id = 'test-secret-id' as SecretId
+const terminalStates: Exclude<SecretState, 'AVAILABLE'>[] = ['CONSUMED', 'EXPIRED', 'REVOKED']
 
 function available(overrides: Partial<SecretRecord> = {}): SecretRecord {
   return {
@@ -44,28 +46,35 @@ describe('secret lifecycle', () => {
     expect(expireSecret(available(), 1_000).state).toBe('EXPIRED')
   })
 
-  it.each(['CONSUMED', 'EXPIRED', 'REVOKED'] as const)(
-    'never returns ciphertext for %s secrets',
-    (state) => {
-      const result = consumeSecret(available({ state }), 500)
-      expect(result).toMatchObject({ kind: 'unavailable', state })
-    },
-  )
+  it.each(terminalStates)('keeps terminal state %s unchanged on expiration checks', (state) => {
+    expect(expireSecret(available({ state }), 2_000).state).toBe(state)
+  })
+
+  it.each(terminalStates)('never returns ciphertext for %s secrets', (state) => {
+    const result = consumeSecret(available({ state }), 500)
+    expect(result).toMatchObject({ kind: 'unavailable', state })
+  })
 
   it('never returns ciphertext for an expired available secret', () => {
     const result = consumeSecret(available(), 1_000)
     expect(result).toMatchObject({ kind: 'unavailable', state: 'EXPIRED' })
   })
 
-  it('revokes only an available, unexpired secret', () => {
+  it('revokes an available, unexpired secret', () => {
     expect(revokeSecret(available(), 500)).toMatchObject({
       kind: 'revoked',
       record: { state: 'REVOKED' },
     })
-    expect(revokeSecret(available({ state: 'CONSUMED' }), 500)).toMatchObject({
+  })
+
+  it.each(terminalStates)('does not revoke terminal state %s', (state) => {
+    expect(revokeSecret(available({ state }), 500)).toMatchObject({
       kind: 'unavailable',
-      state: 'CONSUMED',
+      state,
     })
+  })
+
+  it('expires instead of revoking at the expiry deadline', () => {
     expect(revokeSecret(available(), 1_000)).toMatchObject({
       kind: 'unavailable',
       state: 'EXPIRED',
@@ -83,6 +92,13 @@ describe('secret creation policy', () => {
 
   it('rejects TTLs beyond the configured maximum', () => {
     expect(validateCreateSecret(1024, DEFAULT_SECRET_POLICY.maxTtlMs + 1)).toEqual({
+      ok: false,
+      reason: 'INVALID_TTL',
+    })
+  })
+
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])('rejects invalid TTL %s', (ttlMs) => {
+    expect(validateCreateSecret(1024, ttlMs)).toEqual({
       ok: false,
       reason: 'INVALID_TTL',
     })
