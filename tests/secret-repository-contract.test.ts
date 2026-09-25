@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   consumeSecret,
-  expireSecret,
+  effectiveState,
   revokeSecret,
   toSecretStatus,
   type ConsumeResult,
@@ -12,59 +12,92 @@ import {
   type SecretRepository,
 } from '../src/core/secret'
 
-class AtomicInMemorySecretRepository implements SecretRepository {
+class AsyncAtomicInMemorySecretRepository implements SecretRepository {
   private readonly records = new Map<SecretId, SecretRecord>()
+  private readonly queues = new Map<SecretId, Promise<void>>()
 
   async create(record: SecretRecord) {
     this.records.set(record.id, record)
   }
 
   async consume(id: SecretId, nowMs: number): Promise<ConsumeResult | { kind: 'not_found' }> {
-    const record = this.records.get(id)
-    if (!record) {
-      return { kind: 'not_found' }
-    }
-
-    const transition = consumeSecret(record, nowMs)
-    this.records.set(id, transition.record)
-    return transition.result
+    return this.mutate(id, async (record) => {
+      await Promise.resolve()
+      const decision = consumeSecret(record, nowMs)
+      return {
+        nextState: decision.nextState,
+        result: decision.result,
+      }
+    })
   }
 
   async revoke(id: SecretId, nowMs: number): Promise<RevokeResult | { kind: 'not_found' }> {
-    const record = this.records.get(id)
-    if (!record) {
-      return { kind: 'not_found' }
-    }
-
-    const transition = revokeSecret(record, nowMs)
-    this.records.set(id, transition.record)
-    return transition.result
+    return this.mutate(id, async (record) => {
+      await Promise.resolve()
+      const decision = revokeSecret(record, nowMs)
+      return {
+        nextState: decision.nextState,
+        result: decision.result,
+      }
+    })
   }
 
   async getStatus(id: SecretId, nowMs: number) {
-    const record = this.records.get(id)
-    if (!record) {
-      return undefined
-    }
+    return this.mutate(id, async (record) => {
+      await Promise.resolve()
+      const nextState = effectiveState(record, nowMs)
+      return {
+        nextState,
+        result: toSecretStatus({ ...record, state: nextState }),
+      }
+    })
+  }
 
-    const current = expireSecret(record, nowMs)
-    this.records.set(id, current)
-    return toSecretStatus(current)
+  private async mutate<Result>(
+    id: SecretId,
+    mutation: (
+      record: SecretRecord,
+    ) => Promise<{ nextState: SecretRecord['state']; result: Result }>,
+  ): Promise<Result | { kind: 'not_found' }> {
+    const previous = this.queues.get(id) ?? Promise.resolve()
+    let release: (() => void) | undefined
+    const current = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    this.queues.set(id, previous.then(() => current))
+
+    await previous
+
+    try {
+      const record = this.records.get(id)
+      if (!record) {
+        return { kind: 'not_found' }
+      }
+
+      const outcome = await mutation(record)
+      this.records.set(id, { ...record, state: outcome.nextState })
+      return outcome.result
+    } finally {
+      release?.()
+    }
   }
 }
 
-describe('SecretRepository atomic consume contract', () => {
-  it('allows only one winner for concurrent consume attempts', async () => {
-    const repository = new AtomicInMemorySecretRepository()
-    const id = 'concurrency-test-id' as SecretId
+function record(id: SecretId): SecretRecord {
+  return {
+    id,
+    ciphertext: new Uint8Array([7, 8, 9]),
+    createdAtMs: 100,
+    expiresAtMs: 1_000,
+    state: 'AVAILABLE',
+  }
+}
 
-    await repository.create({
-      id,
-      ciphertext: new Uint8Array([7, 8, 9]),
-      createdAtMs: 100,
-      expiresAtMs: 1_000,
-      state: 'AVAILABLE',
-    })
+describe('SecretRepository atomic transition contract', () => {
+  it('allows only one winner when consume calls interleave asynchronously', async () => {
+    const repository = new AsyncAtomicInMemorySecretRepository()
+    const id = 'consume-race-id' as SecretId
+    await repository.create(record(id))
 
     const results = await Promise.all([
       repository.consume(id, 500),
@@ -81,17 +114,33 @@ describe('SecretRepository atomic consume contract', () => {
     expect((await repository.getStatus(id, 500))?.state).toBe('CONSUMED')
   })
 
-  it('never exposes ciphertext through status or revoke operations', async () => {
-    const repository = new AtomicInMemorySecretRepository()
-    const id = 'metadata-test-id' as SecretId
+  it('allows consume or revoke to win, but never both', async () => {
+    const repository = new AsyncAtomicInMemorySecretRepository()
+    const id = 'consume-revoke-race-id' as SecretId
+    await repository.create(record(id))
 
-    await repository.create({
-      id,
-      ciphertext: new Uint8Array([4, 5, 6]),
-      createdAtMs: 100,
-      expiresAtMs: 1_000,
-      state: 'AVAILABLE',
-    })
+    const [consume, revoke] = await Promise.all([
+      repository.consume(id, 500),
+      repository.revoke(id, 500),
+    ])
+
+    const consumeWon = consume.kind === 'revealed'
+    const revokeWon = revoke.kind === 'revoked'
+
+    expect(Number(consumeWon) + Number(revokeWon)).toBe(1)
+    expect((await repository.getStatus(id, 500))?.state).toBe(consumeWon ? 'CONSUMED' : 'REVOKED')
+
+    if (consumeWon) {
+      expect(revoke).toEqual({ kind: 'unavailable', state: 'CONSUMED' })
+    } else {
+      expect(consume).toEqual({ kind: 'unavailable', state: 'REVOKED' })
+    }
+  })
+
+  it('never exposes ciphertext through status or revoke operations', async () => {
+    const repository = new AsyncAtomicInMemorySecretRepository()
+    const id = 'metadata-test-id' as SecretId
+    await repository.create(record(id))
 
     const status = await repository.getStatus(id, 500)
     expect(status?.state).toBe('AVAILABLE')
