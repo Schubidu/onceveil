@@ -4,7 +4,7 @@ This document defines the security guarantees and explicit non-guarantees for On
 
 ## Security invariants
 
-1. **Passive requests do not consume secrets.** GET, HEAD, link previews, crawlers, prefetchers, and similar passive requests must never transition a secret out of `AVAILABLE`.
+1. **Passive requests do not consume or reveal secrets.** GET, HEAD, link previews, crawlers, prefetchers, and similar passive requests must never transition a secret to `CONSUMED` or receive ciphertext. A passive status read may record `AVAILABLE → EXPIRED` after the deadline.
 2. **Strict one-time retrieval.** The first successful atomic consume operation transitions `AVAILABLE → CONSUMED` and is the only operation allowed to receive ciphertext.
 3. **Consumption is final.** If the winning client or network fails after the server commits `CONSUMED`, the secret is lost. Onceveil does not use a lease/acknowledgement protocol.
 4. **The service does not receive plaintext or encryption keys.** Later browser crypto must encrypt before upload and decrypt only after retrieval.
@@ -29,13 +29,14 @@ Expiration is evaluated before consume or revoke. At or after the expiry timesta
 
 ## Atomic consume boundary
 
-Persistence adapters must implement consume as a single atomic state transition:
+Persistence adapters must implement consume and revoke as atomic conditional state transitions:
 
 ```text
 AVAILABLE -> CONSUMED + return ciphertext
+AVAILABLE -> REVOKED
 ```
 
-Exactly one concurrent caller may win. Losing callers receive only terminal-state information and never ciphertext.
+Exactly one concurrent terminal operation may win. A consume/revoke race must end in either `CONSUMED` or `REVOKED`, never both. Losing callers receive only terminal-state information and never ciphertext.
 
 A read followed by a separate write is insufficient because two callers could both observe `AVAILABLE`. Each storage adapter must provide its own test proving the atomic contract.
 
@@ -67,7 +68,7 @@ Deployments may configure stricter limits. Invalid configuration fails closed. R
 
 ### Passive previews and prefetchers
 
-Passive GET/HEAD traffic cannot consume a secret. Reveal requires an explicit mutating operation in a later HTTP slice.
+Passive GET/HEAD traffic cannot consume a secret or receive ciphertext. A status read may persist expiration after the deadline. Reveal requires an explicit mutating operation in a later HTTP slice.
 
 ### Concurrent recipients
 
