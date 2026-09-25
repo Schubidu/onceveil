@@ -51,25 +51,39 @@ export type RevokeResult =
   | { kind: 'revoked'; status: SecretStatus }
   | { kind: 'unavailable'; state: Exclude<SecretState, 'AVAILABLE'> }
 
-export interface SecretTransition<Result> {
-  record: SecretRecord
-  result: Result
-}
+export type ConsumeDecision =
+  | { nextState: 'CONSUMED'; result: Extract<ConsumeResult, { kind: 'revealed' }> }
+  | {
+      nextState: Exclude<SecretState, 'AVAILABLE'>
+      result: Extract<ConsumeResult, { kind: 'unavailable' }>
+    }
+
+export type RevokeDecision =
+  | { nextState: 'REVOKED'; result: Extract<RevokeResult, { kind: 'revoked' }> }
+  | {
+      nextState: Exclude<SecretState, 'AVAILABLE'>
+      result: Extract<RevokeResult, { kind: 'unavailable' }>
+    }
 
 export interface SecretRepository {
   create(record: SecretRecord): Promise<void>
 
   /**
-   * Atomically transition AVAILABLE -> CONSUMED and return ciphertext only to
-   * the single caller that wins that transition.
+   * Atomically evaluate expiry and transition AVAILABLE -> CONSUMED.
+   * Exactly one caller may receive ciphertext.
    */
   consume(id: SecretId, nowMs: number): Promise<ConsumeResult | { kind: 'not_found' }>
 
+  /**
+   * Atomically evaluate expiry and transition AVAILABLE -> REVOKED.
+   * This operation must never overwrite CONSUMED, EXPIRED, or REVOKED.
+   */
   revoke(id: SecretId, nowMs: number): Promise<RevokeResult | { kind: 'not_found' }>
 
   /**
    * Read lifecycle metadata only. Ciphertext is intentionally unavailable
-   * outside the winning consume result.
+   * outside the winning consume result. Implementations may atomically record
+   * AVAILABLE -> EXPIRED when the deadline has passed.
    */
   getStatus(id: SecretId, nowMs: number): Promise<SecretStatus | undefined>
 }
@@ -116,51 +130,50 @@ export function toSecretStatus(record: SecretRecord): SecretStatus {
   }
 }
 
-export function expireSecret(record: SecretRecord, nowMs: number): SecretRecord {
-  if (record.state !== 'AVAILABLE' || nowMs < record.expiresAtMs) {
-    return record
+export function effectiveState(record: SecretRecord, nowMs: number): SecretState {
+  if (record.state === 'AVAILABLE' && nowMs >= record.expiresAtMs) {
+    return 'EXPIRED'
   }
 
-  return { ...record, state: 'EXPIRED' }
+  return record.state
 }
 
-export function consumeSecret(
-  record: SecretRecord,
-  nowMs: number,
-): SecretTransition<ConsumeResult> {
-  const current = expireSecret(record, nowMs)
+export function consumeSecret(record: SecretRecord, nowMs: number): ConsumeDecision {
+  const state = effectiveState(record, nowMs)
 
-  if (current.state !== 'AVAILABLE') {
+  if (state !== 'AVAILABLE') {
     return {
-      record: current,
-      result: { kind: 'unavailable', state: current.state },
+      nextState: state,
+      result: { kind: 'unavailable', state },
     }
   }
 
-  const consumed = { ...current, state: 'CONSUMED' as const }
+  const status = toSecretStatus({ ...record, state: 'CONSUMED' })
   return {
-    record: consumed,
+    nextState: 'CONSUMED',
     result: {
       kind: 'revealed',
-      ciphertext: consumed.ciphertext,
-      status: toSecretStatus(consumed),
+      ciphertext: record.ciphertext,
+      status,
     },
   }
 }
 
-export function revokeSecret(record: SecretRecord, nowMs: number): SecretTransition<RevokeResult> {
-  const current = expireSecret(record, nowMs)
+export function revokeSecret(record: SecretRecord, nowMs: number): RevokeDecision {
+  const state = effectiveState(record, nowMs)
 
-  if (current.state !== 'AVAILABLE') {
+  if (state !== 'AVAILABLE') {
     return {
-      record: current,
-      result: { kind: 'unavailable', state: current.state },
+      nextState: state,
+      result: { kind: 'unavailable', state },
     }
   }
 
-  const revoked = { ...current, state: 'REVOKED' as const }
   return {
-    record: revoked,
-    result: { kind: 'revoked', status: toSecretStatus(revoked) },
+    nextState: 'REVOKED',
+    result: {
+      kind: 'revoked',
+      status: toSecretStatus({ ...record, state: 'REVOKED' }),
+    },
   }
 }
