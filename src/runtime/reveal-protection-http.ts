@@ -126,7 +126,13 @@ export async function verifyRevealProofResponse(
   })
 
   if (verification.kind === 'unavailable') {
-    return json({ error: 'verification_unavailable' }, 503)
+    return json(
+      {
+        error: 'verification_unavailable',
+        diagnostic: 'siteverify_unavailable',
+      },
+      503,
+    )
   }
 
   if (verification.kind !== 'verified') {
