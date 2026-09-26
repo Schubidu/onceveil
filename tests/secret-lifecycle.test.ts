@@ -4,6 +4,7 @@ import {
   DEFAULT_SECRET_POLICY,
   consumeSecret,
   effectiveState,
+  prepareSecretRecord,
   revokeSecret,
   type SecretId,
   type SecretRecord,
@@ -90,6 +91,32 @@ describe('secret lifecycle', () => {
 })
 
 describe('secret creation policy', () => {
+  it('prepares an AVAILABLE record with validated payload and derived expiry', () => {
+    const result = prepareSecretRecord(id, new Uint8Array([1, 2, 3]), 100, 500)
+
+    expect(result.ok).toBe(true)
+
+    if (result.ok) {
+      expect(result.record).toMatchObject({
+        id,
+        createdAtMs: 100,
+        expiresAtMs: 600,
+        state: 'AVAILABLE',
+      })
+    }
+  })
+
+  it('refuses to prepare records that exceed the payload limit', () => {
+    const result = prepareSecretRecord(
+      id,
+      new Uint8Array(DEFAULT_SECRET_POLICY.maxPayloadBytes + 1),
+      100,
+      undefined,
+    )
+
+    expect(result).toEqual({ ok: false, reason: 'PAYLOAD_TOO_LARGE' })
+  })
+
   it('uses the safe default TTL when none is requested', () => {
     expect(validateCreateSecret(1024, undefined)).toEqual({
       ok: true,
