@@ -51,7 +51,7 @@ One-time Cloudflare dashboard setup:
 3. In the GitHub `Main` ruleset, require the `validate` status check and keep strict/up-to-date checks enabled before allowing merges to `main`.
 4. Set the build command to `npm run build`.
 5. Set the production deploy command to `npm run deploy:production`.
-6. Enable Preview Builds and use `npm run deploy:preview` as the Preview command.
+6. If Cloudflare shows **Set up Worker Previews**, complete that one-time irreversible switch first. Then enable Preview Builds and use `npm run deploy:preview` as the Preview command.
 7. Keep Production and Preview variables, secrets, and bindings configured separately in Cloudflare.
 
 Cloudflare posts the Preview build status and Preview URL back to the pull request; subsequent pushes update the branch Preview without touching Production.
