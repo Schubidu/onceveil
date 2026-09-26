@@ -35,9 +35,7 @@ export type SecretDatabaseReadiness =
       database: 'unavailable'
     }
 
-export function runtimeEnvironmentForHostname(
-  hostname: string,
-): RuntimeEnvironment | undefined {
+export function runtimeEnvironmentForHostname(hostname: string): RuntimeEnvironment | undefined {
   const normalized = hostname.toLowerCase()
 
   const isPreview =
@@ -60,9 +58,7 @@ export function runtimeEnvironmentForHostname(
   return undefined
 }
 
-export function runtimeEnvironmentForRequest(
-  request: Request,
-): RuntimeEnvironment | undefined {
+export function runtimeEnvironmentForRequest(request: Request): RuntimeEnvironment | undefined {
   return runtimeEnvironmentForHostname(new URL(request.url).hostname)
 }
 

@@ -208,9 +208,7 @@ describe('D1 one-time HTTP flow', () => {
     expect(stored).not.toContain('"key"')
 
     const responses = await Promise.all(
-      Array.from({ length: 8 }, () =>
-        revealSecretResponse(PUBLIC_ID, repository, 1_001),
-      ),
+      Array.from({ length: 8 }, () => revealSecretResponse(PUBLIC_ID, repository, 1_001)),
     )
 
     const winners = responses.filter((response) => response.status === 200)
@@ -256,15 +254,12 @@ describe('D1 one-time HTTP flow', () => {
       },
     })
 
-    const request = new Request(
-      'https://onceveil.test/api/secrets',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-        duplex: 'half',
-      } as RequestInit & { duplex: 'half' },
-    )
+    const request = new Request('https://onceveil.test/api/secrets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      duplex: 'half',
+    } as RequestInit & { duplex: 'half' })
 
     const create = await createSecretResponse(request, repository, 1_000, allocatePublicId)
 
