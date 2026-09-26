@@ -564,7 +564,9 @@ describe('D1 one-time HTTP flow', () => {
     })
 
     const issued = await proofRepository.prepare(PUBLIC_ID, 1_002)
-    await expect(proofRepository.verify(PUBLIC_ID, issued.verificationId, 1_003)).resolves.toBe(true)
+    await expect(proofRepository.verify(PUBLIC_ID, issued.verificationId, 1_003)).resolves.toBe(
+      true,
+    )
     const revealed = await protectedRevealResponse(
       new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
         method: 'POST',
@@ -596,7 +598,9 @@ describe('D1 one-time HTTP flow', () => {
     const expired = await proofRepository.prepare(PUBLIC_ID, 1_000)
     const otherId = 'e'.repeat(32) as SecretId
     const consumed = await proofRepository.prepare(otherId, 2_000)
-    await expect(proofRepository.verify(otherId, consumed.verificationId, 2_001)).resolves.toBe(true)
+    await expect(proofRepository.verify(otherId, consumed.verificationId, 2_001)).resolves.toBe(
+      true,
+    )
     await expect(proofRepository.consume(otherId, consumed.value, 2_002)).resolves.toBe(true)
 
     const cleanupAt = expired.expiresAtMs
@@ -645,7 +649,9 @@ describe('D1 one-time HTTP flow', () => {
     )
 
     const expired = await proofRepository.prepare(PUBLIC_ID, 1_001)
-    await expect(proofRepository.verify(PUBLIC_ID, expired.verificationId, 1_002)).resolves.toBe(true)
+    await expect(proofRepository.verify(PUBLIC_ID, expired.verificationId, 1_002)).resolves.toBe(
+      true,
+    )
     const expiredResponse = await protectedRevealResponse(
       new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
         method: 'POST',
@@ -677,7 +683,9 @@ describe('D1 one-time HTTP flow', () => {
 
     const otherId = 'e'.repeat(32) as SecretId
     const otherProof = await proofRepository.prepare(otherId, 3_000)
-    await expect(proofRepository.verify(otherId, otherProof.verificationId, 3_001)).resolves.toBe(true)
+    await expect(proofRepository.verify(otherId, otherProof.verificationId, 3_001)).resolves.toBe(
+      true,
+    )
     const boundResponse = await protectedRevealResponse(
       new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
         method: 'POST',
