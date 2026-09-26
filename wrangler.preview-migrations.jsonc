@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "d1_databases": [
+    {
+      "binding": "PREVIEW_DB",
+      "database_name": "onceveil-preview",
+      "database_id": "a8f3fce5-8226-40f1-804a-96677743f541",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
