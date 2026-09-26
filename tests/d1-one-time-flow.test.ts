@@ -160,9 +160,9 @@ describe('D1 one-time HTTP flow', () => {
   })
 
   function revealAuthorization(id: SecretId): string {
-    const row = d1.database
-      .prepare('SELECT replay_key FROM secrets WHERE id = ?')
-      .get(id) as { replay_key?: string } | undefined
+    const row = d1.database.prepare('SELECT replay_key FROM secrets WHERE id = ?').get(id) as
+      | { replay_key?: string }
+      | undefined
     if (typeof row?.replay_key !== 'string') {
       throw new Error('missing reveal authorization')
     }
