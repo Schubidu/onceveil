@@ -2,8 +2,9 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { isValidSecretId } from '../core/secret'
 import {
-  issueRevealProofResponse,
+  prepareRevealProofResponse,
   protectedRevealResponse,
+  verifyRevealProofResponse,
 } from '../runtime/reveal-protection-http'
 import {
   getRevealChallengeVerifier,
@@ -66,8 +67,13 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
         try {
           await assertSecretDatabaseEnvironment(expectedEnvironment)
 
+          if (request.headers.get('X-Onceveil-Proof-Prepare') === '1') {
+            getTurnstileSiteKey()
+            return await prepareRevealProofResponse(params.id, getRevealProofRepository())
+          }
+
           if (request.headers.get('X-Onceveil-Proof-Request') === '1') {
-            return await issueRevealProofResponse(
+            return await verifyRevealProofResponse(
               request,
               params.id,
               getRevealChallengeVerifier(),
