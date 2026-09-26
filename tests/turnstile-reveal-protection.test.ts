@@ -28,6 +28,32 @@ describe('Turnstile reveal challenge verifier', () => {
     expect(turnstileRevealProtectionConfiguration('site-key', '   ')).toBeUndefined()
   })
 
+  it('invokes fetch without binding the verifier as receiver', async () => {
+    let receiver: unknown = 'not-called'
+    const fetchImpl = function (this: unknown) {
+      receiver = this
+      return Promise.resolve(
+        response({
+          success: true,
+          action: REVEAL_PROTECTION_ACTION,
+          hostname: 'ots.schult.dev',
+          cdata: SECRET_ID,
+        }),
+      )
+    } as typeof fetch
+    const verifier = new TurnstileRevealChallengeVerifier('secret-key', fetchImpl)
+
+    await expect(
+      verifier.verify({
+        token: 'turnstile-token',
+        secretId: SECRET_ID,
+        hostname: 'ots.schult.dev',
+      }),
+    ).resolves.toEqual({ kind: 'verified' })
+
+    expect(receiver).toBeUndefined()
+  })
+
   it('accepts only the expected action, hostname and secret-bound cData', async () => {
     let capturedInit: RequestInit | undefined
     let calls = 0
