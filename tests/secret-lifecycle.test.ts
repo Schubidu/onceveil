@@ -156,12 +156,7 @@ describe('secret creation policy', () => {
 
   it('rejects malformed identifiers at the persistence boundary', () => {
     expect(
-      prepareSecretRecord(
-        'predictable-id' as SecretId,
-        new Uint8Array([1]),
-        100,
-        undefined,
-      ),
+      prepareSecretRecord('predictable-id' as SecretId, new Uint8Array([1]), 100, undefined),
     ).toEqual({ ok: false, reason: 'INVALID_ID' })
   })
 
