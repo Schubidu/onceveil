@@ -50,9 +50,9 @@ A recipient-authenticated mode may be added later, but it is outside the current
 
 ## Identifier requirements
 
-Secret identifiers must be unpredictable and non-enumerable. Generators must use a cryptographically secure random source and provide at least 128 bits of entropy.
+Secret identifiers must be unpredictable and non-enumerable. The validated creation boundary generates them internally with Web Crypto using 128 bits of cryptographic randomness; callers cannot supply arbitrary identifiers.
 
-Sequential identifiers, timestamps, counters, database row IDs, and non-cryptographic randomness are not acceptable.
+Sequential identifiers, timestamps, counters, database row IDs, caller-supplied IDs, and non-cryptographic randomness are not acceptable.
 
 Creation is insert-only. A duplicate identifier must be rejected atomically and must never replace an existing `AVAILABLE` or terminal record.
 
@@ -64,7 +64,7 @@ The domain default is:
 - maximum TTL: 7 days;
 - maximum ciphertext payload: 64 KiB.
 
-Deployments may configure stricter limits. Invalid configuration fails closed. Requests above the configured TTL or payload limit are rejected rather than silently clamped. Persistence accepts only records produced by the validated domain creation path, so storage adapters cannot bypass these limits with arbitrary expiry or payload values.
+Deployments may configure stricter limits. Invalid configuration or malformed persisted lifecycle state fails closed. Requests above the configured TTL or payload limit are rejected rather than silently clamped. Persistence accepts only records produced by the validated domain creation path, so storage adapters cannot bypass these limits with arbitrary expiry or payload values.
 
 ## Threats covered
 
