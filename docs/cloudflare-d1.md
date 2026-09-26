@@ -7,7 +7,7 @@ Onceveil uses one D1 binding named `DB`, but Production and Worker Previews must
 Create two remote D1 databases:
 
 - `onceveil-production` for `ots.schult.dev` / `main` — configured as `1d203155-cdad-4d27-9c84-383c59c059ab`;
-- `onceveil-preview` for `ots-preview.schult.dev` and PR previews — database ID still to be configured.
+- `onceveil-preview` for `ots-preview.schult.dev` and PR previews — configured as `a8f3fce5-8226-40f1-804a-96677743f541`.
 
 A Preview must never inherit or target the production database.
 
@@ -37,11 +37,12 @@ Example shape after both database IDs are known:
 }
 ```
 
-The Production binding is active in `wrangler.jsonc`. The Preview binding remains intentionally absent until the real Preview database ID is available.
+Both Production and Preview bindings are active in `wrangler.jsonc` and point to separate physical D1 databases:
 
-Cloudflare Worker Previews do not inherit Production settings. Therefore, while `previews.d1_databases` is absent, Preview create/reveal requests have no `DB` binding and fail closed with HTTP 503 rather than reaching Production data.
+- Production `DB` → `onceveil-production`
+- Preview `DB` → `onceveil-preview`
 
-Do not add an invented or placeholder Preview database ID.
+Cloudflare Worker Previews do not inherit Production settings, so PR previews remain isolated from Production data.
 
 ## Migrations
 
