@@ -7,6 +7,7 @@ const MAX_PROTECTION_REQUEST_BYTES = 4 * 1024
 
 interface ProtectionRequestBody {
   token?: unknown
+  verificationId?: unknown
   proof?: unknown
 }
 
@@ -70,7 +71,23 @@ async function readProtectionBody(request: Request): Promise<ProtectionBodyResul
   }
 }
 
-export async function issueRevealProofResponse(
+export async function prepareRevealProofResponse(
+  secretId: SecretId,
+  proofs: RevealProofRepository,
+  nowMs = Date.now(),
+): Promise<Response> {
+  const proof = await proofs.prepare(secretId, nowMs)
+  return json(
+    {
+      proof: proof.value,
+      verificationId: proof.verificationId,
+      expiresAtMs: proof.expiresAtMs,
+    },
+    201,
+  )
+}
+
+export async function verifyRevealProofResponse(
   request: Request,
   secretId: SecretId,
   verifier: RevealChallengeVerifier,
@@ -83,7 +100,9 @@ export async function issueRevealProofResponse(
   }
 
   const token = bodyResult.kind === 'ok' ? bodyResult.body.token : undefined
-  if (typeof token !== 'string') {
+  const verificationId =
+    bodyResult.kind === 'ok' ? bodyResult.body.verificationId : undefined
+  if (typeof token !== 'string' || typeof verificationId !== 'string') {
     return json({ error: 'invalid_verification' }, 400)
   }
 
@@ -102,8 +121,11 @@ export async function issueRevealProofResponse(
     return json({ error: 'verification_failed' }, 403)
   }
 
-  const proof = await proofs.issue(secretId, nowMs)
-  return json({ proof: proof.value, expiresAtMs: proof.expiresAtMs }, 201)
+  if (!(await proofs.verify(secretId, verificationId, nowMs))) {
+    return json({ error: 'verification_failed' }, 403)
+  }
+
+  return json({ verified: true }, 200)
 }
 
 export async function consumeRevealProofResponse(
