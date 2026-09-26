@@ -10,7 +10,7 @@ import {
   discardRevealVerificationFragment,
   publishRevealVerificationMessage,
   requestRevealProof,
-  revealVerificationChannel,
+  revealVerificationId,
 } from '../browser/reveal-verification'
 import { REVEAL_PROTECTION_ACTION } from '../core/reveal-protection'
 import { isValidSecretId, type SecretId } from '../core/secret'
@@ -54,18 +54,18 @@ export const Route = createFileRoute('/s/$id')({
 
 function SecretLanding() {
   const { id } = Route.useParams()
-  const [verificationChannel, setVerificationChannel] = useState<string | null>()
+  const [verificationId, setVerificationId] = useState<string | null>()
 
   useEffect(() => {
-    const channel = revealVerificationChannel(window.location.search)
-    if (channel) {
+    const candidate = revealVerificationId(window.location.search)
+    if (candidate) {
       discardRevealVerificationFragment(window.location, window.history)
     }
 
-    setVerificationChannel(channel ?? null)
+    setVerificationId(candidate ?? null)
   }, [])
 
-  if (verificationChannel === undefined) {
+  if (verificationId === undefined) {
     return null
   }
 
@@ -73,8 +73,8 @@ function SecretLanding() {
     return <SecretError message="This secret link is invalid." />
   }
 
-  return verificationChannel ? (
-    <TurnstileVerification id={id} channel={verificationChannel} />
+  return verificationId ? (
+    <TurnstileVerification id={id} verificationId={verificationId} />
   ) : (
     <SecretReveal id={id} />
   )
@@ -171,7 +171,13 @@ function SecretReveal({ id }: { id: SecretId }) {
   )
 }
 
-function TurnstileVerification({ id, channel }: { id: SecretId; channel: string }) {
+function TurnstileVerification({
+  id,
+  verificationId,
+}: {
+  id: SecretId
+  verificationId: string
+}) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [status, setStatus] = useState('Preparing verification…')
   const [error, setError] = useState<string>()
@@ -180,7 +186,18 @@ function TurnstileVerification({ id, channel }: { id: SecretId; channel: string 
     let active = true
     let script: HTMLScriptElement | undefined
 
-    async function issueProof(token: string) {
+    function failVerification(message: string) {
+      if (!active) {
+        return
+      }
+
+      publishRevealVerificationMessage(verificationId, {
+        type: 'onceveil-reveal-proof-error',
+      })
+      setError(message)
+    }
+
+    async function completeVerification(token: string) {
       try {
         const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
           method: 'POST',
@@ -188,33 +205,24 @@ function TurnstileVerification({ id, channel }: { id: SecretId; channel: string 
             'Content-Type': 'application/json',
             'X-Onceveil-Proof-Request': '1',
           },
-          body: JSON.stringify({ token }),
+          body: JSON.stringify({ token, verificationId }),
         })
 
         const body = (await response.json().catch(() => undefined)) as
           | Record<string, unknown>
           | undefined
-        const proof = typeof body?.proof === 'string' ? body.proof : undefined
 
-        if (!active || !response.ok || !proof) {
-          throw new Error('Verification proof could not be issued')
+        if (!active || !response.ok || body?.verified !== true) {
+          throw new Error('Verification could not be completed')
         }
 
-        publishRevealVerificationMessage(channel, {
-          type: 'onceveil-reveal-proof',
-          proof,
+        publishRevealVerificationMessage(verificationId, {
+          type: 'onceveil-reveal-verified',
         })
         setStatus('Verified. Returning to the secret…')
         window.close()
       } catch {
-        if (!active) {
-          return
-        }
-
-        publishRevealVerificationMessage(channel, {
-          type: 'onceveil-reveal-proof-error',
-        })
-        setError('Verification failed. Close this window and try again.')
+        failVerification('Verification failed. Close this window and try again.')
       }
     }
 
@@ -243,7 +251,7 @@ function TurnstileVerification({ id, channel }: { id: SecretId; channel: string 
         script.defer = true
         script.onload = () => {
           if (!active || !containerRef.current || !window.turnstile) {
-            setError('Verification failed to initialize.')
+            failVerification('Verification failed to initialize.')
             return
           }
 
@@ -252,17 +260,15 @@ function TurnstileVerification({ id, channel }: { id: SecretId; channel: string 
             sitekey: config.siteKey as string,
             action: REVEAL_PROTECTION_ACTION,
             cData: id,
-            callback: (token) => void issueProof(token),
-            'error-callback': () => setError('Verification failed. Try again.'),
-            'expired-callback': () => setError('Verification expired. Try again.'),
+            callback: (token) => void completeVerification(token),
+            'error-callback': () => failVerification('Verification failed. Try again.'),
+            'expired-callback': () => failVerification('Verification expired. Try again.'),
           })
         }
-        script.onerror = () => setError('Verification failed to load.')
+        script.onerror = () => failVerification('Verification failed to load.')
         document.head.append(script)
       } catch {
-        if (active) {
-          setError('Verification is unavailable.')
-        }
+        failVerification('Verification is unavailable.')
       }
     }
 
@@ -272,7 +278,7 @@ function TurnstileVerification({ id, channel }: { id: SecretId; channel: string 
       active = false
       script?.remove()
     }
-  }, [channel, id])
+  }, [id, verificationId])
 
   return (
     <main className="shell">
