@@ -16,7 +16,7 @@ MCP support is planned with secure browser handoff so secret material does not e
 
 ## Current status
 
-The application and Cloudflare runtime baseline, strict one-time lifecycle, browser-side encryption, D1-backed create/reveal flow, and fail-closed Turnstile reveal protection are implemented. Production and Preview use separate D1 databases. MCP and the portable Node/SQLite profile are not implemented yet.
+The application and Cloudflare runtime baseline, strict one-time lifecycle, browser-side encryption, D1-backed create/reveal flow, fail-closed Turnstile reveal protection, and separate owner status/revocation capabilities are implemented. Production and Preview use separate D1 databases. MCP and the portable Node/SQLite profile are not implemented yet.
 
 ## Development
 
@@ -57,6 +57,8 @@ One-time Cloudflare dashboard setup:
 Cloudflare posts the Preview build status and Preview URL back to the pull request; subsequent pushes update the branch Preview without touching Production.
 
 The repository may contain non-sensitive Worker configuration such as the public Turnstile site key in `wrangler.jsonc`. **Do not put Cloudflare API tokens, account credentials, Turnstile secrets, application secrets, or other secret values in GitHub Secrets/Variables, workflow files, `wrangler.jsonc`, or committed environment files.** Sensitive runtime configuration belongs in Cloudflare.
+
+Creating a secret returns two independent links in the browser: the recipient share link and a private owner link for lifecycle status and revocation. The owner link cannot decrypt the secret and must be kept separate from the recipient link.
 
 The Worker code expects a D1 binding named `DB` for the one-time secret flow. Production and Previews must use different physical databases. See [docs/cloudflare-d1.md](docs/cloudflare-d1.md). Reveal also requires Turnstile runtime configuration; see [docs/turnstile.md](docs/turnstile.md).
 
