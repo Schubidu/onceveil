@@ -53,24 +53,52 @@ function OwnerSecret() {
   const [revoking, setRevoking] = useState(false)
 
   useEffect(() => {
+    let active = true
+    capability.current = undefined
+    setReady(false)
+    setStatus(undefined)
+    setError(undefined)
+    setRevoking(false)
+
+    const owner = takeOwnerCapability(window.location, window.history)
+
     if (!isValidSecretId(id)) {
       setError('This owner link is invalid.')
       setReady(true)
-      return
+      return () => {
+        active = false
+      }
     }
 
-    const owner = takeOwnerCapability(window.location, window.history)
     if (!owner) {
       setError('This owner link does not contain a usable management capability.')
       setReady(true)
-      return
+      return () => {
+        active = false
+      }
     }
 
     capability.current = owner
     void requestOwnerStatus(id, 'GET', owner)
-      .then(setStatus)
-      .catch(() => setError('Secret status could not be loaded.'))
-      .finally(() => setReady(true))
+      .then((nextStatus) => {
+        if (active) {
+          setStatus(nextStatus)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setError('Secret status could not be loaded.')
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setReady(true)
+        }
+      })
+
+    return () => {
+      active = false
+    }
   }, [id])
 
   async function revoke() {
