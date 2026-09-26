@@ -215,6 +215,9 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
             [
               'siteverify_rejected',
               'siteverify_fetch_failed',
+              'siteverify_network_lost',
+              'siteverify_worker_routing',
+              'siteverify_host_blocked',
               'siteverify_http_error',
               'siteverify_invalid_response',
               'hostname_mismatch',
