@@ -172,6 +172,31 @@ export class D1RevealProofRepository implements RevealProofRepository {
       if (result.meta?.changes === 1) {
         return { value, verificationId, expiresAtMs }
       }
+
+      let currentPending: { count: number } | null
+      try {
+        currentPending = await session
+          .prepare(
+            `SELECT COUNT(*) AS count
+             FROM reveal_proofs
+             WHERE secret_id = ?
+               AND verified_at_ms IS NULL
+               AND consumed_at_ms IS NULL
+               AND expires_at_ms > ?`,
+          )
+          .bind(secretId, nowMs)
+          .first<{ count: number }>()
+      } catch {
+        throw new RevealProofStorageError()
+      }
+
+      if (
+        !currentPending ||
+        !Number.isSafeInteger(currentPending.count) ||
+        currentPending.count >= MAX_ACTIVE_REVEAL_PROOFS_PER_SECRET
+      ) {
+        return undefined
+      }
     }
 
     throw new RevealProofStorageError()
