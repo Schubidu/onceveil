@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 import { Route as OwnerRoute } from '../src/routes/o.$id'
 import { Route as ShareRoute } from '../src/routes/s.$id'
+import { isSecretSurface } from '../src/runtime/security-headers'
 
 describe('preview-safe share landing route', () => {
   it('locks the plaintext field while a create request is in flight', async () => {
@@ -71,8 +72,9 @@ describe('preview-safe share landing route', () => {
     expect(handlers).not.toHaveProperty('GET')
     expect(handlers.HEAD).toBeTypeOf('function')
 
-    const serverSource = await readFile(path.resolve('src/server.ts'), 'utf8')
-    expect(serverSource).toContain("pathname.startsWith('/o/')")
+    expect(
+      isSecretSurface(new Request('https://onceveil.test/o/0123456789abcdef0123456789abcdef')),
+    ).toBe(true)
   })
 
   it('reveals only from the explicit browser action', async () => {
@@ -99,6 +101,23 @@ describe('preview-safe share landing route', () => {
 
     expect(source).toContain("window.addEventListener('hashchange', loadOwner)")
     expect(source).toContain('generation.current === currentGeneration')
+  })
+
+  it('does not reuse revealed plaintext when navigating between secret ids', async () => {
+    const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
+
+    expect(source).toContain('<SecretReveal key={id} id={id} />')
+  })
+
+  it('clears decryption capability and plaintext across page lifecycle restores', async () => {
+    const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
+
+    expect(source).toContain("window.addEventListener('pagehide', clearSensitiveState)")
+    expect(source).toContain("window.addEventListener('pageshow', clearRestoredState)")
+    expect(source).toContain('generation.current += 1')
+    expect(source).toContain('generation.current !== currentGeneration')
+    expect(source).toContain('fragment.current = undefined')
+    expect(source).toContain('setPlaintext(undefined)')
   })
 
   it('does not auto-trigger reveal during page initialization', async () => {

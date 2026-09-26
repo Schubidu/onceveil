@@ -77,12 +77,13 @@ function SecretLanding() {
   return verificationId ? (
     <TurnstileVerification id={id} verificationId={verificationId} />
   ) : (
-    <SecretReveal id={id} />
+    <SecretReveal key={id} id={id} />
   )
 }
 
 function SecretReveal({ id }: { id: SecretId }) {
   const fragment = useRef<string | undefined>(undefined)
+  const generation = useRef(0)
   const [capabilityReady, setCapabilityReady] = useState(false)
   const [revealing, setRevealing] = useState(false)
   const [plaintext, setPlaintext] = useState<string>()
@@ -92,18 +93,49 @@ function SecretReveal({ id }: { id: SecretId }) {
   useEffect(() => {
     fragment.current = takeShareFragment(window.location, window.history)
     setCapabilityReady(true)
+
+    function clearSensitiveState() {
+      generation.current += 1
+      fragment.current = undefined
+      setPlaintext(undefined)
+      setCopied(false)
+      setRevealing(false)
+      setError(undefined)
+    }
+
+    function clearRestoredState(event: PageTransitionEvent) {
+      if (event.persisted) {
+        clearSensitiveState()
+      }
+    }
+
+    window.addEventListener('pagehide', clearSensitiveState)
+    window.addEventListener('pageshow', clearRestoredState)
+
+    return () => {
+      generation.current += 1
+      fragment.current = undefined
+      window.removeEventListener('pagehide', clearSensitiveState)
+      window.removeEventListener('pageshow', clearRestoredState)
+    }
   }, [])
 
   async function reveal() {
-    if (!fragment.current || revealing || plaintext !== undefined) {
+    const currentFragment = fragment.current
+    if (!currentFragment || revealing || plaintext !== undefined) {
       return
     }
 
+    const currentGeneration = generation.current
     setRevealing(true)
     setError(undefined)
 
     try {
-      const proof = await requestRevealProof(id, revealAuthorizationFromFragment(fragment.current))
+      const proof = await requestRevealProof(id, revealAuthorizationFromFragment(currentFragment))
+      if (generation.current !== currentGeneration) {
+        return
+      }
+
       const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
         method: 'POST',
         headers: {
@@ -112,6 +144,9 @@ function SecretReveal({ id }: { id: SecretId }) {
         },
         body: JSON.stringify({ proof }),
       })
+      if (generation.current !== currentGeneration) {
+        return
+      }
 
       if (!response.ok) {
         setError(response.status === 410 ? 'This secret is no longer available.' : 'Reveal failed.')
@@ -119,10 +154,22 @@ function SecretReveal({ id }: { id: SecretId }) {
       }
 
       const payload: unknown = await response.json()
-      const revealed = await decryptSecret(payload, fragment.current)
+      if (generation.current !== currentGeneration) {
+        return
+      }
+
+      const revealed = await decryptSecret(payload, currentFragment)
+      if (generation.current !== currentGeneration) {
+        return
+      }
+
       fragment.current = undefined
       setPlaintext(revealed)
     } catch (cause) {
+      if (generation.current !== currentGeneration) {
+        return
+      }
+
       setError(
         cause instanceof LegacyShareCapabilityError
           ? 'This link uses the previous share format and cannot be revealed after the security upgrade.'
@@ -131,7 +178,9 @@ function SecretReveal({ id }: { id: SecretId }) {
             : 'Verification or reveal failed.',
       )
     } finally {
-      setRevealing(false)
+      if (generation.current === currentGeneration) {
+        setRevealing(false)
+      }
     }
   }
 

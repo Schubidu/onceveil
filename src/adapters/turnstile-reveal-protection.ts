@@ -1,3 +1,4 @@
+import { logRuntimeWarning } from '../runtime/safe-log'
 import {
   REVEAL_PROTECTION_ACTION,
   type RevealChallengeContext,
@@ -80,7 +81,7 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
             ? 'siteverify_host_blocked'
             : 'siteverify_fetch_failed'
 
-      console.warn('Turnstile Siteverify fetch failed', {
+      logRuntimeWarning('Turnstile Siteverify fetch failed', {
         name: error instanceof Error ? error.name : 'UnknownError',
         diagnostic,
       })
@@ -88,7 +89,7 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
     }
 
     if (!response.ok) {
-      console.warn('Turnstile Siteverify returned non-success HTTP status', {
+      logRuntimeWarning('Turnstile Siteverify returned non-success HTTP status', {
         status: response.status,
       })
       return { kind: 'unavailable' }
@@ -98,12 +99,12 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
     try {
       result = await response.json()
     } catch {
-      console.warn('Turnstile Siteverify returned invalid JSON')
+      logRuntimeWarning('Turnstile Siteverify returned invalid JSON')
       return { kind: 'unavailable' }
     }
 
     if (typeof result !== 'object' || result === null) {
-      console.warn('Turnstile Siteverify returned an invalid response')
+      logRuntimeWarning('Turnstile Siteverify returned an invalid response')
       return { kind: 'unavailable' }
     }
 
@@ -120,7 +121,7 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
             .filter((code): code is string => typeof code === 'string')
             .slice(0, 10)
         : []
-      console.warn('Turnstile Siteverify rejected reveal verification', {
+      logRuntimeWarning('Turnstile Siteverify rejected reveal verification', {
         success: siteverify.success === true,
         errorCodes,
         hostnameMatches,

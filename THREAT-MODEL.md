@@ -102,6 +102,15 @@ Invalid, missing, expired, replayed, or differently bound proofs cannot reach th
 
 Proof consumption and secret consumption are intentionally sequential rather than a cross-table lease protocol. A proof may therefore be spent by an infrastructure failure immediately before secret consume; the secret remains available and the recipient must verify again.
 
+## Browser and observability hardening
+
+Create, share, owner, and secret API surfaces are treated as sensitive surfaces. Responses are non-cacheable, do not send referrers, cannot be framed, and use a restrictive Content Security Policy. The normal key-holding context permits no third-party script, frame, or connection origins and disables workers. Only the fragment-free Turnstile verification context permits the Cloudflare challenge origin.
+
+The reveal page clears its in-memory decryption capability and plaintext when its page lifecycle ends and clears restored BFCache state before it can be reused. This is a browser-level lifecycle guarantee, not a promise of physical memory erasure.
+
+Application diagnostics are allowlisted and do not serialize request URLs, authorization headers, bodies, ciphertext, capabilities, proofs, verification tokens, or raw error messages. Infrastructure tracing must follow the same rule.
+
+Public deployments require edge abuse controls in addition to the application limits. Trusted-network deployments may use their network boundary instead. The concrete deployment expectations are documented in [docs/deployment-security.md](docs/deployment-security.md).
 ## Threats covered
 
 ### Passive previews and prefetchers

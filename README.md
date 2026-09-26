@@ -62,6 +62,8 @@ Creating a secret returns two independent links in the browser: the recipient sh
 
 The Worker code expects a D1 binding named `DB` for the one-time secret flow. Production and Previews must use different physical databases. See [docs/cloudflare-d1.md](docs/cloudflare-d1.md). Reveal also requires Turnstile runtime configuration; see [docs/turnstile.md](docs/turnstile.md).
 
+Public and trusted-network deployments have different abuse-control expectations. See [docs/deployment-security.md](docs/deployment-security.md). Public edge rate limiting is intentionally a release gate rather than an application-level preproduction subsystem.
+
 ## Architecture boundary
 
 Onceveil keeps the security/domain core independent from the application framework and deployment runtime.
