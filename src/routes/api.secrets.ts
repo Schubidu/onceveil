@@ -21,9 +21,7 @@ export const Route = createFileRoute('/api/secrets')({
           hostname.endsWith('-onceveil.schult.workers.dev')
 
         if (!isPreview) {
-          return withSecretSecurityHeaders(
-            Response.json({ error: 'not_found' }, { status: 404 }),
-          )
+          return withSecretSecurityHeaders(Response.json({ error: 'not_found' }, { status: 404 }))
         }
 
         return withSecretSecurityHeaders(
