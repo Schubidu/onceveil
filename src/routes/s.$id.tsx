@@ -97,6 +97,8 @@ function SecretReveal({ id }: { id: SecretId }) {
       fragment.current = undefined
       setPlaintext(undefined)
       setCopied(false)
+      setRevealing(false)
+      setError(undefined)
     }
 
     function clearRestoredState(event: PageTransitionEvent) {
@@ -109,7 +111,7 @@ function SecretReveal({ id }: { id: SecretId }) {
     window.addEventListener('pageshow', clearRestoredState)
 
     return () => {
-      clearSensitiveState()
+      fragment.current = undefined
       window.removeEventListener('pagehide', clearSensitiveState)
       window.removeEventListener('pageshow', clearRestoredState)
     }
