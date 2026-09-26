@@ -64,6 +64,7 @@ export type CreateSecretValidation =
 export type CreateResult =
   | { kind: 'created'; id: SecretId }
   | { kind: 'replayed'; id: SecretId }
+  | { kind: 'replay_conflict' }
   | { kind: 'duplicate_id' }
 
 export type ConsumeResult =
@@ -92,7 +93,8 @@ export interface SecretRepository {
   /**
    * Atomically insert a new secret. Existing identifiers are never overwritten,
    * including terminal records. Replaying the same canonical encrypted payload
-   * returns the original public identifier instead of creating another row.
+   * with the same TTL returns the original public identifier instead of creating
+   * another row. A replay with different create semantics fails closed.
    */
   create(record: PreparedSecretRecord, replayKey: string): Promise<CreateResult>
 
