@@ -69,7 +69,7 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
 
           if (request.headers.get('X-Onceveil-Proof-Prepare') === '1') {
             getTurnstileSiteKey()
-            return await prepareRevealProofResponse(params.id, getRevealProofRepository())
+            return await prepareRevealProofResponse(request, params.id, getRevealProofRepository())
           }
 
           if (request.headers.get('X-Onceveil-Proof-Request') === '1') {
