@@ -30,15 +30,17 @@ export const Route = createFileRoute('/ready')({
           if (!(error instanceof SecretDatabaseUnavailableError)) {
             throw error
           }
-
         }
 
-        return Response.json({ status: ready ? 'ready' : 'not_ready' }, {
-          status: ready ? 200 : 503,
-          headers: {
-            'Cache-Control': 'no-store',
+        return Response.json(
+          { status: ready ? 'ready' : 'not_ready' },
+          {
+            status: ready ? 200 : 503,
+            headers: {
+              'Cache-Control': 'no-store',
+            },
           },
-        })
+        )
       },
     },
   },
