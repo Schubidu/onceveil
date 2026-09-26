@@ -210,24 +210,7 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
           | undefined
 
         if (!active || !response.ok || body?.verified !== true) {
-          const diagnostic =
-            typeof body?.diagnostic === 'string' &&
-            [
-              'siteverify_rejected',
-              'siteverify_fetch_failed',
-              'siteverify_network_lost',
-              'siteverify_worker_routing',
-              'siteverify_host_blocked',
-              'siteverify_http_error',
-              'siteverify_invalid_response',
-              'hostname_mismatch',
-              'action_mismatch',
-              'cdata_mismatch',
-              'proof_activation_failed',
-            ].includes(body.diagnostic)
-              ? ` (${body.diagnostic})`
-              : ''
-          failVerification(`Verification failed${diagnostic}. Close this window and try again.`)
+          failVerification('Verification failed. Close this window and try again.')
           return
         }
 
