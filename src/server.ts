@@ -4,7 +4,11 @@ import { withSecretSecurityHeaders } from './runtime/security-headers'
 
 function isSecretSurface(request: Request): boolean {
   const pathname = new URL(request.url).pathname
-  return pathname === '/api/secrets' || pathname.startsWith('/api/secrets/') || pathname.startsWith('/s/')
+  return (
+    pathname === '/api/secrets' ||
+    pathname.startsWith('/api/secrets/') ||
+    pathname.startsWith('/s/')
+  )
 }
 
 export default createServerEntry({
