@@ -171,13 +171,7 @@ function SecretReveal({ id }: { id: SecretId }) {
   )
 }
 
-function TurnstileVerification({
-  id,
-  verificationId,
-}: {
-  id: SecretId
-  verificationId: string
-}) {
+function TurnstileVerification({ id, verificationId }: { id: SecretId; verificationId: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [status, setStatus] = useState('Preparing verification…')
   const [error, setError] = useState<string>()
