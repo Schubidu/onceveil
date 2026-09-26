@@ -12,7 +12,7 @@ function encrypted(label: string): EncryptedShare {
       nonce: 'AAAAAAAAAAAAAAAA',
       ciphertext: 'AAAAAAAAAAAAAAAAAAAAAA',
     },
-    fragment: `v1.${label}.${'a'.repeat(64)}`,
+    fragment: `v2.${label}.${'a'.repeat(64)}`,
   }
 }
 
