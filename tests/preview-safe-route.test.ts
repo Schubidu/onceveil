@@ -7,19 +7,23 @@ import { Route as ShareRoute } from '../src/routes/s.$id'
 
 describe('preview-safe share landing route', () => {
   it('executes the passive HEAD handler without revealing or consuming anything', async () => {
-    const handlers = ShareRoute.options.server?.handlers
-    expect(handlers).toBeDefined()
-    expect(typeof handlers).not.toBe('function')
-    if (!handlers || typeof handlers === 'function') {
+    const configuredHandlers = ShareRoute.options.server?.handlers
+    expect(configuredHandlers).toBeDefined()
+    expect(typeof configuredHandlers).not.toBe('function')
+    if (!configuredHandlers || typeof configuredHandlers === 'function') {
       throw new Error('expected static route handlers')
     }
 
+    const handlers = configuredHandlers as Record<string, unknown>
     expect(handlers).not.toHaveProperty('GET')
 
     const head = handlers.HEAD
     expect(head).toBeTypeOf('function')
+    if (typeof head !== 'function') {
+      throw new Error('expected HEAD handler')
+    }
 
-    const response = await head?.({
+    const response = await head({
       request: new Request('https://ots-preview.schult.dev/s/0123456789abcdef0123456789abcdef', {
         method: 'HEAD',
       }),
