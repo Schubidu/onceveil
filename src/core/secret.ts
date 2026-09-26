@@ -147,9 +147,7 @@ export function prepareSecretRecord(
   createdAtMs: number,
   requestedTtlMs: number | null | undefined,
   policy: SecretPolicy = DEFAULT_SECRET_POLICY,
-):
-  | { ok: true; record: PreparedSecretRecord }
-  | Extract<CreateSecretValidation, { ok: false }> {
+): { ok: true; record: PreparedSecretRecord } | Extract<CreateSecretValidation, { ok: false }> {
   const validation = validateCreateSecret(ciphertext.byteLength, requestedTtlMs, policy)
   if (!validation.ok) {
     return validation
