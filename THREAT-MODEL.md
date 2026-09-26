@@ -58,7 +58,7 @@ The browser-generated crypto context identifier is also 128 bits of Web Crypto r
 
 Sequential identifiers, timestamps, counters, database row IDs, malformed identifiers, and non-cryptographic randomness are not acceptable.
 
-Creation is insert-only. A duplicate server-issued identifier is retried with a fresh random identifier and must never replace an existing `AVAILABLE` or terminal record. The server also derives a SHA-256 replay key from the canonical encrypted payload. Retrying the same create request reuses the original public identifier and never creates a second deliverable row for the same encrypted payload.
+Creation is insert-only. A duplicate server-issued identifier is retried with a fresh random identifier and must never replace an existing `AVAILABLE` or terminal record. The server also derives a SHA-256 replay key from the canonical encrypted payload. Retrying the same encrypted payload with the same TTL reuses the original public identifier and never creates a second deliverable row. Replaying that payload with a different TTL fails closed with a conflict instead of mutating the original lifetime or creating another row.
 
 ## Default limits
 
