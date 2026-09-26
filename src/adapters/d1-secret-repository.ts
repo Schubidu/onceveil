@@ -152,7 +152,7 @@ export class D1SecretRepository implements SecretRepository {
         .bind(id, token),
     ])
 
-    const winner = results[2]?.results[0] as SecretRow | undefined
+    const winner = results[2]?.results[0] as unknown as SecretRow | undefined
     if (winner) {
       const record = toRecord(winner)
       const status = toStatus(winner, nowMs)
@@ -219,7 +219,7 @@ export class D1SecretRepository implements SecretRepository {
         .bind(id),
     ])
 
-    const row = results[2]?.results[0] as StatusRow | undefined
+    const row = results[2]?.results[0] as unknown as StatusRow | undefined
     if (!row) {
       return { kind: 'not_found' }
     }
@@ -254,7 +254,7 @@ export class D1SecretRepository implements SecretRepository {
         .bind(id),
     ])
 
-    const row = results[1]?.results[0] as StatusRow | undefined
+    const row = results[1]?.results[0] as unknown as StatusRow | undefined
     return row ? toStatus(row, nowMs) : undefined
   }
 }
