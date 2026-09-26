@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
+  D1CreateError,
   D1SecretRepository,
   type D1BindingValue,
   type D1DatabaseLike,
@@ -126,6 +127,48 @@ describe('D1 one-time HTTP flow', () => {
 
   afterEach(() => {
     d1.close()
+  })
+
+  it('reports the failing D1 create stage without secret material', async () => {
+    const failingDatabase: D1DatabaseLike = {
+      prepare() {
+        return {
+          bind() {
+            return this
+          },
+          async run() {
+            throw new Error('D1_ERROR: test failure')
+          },
+          async first() {
+            return null
+          },
+        }
+      },
+      withSession() {
+        return this
+      },
+      async batch() {
+        return []
+      },
+    }
+
+    const failingRepository = new D1SecretRepository(failingDatabase)
+    const encrypted = await encryptSecret('must stay secret')
+    const create = createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload: encrypted.payload }),
+      }),
+      failingRepository,
+      1_000,
+    )
+
+    await expect(create).rejects.toMatchObject<D1CreateError>({
+      name: 'D1CreateError',
+      stage: 'run',
+      detail: 'D1_ERROR: test failure',
+    })
   })
 
   it('stores only encrypted payload data and decrypts only in the winning browser', async () => {
