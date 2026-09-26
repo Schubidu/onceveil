@@ -9,9 +9,14 @@ describe('preview-safe share landing route', () => {
   it('executes the passive HEAD handler without revealing or consuming anything', async () => {
     const handlers = ShareRoute.options.server?.handlers
     expect(handlers).toBeDefined()
+    expect(typeof handlers).not.toBe('function')
+    if (!handlers || typeof handlers === 'function') {
+      throw new Error('expected static route handlers')
+    }
+
     expect(handlers).not.toHaveProperty('GET')
 
-    const head = handlers?.HEAD
+    const head = handlers.HEAD
     expect(head).toBeTypeOf('function')
 
     const response = await head?.({
