@@ -77,6 +77,12 @@ interface StatusRow {
   state: string
 }
 
+interface ReplayRow {
+  id: string
+  created_at_ms: number
+  expires_at_ms: number
+}
+
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   const copy = new Uint8Array(bytes.byteLength)
   copy.set(bytes)
@@ -191,17 +197,33 @@ export class D1SecretRepository implements SecretRepository {
       return { kind: 'created', id: record.id }
     }
 
-    let replay: { id: string } | null
+    let replay: ReplayRow | null
     try {
       replay = await session
-        .prepare('SELECT id FROM secrets WHERE replay_key = ? LIMIT 1')
+        .prepare(
+          'SELECT id, created_at_ms, expires_at_ms FROM secrets WHERE replay_key = ? LIMIT 1',
+        )
         .bind(replayKey)
-        .first<{ id: string }>()
+        .first<ReplayRow>()
     } catch (error) {
       throw new D1CreateError('run', errorDetail(error))
     }
 
-    if (replay && isValidSecretId(replay.id)) {
+    if (replay) {
+      if (!isValidSecretId(replay.id)) {
+        return { kind: 'replay_conflict' }
+      }
+
+      const replayTtlMs = replay.expires_at_ms - replay.created_at_ms
+      const requestedTtlMs = record.expiresAtMs - record.createdAtMs
+      if (
+        !Number.isSafeInteger(replayTtlMs) ||
+        !Number.isSafeInteger(requestedTtlMs) ||
+        replayTtlMs !== requestedTtlMs
+      ) {
+        return { kind: 'replay_conflict' }
+      }
+
       return { kind: 'replayed', id: replay.id }
     }
 
