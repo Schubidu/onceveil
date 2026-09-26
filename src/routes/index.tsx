@@ -34,9 +34,19 @@ function Home() {
       if (!response.ok) {
         let code = 'request_failed'
         try {
-          const body = (await response.json()) as { error?: unknown }
+          const body = (await response.json()) as {
+            error?: unknown
+            stage?: unknown
+            detail?: unknown
+          }
           if (typeof body.error === 'string') {
             code = body.error
+          }
+          if (typeof body.stage === 'string') {
+            code += ` stage=${body.stage}`
+          }
+          if (typeof body.detail === 'string') {
+            code += ` detail=${body.detail}`
           }
         } catch {
           // Keep the generic code when the response is not JSON.
