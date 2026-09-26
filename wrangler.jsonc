@@ -5,6 +5,9 @@
   "compatibility_date": "2026-09-25",
   "compatibility_flags": ["nodejs_compat"],
   "preview_urls": true,
+  "vars": {
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAFEfxfEZ8ZH4YiZn"
+  },
   "d1_databases": [
     {
       "binding": "DB",
@@ -14,6 +17,9 @@
     }
   ],
   "previews": {
+    "vars": {
+      "TURNSTILE_SITE_KEY": "0x4AAAAAAFEfxfEZ8ZH4YiZn"
+    },
     "d1_databases": [
       {
         "binding": "DB",
