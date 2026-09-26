@@ -212,9 +212,13 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
         if (!active || !response.ok || body?.verified !== true) {
           const diagnostic =
             typeof body?.diagnostic === 'string' &&
-            ['siteverify_rejected', 'hostname_mismatch', 'action_mismatch', 'cdata_mismatch'].includes(
-              body.diagnostic,
-            )
+            [
+              'siteverify_rejected',
+              'hostname_mismatch',
+              'action_mismatch',
+              'cdata_mismatch',
+              'proof_activation_failed',
+            ].includes(body.diagnostic)
               ? ` (${body.diagnostic})`
               : ''
           failVerification(`Verification failed${diagnostic}. Close this window and try again.`)
