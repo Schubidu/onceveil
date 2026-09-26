@@ -1,3 +1,4 @@
+import { isValidOwnerCapabilityHash } from '../core/owner-capability'
 import {
   decodeEncryptedSecretPayload,
   encodeEncryptedSecretPayload,
@@ -16,6 +17,7 @@ import { withSecretSecurityHeaders } from './security-headers'
 
 interface CreateRequestBody {
   payload: unknown
+  ownerKeyHash?: unknown
   ttlMs?: unknown
 }
 
@@ -103,6 +105,11 @@ export async function createSecretResponse(
   }
 
   const payload = body.payload
+  if (typeof body.ownerKeyHash !== 'string' || !isValidOwnerCapabilityHash(body.ownerKeyHash)) {
+    return json({ error: 'invalid_request' }, 400)
+  }
+
+  const ownerKeyHash = body.ownerKeyHash
   const ttlMs = body.ttlMs === undefined || typeof body.ttlMs === 'number' ? body.ttlMs : Number.NaN
 
   const encoded = encodeEncryptedSecretPayload(payload)
@@ -117,7 +124,7 @@ export async function createSecretResponse(
       )
     }
 
-    const result = await repository.create(prepared.record, replayKey)
+    const result = await repository.create(prepared.record, replayKey, ownerKeyHash)
     if (result.kind === 'created') {
       return json({ id: result.id }, 201)
     }
