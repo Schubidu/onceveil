@@ -13,9 +13,7 @@ const VERIFICATION_ID = 'fedcba9876543210fedcba9876543210'
 
 describe('reveal verification browser isolation', () => {
   it('builds a fragment-free verification URL containing only the public verification id', () => {
-    const url = new URL(
-      revealVerificationUrl(SECRET_ID, VERIFICATION_ID, 'https://ots.schult.dev'),
-    )
+    const url = new URL(revealVerificationUrl(SECRET_ID, VERIFICATION_ID, 'https://ots.schult.dev'))
 
     expect(url.pathname).toBe(`/s/${SECRET_ID}`)
     expect(url.searchParams.get('verify')).toBe('turnstile')
