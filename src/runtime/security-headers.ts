@@ -37,7 +37,8 @@ export function secretSecurityHeaders(
     'Cache-Control': 'no-store',
     'Content-Security-Policy': contentSecurityPolicy(policy, frameAncestor),
     'Cross-Origin-Opener-Policy': 'same-origin',
-    'Cross-Origin-Resource-Policy': 'same-origin',
+    'Cross-Origin-Resource-Policy':
+      policy === 'turnstile' && frameAncestor ? 'cross-origin' : 'same-origin',
     'Permissions-Policy': 'camera=(), geolocation=(), microphone=(), payment=()',
     'Referrer-Policy': 'no-referrer',
     'X-Content-Type-Options': 'nosniff',
