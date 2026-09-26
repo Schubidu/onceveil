@@ -40,6 +40,9 @@ function SecretLanding() {
     try {
       const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
         method: 'POST',
+        headers: {
+          'X-Onceveil-Reveal': '1',
+        },
       })
 
       if (!response.ok) {
