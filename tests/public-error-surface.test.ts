@@ -8,19 +8,16 @@ describe('public error surfaces', () => {
     'src/routes/api.secrets.ts',
     'src/routes/api.secrets.$id.owner.ts',
     'src/routes/api.secrets.$id.reveal.ts',
-  ])(
-    '%s does not serialize database diagnostics',
-    async (routePath) => {
-      const source = await readFile(path.resolve(routePath), 'utf8')
+  ])('%s does not serialize database diagnostics', async (routePath) => {
+    const source = await readFile(path.resolve(routePath), 'utf8')
 
-      expect(source).not.toContain("error: 'database_environment_mismatch'")
-      expect(source).not.toContain("error: 'd1_create_failed'")
-      expect(source).not.toContain('body?.stage')
-      expect(source).not.toContain('body?.detail')
-      expect(source).not.toContain('body?.expected')
-      expect(source).not.toContain('body?.actual')
-    },
-  )
+    expect(source).not.toContain("error: 'database_environment_mismatch'")
+    expect(source).not.toContain("error: 'd1_create_failed'")
+    expect(source).not.toContain('body?.stage')
+    expect(source).not.toContain('body?.detail')
+    expect(source).not.toContain('body?.expected')
+    expect(source).not.toContain('body?.actual')
+  })
 
   it('keeps readiness diagnostics internal', async () => {
     const source = await readFile(path.resolve('src/routes/ready.ts'), 'utf8')
