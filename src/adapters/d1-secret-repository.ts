@@ -11,7 +11,7 @@ import {
   type SecretStatus,
 } from '../core/secret'
 
-type D1BindingValue = string | number | null | ArrayBuffer | ArrayBufferView
+export type D1BindingValue = string | number | null | ArrayBuffer | ArrayBufferView
 
 export interface D1ResultLike<Row = Record<string, unknown>> {
   success: boolean
@@ -38,7 +38,7 @@ export interface D1DatabaseLike extends D1SessionLike {
 
 interface SecretRow {
   id: string
-  ciphertext: number[]
+  ciphertext: ArrayLike<number>
   created_at_ms: number
   expires_at_ms: number
   state: string
