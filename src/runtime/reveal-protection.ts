@@ -2,10 +2,7 @@ import { env } from 'cloudflare:workers'
 
 import { D1RevealProofRepository } from '../adapters/d1-reveal-proof-repository'
 import { TurnstileRevealChallengeVerifier } from '../adapters/turnstile-reveal-protection'
-import type {
-  RevealChallengeVerifier,
-  RevealProofRepository,
-} from '../core/reveal-protection'
+import type { RevealChallengeVerifier, RevealProofRepository } from '../core/reveal-protection'
 import { getSecretDatabase } from './secret-repository'
 
 interface OnceveilRevealProtectionEnv {
