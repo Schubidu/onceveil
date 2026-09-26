@@ -6,6 +6,7 @@ import { withSecretSecurityHeaders } from './security-headers'
 const MAX_PROTECTION_REQUEST_BYTES = 4 * 1024
 
 interface ProtectionRequestBody {
+  authorization?: unknown
   token?: unknown
   verificationId?: unknown
   proof?: unknown
@@ -72,11 +73,22 @@ async function readProtectionBody(request: Request): Promise<ProtectionBodyResul
 }
 
 export async function prepareRevealProofResponse(
+  request: Request,
   secretId: SecretId,
   proofs: RevealProofRepository,
   nowMs = Date.now(),
 ): Promise<Response> {
-  const proof = await proofs.prepare(secretId, nowMs)
+  const bodyResult = await readProtectionBody(request)
+  const authorization = bodyResult.kind === 'ok' ? bodyResult.body.authorization : undefined
+  if (typeof authorization !== 'string') {
+    return json({ error: 'reveal_protection_required' }, 403)
+  }
+
+  const proof = await proofs.prepare(secretId, authorization, nowMs)
+  if (!proof) {
+    return json({ error: 'reveal_protection_required' }, 403)
+  }
+
   return json(
     {
       proof: proof.value,
