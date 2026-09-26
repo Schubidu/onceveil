@@ -78,11 +78,19 @@ describe('preview-safe share landing route', () => {
     expect(source).toContain('/reveal')
   })
 
-  it('copies revealed plaintext only from an explicit user action', async () => {
+  it('copies revealed plaintext only from an explicit user action without hiding it from assistive technology', async () => {
     const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
 
     expect(source).toContain('navigator.clipboard.writeText(plaintext)')
-    expect(source).toContain('Copy revealed secret to clipboard')
+    expect(source).toContain('<code>{plaintext}</code>')
+    expect(source).not.toContain('aria-label="Copy revealed secret to clipboard"')
+  })
+
+  it('reloads owner capability on hash navigation and ignores stale owner operations', async () => {
+    const source = await readFile(path.resolve('src/routes/o.$id.tsx'), 'utf8')
+
+    expect(source).toContain("window.addEventListener('hashchange', loadOwner)")
+    expect(source).toContain('generation.current === currentGeneration')
   })
 
   it('does not auto-trigger reveal during page initialization', async () => {
