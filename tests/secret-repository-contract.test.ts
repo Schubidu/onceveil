@@ -21,7 +21,10 @@ const OWNER_KEY_HASH = 'a'.repeat(64)
 class AsyncAtomicInMemorySecretRepository implements SecretRepository {
   private readonly records = new Map<SecretId, SecretRecord>()
   private readonly owners = new Map<SecretId, string>()
-  private readonly replays = new Map<string, { id: SecretId; ttlMs: number; ownerKeyHash: string }>()
+  private readonly replays = new Map<
+    string,
+    { id: SecretId; ttlMs: number; ownerKeyHash: string }
+  >()
   private readonly queues = new Map<string, Promise<void>>()
 
   async create(
@@ -278,7 +281,9 @@ describe('SecretRepository atomic transition contract', () => {
     const revokeWon = revoke.kind === 'revoked'
 
     expect(Number(consumeWon) + Number(revokeWon)).toBe(1)
-    expect((await repository.getStatus(id, OWNER_KEY_HASH, 500))?.state).toBe(consumeWon ? 'CONSUMED' : 'REVOKED')
+    expect((await repository.getStatus(id, OWNER_KEY_HASH, 500))?.state).toBe(
+      consumeWon ? 'CONSUMED' : 'REVOKED',
+    )
 
     if (consumeWon) {
       expect(revoke).toEqual({ kind: 'unavailable', state: 'CONSUMED' })
