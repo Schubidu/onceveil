@@ -17,7 +17,6 @@ export type RevealChallengeDiagnostic =
   | 'hostname_mismatch'
   | 'action_mismatch'
   | 'cdata_mismatch'
-  | 'proof_activation_failed'
 
 export type RevealChallengeResult =
   | { kind: 'verified' }
