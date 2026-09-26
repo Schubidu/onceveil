@@ -82,9 +82,9 @@ GET/HEAD rendering of `/s/:id` does not access the repository and cannot consume
 
 Cloudflare deployments require a provider-neutral reveal proof before the existing one-time consume may run.
 
-Turnstile executes only in a separate, fragment-free browsing context opened with `noopener`/`noreferrer`. The browsing context holding the decryption key never loads Turnstile JavaScript. The two same-origin contexts exchange only a short-lived opaque proof through a random `BroadcastChannel`.
+Turnstile executes only in a separate, fragment-free browsing context opened with `noopener`/`noreferrer`. The browsing context holding the decryption key never loads Turnstile JavaScript. Before opening that verification window, the server prepares a random opaque proof and returns it only to the key-holding page. The verification window receives only a separate public verification identifier; its `BroadcastChannel` messages carry success/failure state and never the bearer proof.
 
-The server validates Turnstile through Siteverify and requires the expected action, exact hostname, and secret-bound `cData`. A successful challenge issues a 60-second random proof. D1 stores only its SHA-256 hash together with the intended secret identifier and one-time consumption state.
+The server validates Turnstile through Siteverify and requires the expected action, exact hostname, and secret-bound `cData`. A prepared proof remains unusable until the matching verification identifier is successfully completed. D1 stores only the proof's SHA-256 hash, the verification identifier, verification state, intended secret identifier, and one-time consumption state. Pending verification expires after five minutes; after successful verification the proof expires after 60 seconds.
 
 Invalid, missing, expired, replayed, or differently bound proofs cannot reach the secret consume. Provider outage, missing configuration, or proof-storage failure also fails closed and leaves the secret `AVAILABLE`. Onceveil does not treat Turnstile as recipient authentication or cryptographic proof of humanity.
 
