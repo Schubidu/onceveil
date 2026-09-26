@@ -21,7 +21,7 @@ export const Route = createFileRoute('/o/$id')({
 
 function OwnerSecret() {
   const { id } = Route.useParams()
-  const capability = useRef<OwnerCapability>()
+  const capability = useRef<OwnerCapability | undefined>(undefined)
   const [ready, setReady] = useState(false)
   const [status, setStatus] = useState<OwnerStatus>()
   const [error, setError] = useState<string>()
