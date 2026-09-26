@@ -27,7 +27,6 @@ type CreateBodyReadResult =
 export const MAX_CREATE_REQUEST_BYTES = DEFAULT_SECRET_POLICY.maxPayloadBytes + 2 * 1024
 const PUBLIC_ID_ATTEMPTS = 3
 
-
 function json(data: unknown, status: number): Response {
   return withSecretSecurityHeaders(Response.json(data, { status }))
 }
