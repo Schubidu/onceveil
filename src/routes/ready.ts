@@ -2,10 +2,12 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import {
   checkSecretDatabaseReadiness,
-  getSecretDatabase,
   runtimeEnvironmentForRequest,
-  SecretDatabaseUnavailableError,
   type SecretDatabaseReadiness,
+} from '../runtime/readiness'
+import {
+  getSecretDatabase,
+  SecretDatabaseUnavailableError,
 } from '../runtime/secret-repository'
 
 export const Route = createFileRoute('/ready')({

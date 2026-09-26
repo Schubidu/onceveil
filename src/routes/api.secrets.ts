@@ -5,10 +5,10 @@ import { createSecretResponse } from '../runtime/secret-http'
 import {
   assertSecretDatabaseEnvironment,
   getSecretRepository,
-  runtimeEnvironmentForRequest,
   SecretDatabaseEnvironmentError,
   SecretDatabaseUnavailableError,
 } from '../runtime/secret-repository'
+import { runtimeEnvironmentForRequest } from '../runtime/readiness'
 import { withSecretSecurityHeaders } from '../runtime/security-headers'
 
 export const Route = createFileRoute('/api/secrets')({

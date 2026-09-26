@@ -8,7 +8,7 @@ import type {
 import {
   checkSecretDatabaseReadiness,
   runtimeEnvironmentForHostname,
-} from '../src/runtime/secret-repository'
+} from '../src/runtime/readiness'
 
 interface DatabaseState {
   environmentTable?: boolean
