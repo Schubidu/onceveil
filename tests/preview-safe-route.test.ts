@@ -101,6 +101,15 @@ describe('preview-safe share landing route', () => {
     expect(source).toContain('generation.current === currentGeneration')
   })
 
+  it('clears decryption capability and plaintext across page lifecycle restores', async () => {
+    const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
+
+    expect(source).toContain("window.addEventListener('pagehide', clearSensitiveState)")
+    expect(source).toContain("window.addEventListener('pageshow', clearRestoredState)")
+    expect(source).toContain('fragment.current = undefined')
+    expect(source).toContain('setPlaintext(undefined)')
+  })
+
   it('does not auto-trigger reveal during page initialization', async () => {
     const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
 
