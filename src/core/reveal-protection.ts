@@ -14,6 +14,9 @@ export interface RevealChallengeContext {
 
 export type RevealChallengeDiagnostic =
   | 'siteverify_rejected'
+  | 'siteverify_fetch_failed'
+  | 'siteverify_http_error'
+  | 'siteverify_invalid_response'
   | 'hostname_mismatch'
   | 'action_mismatch'
   | 'cdata_mismatch'
@@ -21,7 +24,7 @@ export type RevealChallengeDiagnostic =
 export type RevealChallengeResult =
   | { kind: 'verified' }
   | { kind: 'invalid'; diagnostic?: RevealChallengeDiagnostic }
-  | { kind: 'unavailable' }
+  | { kind: 'unavailable'; diagnostic?: RevealChallengeDiagnostic }
 
 export interface RevealChallengeVerifier {
   verify(context: RevealChallengeContext): Promise<RevealChallengeResult>
