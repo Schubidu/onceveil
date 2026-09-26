@@ -34,7 +34,7 @@ export const Route = createFileRoute('/api/secrets')({
               Response.json(
                 isPreview
                   ? {
-                      error: 'database_environment_mismatch',
+                      error: `database_environment_mismatch expected=${error.expected} actual=${error.actual}`,
                       expected: error.expected,
                       actual: error.actual,
                     }
