@@ -1,5 +1,6 @@
 import type { D1DatabaseLike, D1ResultLike } from './d1-secret-repository'
 import {
+  MAX_ACTIVE_REVEAL_PROOFS_PER_SECRET,
   REVEAL_PROOF_TTL_MS,
   REVEAL_VERIFICATION_TTL_MS,
   type RevealProof,
@@ -87,6 +88,31 @@ export class D1RevealProofRepository implements RevealProofRepository {
       throw new RevealProofStorageError()
     }
 
+    let activePending: { count: number } | null
+    try {
+      activePending = await session
+        .prepare(
+          `SELECT COUNT(*) AS count
+           FROM reveal_proofs
+           WHERE secret_id = ?
+             AND verified_at_ms IS NULL
+             AND consumed_at_ms IS NULL
+             AND expires_at_ms > ?`,
+        )
+        .bind(secretId, nowMs)
+        .first<{ count: number }>()
+    } catch {
+      throw new RevealProofStorageError()
+    }
+
+    if (
+      !activePending ||
+      !Number.isSafeInteger(activePending.count) ||
+      activePending.count >= MAX_ACTIVE_REVEAL_PROOFS_PER_SECRET
+    ) {
+      return undefined
+    }
+
     let cleanup: D1ResultLike
     try {
       cleanup = await session
@@ -114,9 +140,26 @@ export class D1RevealProofRepository implements RevealProofRepository {
           .prepare(
             `INSERT OR IGNORE INTO reveal_proofs
               (proof_hash, verification_id, secret_id, issued_at_ms, expires_at_ms, verified_at_ms, consumed_at_ms)
-             VALUES (?, ?, ?, ?, ?, NULL, NULL)`,
+             SELECT ?, ?, ?, ?, ?, NULL, NULL
+             WHERE (
+               SELECT COUNT(*)
+               FROM reveal_proofs
+               WHERE secret_id = ?
+                 AND verified_at_ms IS NULL
+                 AND consumed_at_ms IS NULL
+                 AND expires_at_ms > ?
+             ) < ?`,
           )
-          .bind(hash, verificationId, secretId, nowMs, expiresAtMs)
+          .bind(
+            hash,
+            verificationId,
+            secretId,
+            nowMs,
+            expiresAtMs,
+            secretId,
+            nowMs,
+            MAX_ACTIVE_REVEAL_PROOFS_PER_SECRET,
+          )
           .run()
       } catch {
         throw new RevealProofStorageError()
