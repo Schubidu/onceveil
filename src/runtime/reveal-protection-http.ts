@@ -140,7 +140,13 @@ export async function verifyRevealProofResponse(
   }
 
   if (!(await proofs.verify(secretId, verificationId, nowMs))) {
-    return json({ error: 'verification_failed' }, 403)
+    return json(
+      {
+        error: 'verification_failed',
+        diagnostic: 'proof_activation_failed',
+      },
+      403,
+    )
   }
 
   return json({ verified: true }, 200)
