@@ -9,6 +9,7 @@ import {
   SecretDatabaseUnavailableError,
 } from '../runtime/secret-repository'
 import { runtimeEnvironmentForRequest } from '../runtime/readiness'
+import { logRuntimeError } from '../runtime/safe-log'
 import { withSecretSecurityHeaders } from '../runtime/security-headers'
 
 export const Route = createFileRoute('/api/secrets')({
@@ -33,7 +34,7 @@ export const Route = createFileRoute('/api/secrets')({
           }
 
           if (error instanceof SecretDatabaseEnvironmentError) {
-            console.error('secret database environment check failed', {
+            logRuntimeError('secret database environment check failed', error, {
               expected: error.expected,
               actual: error.actual,
             })
@@ -42,17 +43,13 @@ export const Route = createFileRoute('/api/secrets')({
             )
           }
 
-          console.error('secret create failed', {
-            name: error instanceof Error ? error.name : 'UnknownError',
-            message: error instanceof Error ? error.message : 'unknown error',
-          })
+          logRuntimeError(
+            'secret create failed',
+            error,
+            error instanceof D1CreateError ? { stage: error.stage } : {},
+          )
 
           if (error instanceof D1CreateError) {
-            console.error('secret create failed', {
-              name: error.name,
-              stage: error.stage,
-              detail: error.detail,
-            })
             return withSecretSecurityHeaders(
               Response.json({ error: 'internal_error' }, { status: 500 }),
             )
