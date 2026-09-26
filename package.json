@@ -18,10 +18,12 @@
     "format:check": "biome format .",
     "check": "npm run build && npm run check:generated && npm run typecheck && npm run test && npm run lint && npm run format:check",
     "ci": "npm run check",
-    "db:migrate:production": "wrangler d1 migrations apply DB --remote",
-    "db:migrate:preview": "wrangler d1 migrations apply PREVIEW_DB --remote --config wrangler.preview-migrations.jsonc",
-    "deploy:production": "npm run db:migrate:production && wrangler deploy",
-    "deploy:preview": "npm run db:migrate:preview && wrangler preview"
+    "db:migrate:production": "wrangler d1 migrations apply onceveil-production --remote",
+    "db:migrate:preview": "wrangler d1 migrations apply onceveil-preview --remote --config wrangler.preview-migrations.jsonc",
+    "deploy:production": "npm run db:migrate:production && npm run db:verify:production && wrangler deploy",
+    "deploy:preview": "npm run db:migrate:preview && npm run db:verify:preview && wrangler preview",
+    "db:verify:production": "wrangler d1 execute onceveil-production --remote --command \"SELECT 1 FROM secrets LIMIT 0\"",
+    "db:verify:preview": "wrangler d1 execute onceveil-preview --remote --config wrangler.preview-migrations.jsonc --command \"SELECT 1 FROM secrets LIMIT 0\""
   },
   "dependencies": {
     "@tanstack/react-router": "1.170.39",
