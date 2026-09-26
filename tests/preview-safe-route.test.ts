@@ -82,8 +82,8 @@ describe('preview-safe share landing route', () => {
     const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
 
     expect(source).toContain('navigator.clipboard.writeText(plaintext)')
-    expect(source).toContain('<code>{plaintext}</code>')
-    expect(source).not.toContain('aria-label="Copy revealed secret to clipboard"')
+    expect(source).toContain('<pre className="secret-value">{plaintext}</pre>')
+    expect(source).toContain('aria-label="Copy revealed secret to clipboard"')
   })
 
   it('reloads owner capability on hash navigation and ignores stale owner operations', async () => {
