@@ -108,6 +108,8 @@ describe('preview-safe share landing route', () => {
 
     expect(source).toContain("window.addEventListener('pagehide', clearSensitiveState)")
     expect(source).toContain("window.addEventListener('pageshow', clearRestoredState)")
+    expect(source).toContain('generation.current += 1')
+    expect(source).toContain('generation.current !== currentGeneration')
     expect(source).toContain('fragment.current = undefined')
     expect(source).toContain('setPlaintext(undefined)')
   })
