@@ -1,5 +1,6 @@
 import {
   SHARE_PROTOCOL_VERSION,
+  encryptedPayloadReplayKey,
   isEncryptedSecretPayload,
   shareAssociatedData,
   type EncryptedSecretPayload,
@@ -9,6 +10,7 @@ import { generateSecretId, type SecretId } from '../core/secret'
 const AES_KEY_BYTES = 32
 const AES_GCM_NONCE_BYTES = 12
 const AES_GCM_TAG_BITS = 128
+const REVEAL_AUTHORIZATION_PATTERN = /^[0-9a-f]{64}$/
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder('utf-8', { ignoreBOM: true })
@@ -84,13 +86,22 @@ function decodeBase64Url(value: string): Uint8Array {
   }
 }
 
-function encodeFragment(keyBytes: Uint8Array): string {
-  return `${SHARE_PROTOCOL_VERSION}.${encodeBase64Url(keyBytes)}`
+function encodeFragment(keyBytes: Uint8Array, revealAuthorization: string): string {
+  return `${SHARE_PROTOCOL_VERSION}.${encodeBase64Url(keyBytes)}.${revealAuthorization}`
 }
 
-function decodeFragment(fragment: string): Uint8Array {
-  const [version, encodedKey, extra] = fragment.split('.')
-  if (version !== SHARE_PROTOCOL_VERSION || !encodedKey || extra !== undefined) {
+function decodeFragment(fragment: string): {
+  keyBytes: Uint8Array
+  revealAuthorization: string
+} {
+  const [version, encodedKey, revealAuthorization, extra] = fragment.split('.')
+  if (
+    version !== SHARE_PROTOCOL_VERSION ||
+    !encodedKey ||
+    !revealAuthorization ||
+    !REVEAL_AUTHORIZATION_PATTERN.test(revealAuthorization) ||
+    extra !== undefined
+  ) {
     throw new InvalidShareCapabilityError()
   }
 
@@ -99,7 +110,11 @@ function decodeFragment(fragment: string): Uint8Array {
     throw new InvalidShareCapabilityError()
   }
 
-  return keyBytes
+  return { keyBytes, revealAuthorization }
+}
+
+export function revealAuthorizationFromFragment(fragment: string): string {
+  return decodeFragment(fragment).revealAuthorization
 }
 
 function decodeNonce(encodedNonce: string): Uint8Array {
@@ -144,13 +159,13 @@ export async function encryptSecret(plaintext: string): Promise<EncryptedShare> 
     ),
   )
 
-  const fragment = encodeFragment(keyBytes)
   const payload: EncryptedSecretPayload = {
     contextId,
     version: SHARE_PROTOCOL_VERSION,
     nonce: encodeBase64Url(nonce),
     ciphertext: encodeBase64Url(ciphertext),
   }
+  const fragment = encodeFragment(keyBytes, await encryptedPayloadReplayKey(payload))
 
   return {
     payload,
@@ -163,7 +178,7 @@ export async function decryptSecret(payload: unknown, fragment: string): Promise
     throw new InvalidShareCapabilityError()
   }
 
-  const keyBytes = decodeFragment(fragment)
+  const { keyBytes } = decodeFragment(fragment)
   const nonce = decodeNonce(payload.nonce)
   const ciphertext = decodeBase64Url(payload.ciphertext)
   const key = await importKey(keyBytes)
