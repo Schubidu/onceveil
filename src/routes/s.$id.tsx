@@ -77,7 +77,7 @@ function SecretLanding() {
   return verificationId ? (
     <TurnstileVerification id={id} verificationId={verificationId} />
   ) : (
-    <SecretReveal id={id} />
+    <SecretReveal key={id} id={id} />
   )
 }
 
