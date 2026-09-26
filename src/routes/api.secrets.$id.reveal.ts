@@ -21,8 +21,6 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
           )
         }
 
-        const isPreview = expectedEnvironment === 'preview'
-
         if (request.headers.get('X-Onceveil-Reveal') !== '1') {
           return withSecretSecurityHeaders(
             Response.json({ error: 'reveal_intent_required' }, { status: 400 }),
@@ -40,17 +38,12 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
           }
 
           if (error instanceof SecretDatabaseEnvironmentError) {
+            console.error('secret database environment check failed', {
+              expected: error.expected,
+              actual: error.actual,
+            })
             return withSecretSecurityHeaders(
-              Response.json(
-                isPreview
-                  ? {
-                      error: 'database_environment_mismatch',
-                      expected: error.expected,
-                      actual: error.actual,
-                    }
-                  : { error: 'service_unavailable' },
-                { status: 503 },
-              ),
+              Response.json({ error: 'service_unavailable' }, { status: 503 }),
             )
           }
 
