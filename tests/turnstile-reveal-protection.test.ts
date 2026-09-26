@@ -106,7 +106,7 @@ describe('Turnstile reveal challenge verifier', () => {
         secretId: SECRET_ID,
         hostname: 'ots.schult.dev',
       }),
-    ).resolves.toEqual({ kind: 'unavailable' })
+    ).resolves.toEqual({ kind: 'unavailable', diagnostic: 'siteverify_fetch_failed' })
   })
 
   it('fails closed on a null Siteverify response', async () => {
@@ -119,7 +119,7 @@ describe('Turnstile reveal challenge verifier', () => {
         secretId: SECRET_ID,
         hostname: 'ots.schult.dev',
       }),
-    ).resolves.toEqual({ kind: 'unavailable' })
+    ).resolves.toEqual({ kind: 'unavailable', diagnostic: 'siteverify_invalid_response' })
   })
 
   it('fails closed on a non-successful Siteverify HTTP response', async () => {
@@ -132,6 +132,6 @@ describe('Turnstile reveal challenge verifier', () => {
         secretId: SECRET_ID,
         hostname: 'ots.schult.dev',
       }),
-    ).resolves.toEqual({ kind: 'unavailable' })
+    ).resolves.toEqual({ kind: 'unavailable', diagnostic: 'siteverify_http_error' })
   })
 })
