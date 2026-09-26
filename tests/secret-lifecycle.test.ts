@@ -6,6 +6,7 @@ import {
   effectiveState,
   generateSecretId,
   prepareSecretRecord,
+  generateSecretId,
   revokeSecret,
   type SecretId,
   type SecretRecord,
@@ -127,12 +128,14 @@ describe('secret creation policy', () => {
     expect(generated).toMatch(/^[0-9a-f]{32}$/)
   })
   it('prepares an AVAILABLE record with validated payload and derived expiry', () => {
-    const result = prepareSecretRecord(new Uint8Array([1, 2, 3]), 100, 500)
+    const generatedId = generateSecretId()
+    const result = prepareSecretRecord(generatedId, new Uint8Array([1, 2, 3]), 100, 500)
 
     expect(result.ok).toBe(true)
 
     if (result.ok) {
       expect(result.record).toMatchObject({
+        id: generatedId,
         createdAtMs: 100,
         expiresAtMs: 600,
         state: 'AVAILABLE',
@@ -142,12 +145,24 @@ describe('secret creation policy', () => {
 
   it('refuses to prepare records that exceed the payload limit', () => {
     const result = prepareSecretRecord(
+      generateSecretId(),
       new Uint8Array(DEFAULT_SECRET_POLICY.maxPayloadBytes + 1),
       100,
       undefined,
     )
 
     expect(result).toEqual({ ok: false, reason: 'PAYLOAD_TOO_LARGE' })
+  })
+
+  it('rejects malformed identifiers at the persistence boundary', () => {
+    expect(
+      prepareSecretRecord(
+        'predictable-id' as SecretId,
+        new Uint8Array([1]),
+        100,
+        undefined,
+      ),
+    ).toEqual({ ok: false, reason: 'INVALID_ID' })
   })
 
   it('uses the safe default TTL when none is requested', () => {
