@@ -32,13 +32,27 @@ function Home() {
       })
 
       if (!response.ok) {
-        throw new Error('create failed')
+        let code = 'request_failed'
+        try {
+          const body = (await response.json()) as { error?: unknown }
+          if (typeof body.error === 'string') {
+            code = body.error
+          }
+        } catch {
+          // Keep the generic code when the response is not JSON.
+        }
+
+        throw new Error(`store failed (${response.status} ${code})`)
       }
 
       setShareUrl(`${window.location.origin}${encrypted.path}`)
       setSecret('')
-    } catch {
-      setError('The encrypted secret could not be stored.')
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? `The encrypted secret could not be stored: ${cause.message}`
+          : 'The encrypted secret could not be stored.',
+      )
     } finally {
       setCreating(false)
     }
