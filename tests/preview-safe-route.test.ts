@@ -103,6 +103,12 @@ describe('preview-safe share landing route', () => {
     expect(source).toContain('generation.current === currentGeneration')
   })
 
+  it('does not reuse revealed plaintext when navigating between secret ids', async () => {
+    const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
+
+    expect(source).toContain('<SecretReveal key={id} id={id} />')
+  })
+
   it('clears decryption capability and plaintext across page lifecycle restores', async () => {
     const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
 
