@@ -78,19 +78,24 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
       return { kind: 'unavailable' }
     }
 
-    let result: SiteverifyResponse
+    let result: unknown
     try {
-      result = (await response.json()) as SiteverifyResponse
+      result = await response.json()
     } catch {
       return { kind: 'unavailable' }
     }
 
+    if (typeof result !== 'object' || result === null) {
+      return { kind: 'unavailable' }
+    }
+
+    const siteverify = result as SiteverifyResponse
     if (
-      result.success !== true ||
-      result.action !== REVEAL_PROTECTION_ACTION ||
-      typeof result.hostname !== 'string' ||
-      result.hostname.toLowerCase() !== expectedHostname ||
-      result.cdata !== context.secretId
+      siteverify.success !== true ||
+      siteverify.action !== REVEAL_PROTECTION_ACTION ||
+      typeof siteverify.hostname !== 'string' ||
+      siteverify.hostname.toLowerCase() !== expectedHostname ||
+      siteverify.cdata !== context.secretId
     ) {
       return { kind: 'invalid' }
     }
