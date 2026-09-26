@@ -24,6 +24,14 @@ A pending verification expires after five minutes. Once verified, its proof is b
 
 If Turnstile, its configuration, D1 proof storage, or proof validation is unavailable, reveal fails closed and the secret remains `AVAILABLE`.
 
+## Share-fragment migration
+
+Turnstile-protected links use fragment format `v2.<key>.<reveal-authorization>`. This is deliberately separate from the encrypted payload protocol, which remains `v1`.
+
+Pre-existing `v1.<key>` links do not contain a server-verifiable value that can authorize proof preparation. Supporting them transparently would require either sending the AES key to the server or allowing reveal preparation from the public secret id alone; both violate the fail-closed trust boundary. Onceveil therefore recognizes legacy links but does not downgrade them to unprotected reveal.
+
+Before enabling this change in a deployment that has issued v1 links, let those links expire naturally first (bounded by the configured maximum TTL, currently seven days) or explicitly accept their invalidation.
+
 ## Cloudflare configuration
 
 Create a Turnstile widget for the Onceveil Cloudflare deployment.
