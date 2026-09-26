@@ -249,14 +249,14 @@ export class D1SecretRepository implements SecretRepository {
         .prepare(
           `UPDATE secrets
            SET state = 'EXPIRED'
-           WHERE id = ? AND owner_key_hash = ? AND state = 'AVAILABLE' AND expires_at_ms <= ?`,
+           WHERE id = ? AND state = 'AVAILABLE' AND expires_at_ms <= ?`,
         )
-        .bind(id, ownerKeyHash, nowMs),
+        .bind(id, nowMs),
       session
         .prepare(
           `UPDATE secrets
            SET state = 'CONSUMED', consumed_at_ms = ?, consume_token = ?
-           WHERE id = ? AND owner_key_hash = ? AND state = 'AVAILABLE' AND expires_at_ms > ?`,
+           WHERE id = ? AND state = 'AVAILABLE' AND expires_at_ms > ?`,
         )
         .bind(nowMs, token, id, nowMs),
       session
@@ -324,14 +324,14 @@ export class D1SecretRepository implements SecretRepository {
         .prepare(
           `UPDATE secrets
            SET state = 'EXPIRED'
-           WHERE id = ? AND state = 'AVAILABLE' AND expires_at_ms <= ?`,
+           WHERE id = ? AND owner_key_hash = ? AND state = 'AVAILABLE' AND expires_at_ms <= ?`,
         )
-        .bind(id, nowMs),
+        .bind(id, ownerKeyHash, nowMs),
       session
         .prepare(
           `UPDATE secrets
            SET state = 'REVOKED', revoked_at_ms = ?
-           WHERE id = ? AND state = 'AVAILABLE' AND expires_at_ms > ?`,
+           WHERE id = ? AND owner_key_hash = ? AND state = 'AVAILABLE' AND expires_at_ms > ?`,
         )
         .bind(nowMs, id, ownerKeyHash, nowMs),
       session
