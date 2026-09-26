@@ -49,6 +49,21 @@ describe('secret lifecycle', () => {
     expect(effectiveState(available(), 1_000)).toBe('EXPIRED')
   })
 
+  it.each([
+    { record: available({ expiresAtMs: Number.NaN }), nowMs: 500 },
+    { record: available({ expiresAtMs: Number.POSITIVE_INFINITY }), nowMs: 500 },
+    { record: available({ createdAtMs: Number.NaN }), nowMs: 500 },
+    { record: available({ expiresAtMs: 100 }), nowMs: 500 },
+    { record: available(), nowMs: Number.NaN },
+    { record: available(), nowMs: Number.POSITIVE_INFINITY },
+  ])('fails closed for invalid temporal input', ({ record, nowMs }) => {
+    expect(effectiveState(record, nowMs)).toBe('EXPIRED')
+
+    const consume = consumeSecret(record, nowMs)
+    expect(consume.result).toEqual({ kind: 'unavailable', state: 'EXPIRED' })
+    expect('ciphertext' in consume.result).toBe(false)
+  })
+
   it.each(terminalStates)('keeps terminal state %s unchanged', (state) => {
     expect(effectiveState(available({ state }), 2_000)).toBe(state)
   })
@@ -156,6 +171,10 @@ describe('secret creation policy', () => {
         maxPayloadBytes: 1,
       }),
     ).toEqual({ ok: false, reason: 'INVALID_POLICY' })
+    expect(validateCreateSecret(1, undefined, null)).toEqual({
+      ok: false,
+      reason: 'INVALID_POLICY',
+    })
   })
 
   it.each([
