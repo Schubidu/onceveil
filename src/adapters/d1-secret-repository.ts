@@ -36,6 +36,31 @@ export interface D1DatabaseLike extends D1SessionLike {
   withSession(constraint?: 'first-primary' | 'first-unconstrained' | string): D1SessionLike
 }
 
+export type D1CreateStage = 'prepare' | 'bind' | 'run' | 'result'
+
+function errorDetail(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return 'unknown error'
+  }
+
+  const cause = error.cause
+  if (cause instanceof Error && cause.message) {
+    return `${error.message}: ${cause.message}`
+  }
+
+  return error.message || error.name
+}
+
+export class D1CreateError extends Error {
+  constructor(
+    readonly stage: D1CreateStage,
+    readonly detail: string,
+  ) {
+    super(`D1 create failed during ${stage}: ${detail}`)
+    this.name = 'D1CreateError'
+  }
+}
+
 interface SecretRow {
   id: string
   ciphertext: unknown
@@ -125,14 +150,38 @@ export class D1SecretRepository implements SecretRepository {
   constructor(private readonly db: D1DatabaseLike) {}
 
   async create(record: PreparedSecretRecord): Promise<CreateResult> {
-    const result = await this.db
-      .prepare(
+    let statement: D1PreparedStatementLike
+    try {
+      statement = this.db.prepare(
         `INSERT OR IGNORE INTO secrets
           (id, ciphertext, created_at_ms, expires_at_ms, state)
          VALUES (?, ?, ?, ?, 'AVAILABLE')`,
       )
-      .bind(record.id, toArrayBuffer(record.ciphertext), record.createdAtMs, record.expiresAtMs)
-      .run()
+    } catch (error) {
+      throw new D1CreateError('prepare', errorDetail(error))
+    }
+
+    try {
+      statement = statement.bind(
+        record.id,
+        toArrayBuffer(record.ciphertext),
+        record.createdAtMs,
+        record.expiresAtMs,
+      )
+    } catch (error) {
+      throw new D1CreateError('bind', errorDetail(error))
+    }
+
+    let result: D1ResultLike
+    try {
+      result = await statement.run()
+    } catch (error) {
+      throw new D1CreateError('run', errorDetail(error))
+    }
+
+    if (!result.success) {
+      throw new D1CreateError('result', 'D1 returned success=false')
+    }
 
     return result.meta?.changes === 1 ? { kind: 'created' } : { kind: 'duplicate' }
   }
