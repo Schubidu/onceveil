@@ -10,7 +10,7 @@ const AES_GCM_NONCE_BYTES = 12
 const AES_GCM_TAG_BITS = 128
 
 const encoder = new TextEncoder()
-const decoder = new TextDecoder()
+const decoder = new TextDecoder('utf-8', { ignoreBOM: true })
 
 export interface EncryptedShare {
   payload: EncryptedSecretPayload
