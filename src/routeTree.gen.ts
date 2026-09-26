@@ -9,18 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ReadyRouteImport } from './routes/ready'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HealthRouteImport } from './routes/health'
+import { Route as ReadyRouteImport } from './routes/ready'
 import { Route as ApiSecretsRouteImport } from './routes/api.secrets'
 import { Route as SIdRouteImport } from './routes/s.$id'
 import { Route as ApiSecretsIdRevealRouteImport } from './routes/api.secrets.$id.reveal'
 
-const ReadyRoute = ReadyRouteImport.update({
-  id: '/ready',
-  path: '/ready',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -29,6 +24,11 @@ const IndexRoute = IndexRouteImport.update({
 const HealthRoute = HealthRouteImport.update({
   id: '/health',
   path: '/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReadyRoute = ReadyRouteImport.update({
+  id: '/ready',
+  path: '/ready',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSecretsRoute = ApiSecretsRouteImport.update({
@@ -49,16 +49,16 @@ const ApiSecretsIdRevealRoute = ApiSecretsIdRevealRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/ready': typeof ReadyRoute
   '/health': typeof HealthRoute
+  '/ready': typeof ReadyRoute
   '/api/secrets': typeof ApiSecretsRouteWithChildren
   '/s/$id': typeof SIdRoute
   '/api/secrets/$id/reveal': typeof ApiSecretsIdRevealRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/ready': typeof ReadyRoute
   '/health': typeof HealthRoute
+  '/ready': typeof ReadyRoute
   '/api/secrets': typeof ApiSecretsRouteWithChildren
   '/s/$id': typeof SIdRoute
   '/api/secrets/$id/reveal': typeof ApiSecretsIdRevealRoute
@@ -66,8 +66,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/ready': typeof ReadyRoute
   '/health': typeof HealthRoute
+  '/ready': typeof ReadyRoute
   '/api/secrets': typeof ApiSecretsRouteWithChildren
   '/s/$id': typeof SIdRoute
   '/api/secrets/$id/reveal': typeof ApiSecretsIdRevealRoute
@@ -76,40 +76,39 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/ready'
     | '/health'
+    | '/ready'
     | '/api/secrets'
     | '/s/$id'
     | '/api/secrets/$id/reveal'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/ready' | '/health' | '/api/secrets' | '/s/$id' | '/api/secrets/$id/reveal'
+  to:
+    | '/'
+    | '/health'
+    | '/ready'
+    | '/api/secrets'
+    | '/s/$id'
+    | '/api/secrets/$id/reveal'
   id:
     | '__root__'
     | '/'
-    | '/ready'
     | '/health'
+    | '/ready'
     | '/api/secrets'
     | '/s/$id'
     | '/api/secrets/$id/reveal'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  ReadyRoute: typeof ReadyRoute
   IndexRoute: typeof IndexRoute
   HealthRoute: typeof HealthRoute
+  ReadyRoute: typeof ReadyRoute
   ApiSecretsRoute: typeof ApiSecretsRouteWithChildren
   SIdRoute: typeof SIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/ready': {
-      id: '/ready'
-      path: '/ready'
-      fullPath: '/ready'
-      preLoaderRoute: typeof ReadyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -122,6 +121,13 @@ declare module '@tanstack/react-router' {
       path: '/health'
       fullPath: '/health'
       preLoaderRoute: typeof HealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ready': {
+      id: '/ready'
+      path: '/ready'
+      fullPath: '/ready'
+      preLoaderRoute: typeof ReadyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/secrets': {
@@ -161,9 +167,9 @@ const ApiSecretsRouteWithChildren = ApiSecretsRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
-  ReadyRoute: ReadyRoute,
   IndexRoute: IndexRoute,
   HealthRoute: HealthRoute,
+  ReadyRoute: ReadyRoute,
   ApiSecretsRoute: ApiSecretsRouteWithChildren,
   SIdRoute: SIdRoute,
 }
