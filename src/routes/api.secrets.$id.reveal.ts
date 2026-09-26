@@ -30,10 +30,7 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
   server: {
     handlers: {
       GET: async ({ params, request }) => {
-        if (
-          request.headers.get('X-Onceveil-Proof-Config') !== '1' ||
-          !isValidSecretId(params.id)
-        ) {
+        if (request.headers.get('X-Onceveil-Proof-Config') !== '1' || !isValidSecretId(params.id)) {
           return jsonError('not_found', 404)
         }
 
