@@ -27,7 +27,7 @@ export interface RevealProof {
 }
 
 export interface RevealProofRepository {
-  prepare(secretId: SecretId, nowMs: number): Promise<RevealProof>
+  prepare(secretId: SecretId, authorization: string, nowMs: number): Promise<RevealProof | undefined>
   verify(secretId: SecretId, verificationId: string, nowMs: number): Promise<boolean>
   consume(secretId: SecretId, proof: string, nowMs: number): Promise<boolean>
 }
