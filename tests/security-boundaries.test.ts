@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
+
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { logRuntimeError, logRuntimeWarning } from '../src/runtime/safe-log'
@@ -56,6 +59,18 @@ describe('sensitive browser security policy', () => {
 describe('safe runtime logging', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it.each([
+    'src/routes/api.secrets.ts',
+    'src/routes/api.secrets.$id.owner.ts',
+    'src/routes/api.secrets.$id.reveal.ts',
+    'src/adapters/turnstile-reveal-protection.ts',
+  ])('%s cannot bypass the safe logging boundary', async (sourcePath) => {
+    const source = await readFile(path.resolve(sourcePath), 'utf8')
+
+    expect(source).not.toContain('console.error(')
+    expect(source).not.toContain('console.warn(')
   })
 
   it('drops sensitive fields and error messages from logs', () => {
