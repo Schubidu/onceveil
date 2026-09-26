@@ -47,6 +47,7 @@ export const Route = createFileRoute('/o/$id')({
 function OwnerSecret() {
   const { id } = Route.useParams()
   const capability = useRef<OwnerCapability | undefined>(undefined)
+  const generation = useRef(0)
   const [ready, setReady] = useState(false)
   const [status, setStatus] = useState<OwnerStatus>()
   const [error, setError] = useState<string>()
@@ -54,50 +55,55 @@ function OwnerSecret() {
 
   useEffect(() => {
     let active = true
-    capability.current = undefined
-    setReady(false)
-    setStatus(undefined)
-    setError(undefined)
-    setRevoking(false)
 
-    const owner = takeOwnerCapability(window.location, window.history)
+    function loadOwner() {
+      const currentGeneration = ++generation.current
+      capability.current = undefined
+      setReady(false)
+      setStatus(undefined)
+      setError(undefined)
+      setRevoking(false)
 
-    if (!isValidSecretId(id)) {
-      setError('This owner link is invalid.')
-      setReady(true)
-      return () => {
-        active = false
+      const owner = takeOwnerCapability(window.location, window.history)
+
+      if (!isValidSecretId(id)) {
+        setError('This owner link is invalid.')
+        setReady(true)
+        return
       }
+
+      if (!owner) {
+        setError('This owner link does not contain a usable management capability.')
+        setReady(true)
+        return
+      }
+
+      capability.current = owner
+      void requestOwnerStatus(id, 'GET', owner)
+        .then((nextStatus) => {
+          if (active && generation.current === currentGeneration) {
+            setStatus(nextStatus)
+          }
+        })
+        .catch(() => {
+          if (active && generation.current === currentGeneration) {
+            setError('Secret status could not be loaded.')
+          }
+        })
+        .finally(() => {
+          if (active && generation.current === currentGeneration) {
+            setReady(true)
+          }
+        })
     }
 
-    if (!owner) {
-      setError('This owner link does not contain a usable management capability.')
-      setReady(true)
-      return () => {
-        active = false
-      }
-    }
-
-    capability.current = owner
-    void requestOwnerStatus(id, 'GET', owner)
-      .then((nextStatus) => {
-        if (active) {
-          setStatus(nextStatus)
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setError('Secret status could not be loaded.')
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setReady(true)
-        }
-      })
+    loadOwner()
+    window.addEventListener('hashchange', loadOwner)
 
     return () => {
       active = false
+      generation.current += 1
+      window.removeEventListener('hashchange', loadOwner)
     }
   }, [id])
 
@@ -107,14 +113,22 @@ function OwnerSecret() {
       return
     }
 
+    const currentGeneration = generation.current
     setRevoking(true)
     setError(undefined)
     try {
-      setStatus(await requestOwnerStatus(id, 'DELETE', owner))
+      const nextStatus = await requestOwnerStatus(id, 'DELETE', owner)
+      if (generation.current === currentGeneration) {
+        setStatus(nextStatus)
+      }
     } catch {
-      setError('The secret could not be revoked.')
+      if (generation.current === currentGeneration) {
+        setError('The secret could not be revoked.')
+      }
     } finally {
-      setRevoking(false)
+      if (generation.current === currentGeneration) {
+        setRevoking(false)
+      }
     }
   }
 
