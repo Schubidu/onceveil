@@ -43,9 +43,7 @@ export function getSecretRepository(): SecretRepository {
   return new D1SecretRepository(database)
 }
 
-export async function assertSecretDatabaseEnvironment(
-  expected: RuntimeEnvironment,
-): Promise<void> {
+export async function assertSecretDatabaseEnvironment(expected: RuntimeEnvironment): Promise<void> {
   const { DB: database } = runtimeEnv()
   if (!database) {
     throw new SecretDatabaseUnavailableError()
