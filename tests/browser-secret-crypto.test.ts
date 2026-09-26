@@ -45,6 +45,19 @@ describe('browser secret crypto', () => {
     )
   })
 
+  it('rejects a modified nonce', async () => {
+    const first = await encryptSecret('nonce bound')
+    const second = await encryptSecret('different nonce')
+    const tampered: EncryptedSecretPayload = {
+      ...first.payload,
+      nonce: second.payload.nonce,
+    }
+
+    await expect(decryptSecret(tampered, first.fragment)).rejects.toBeInstanceOf(
+      InvalidShareCapabilityError,
+    )
+  })
+
   it('rejects a different secret identifier because it changes AAD', async () => {
     const encrypted = await encryptSecret('aad bound')
     const tampered: EncryptedSecretPayload = {
@@ -55,6 +68,13 @@ describe('browser secret crypto', () => {
     await expect(decryptSecret(tampered, encrypted.fragment)).rejects.toBeInstanceOf(
       InvalidShareCapabilityError,
     )
+  })
+
+  it('preserves a leading UTF-8 BOM during round-trip', async () => {
+    const plaintext = '\ufeffstarts with bom'
+    const encrypted = await encryptSecret(plaintext)
+
+    await expect(decryptSecret(encrypted.payload, encrypted.fragment)).resolves.toBe(plaintext)
   })
 
   it('rejects a wrong key', async () => {
