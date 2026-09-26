@@ -10,33 +10,62 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiSecretsRouteImport } from './routes/api.secrets'
+import { Route as SIdRouteImport } from './routes/s.$id'
+import { Route as ApiSecretsIdRevealRouteImport } from './routes/api.secrets.$id.reveal'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSecretsRoute = ApiSecretsRouteImport.update({
+  id: '/api/secrets',
+  path: '/api/secrets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SIdRoute = SIdRouteImport.update({
+  id: '/s/$id',
+  path: '/s/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSecretsIdRevealRoute = ApiSecretsIdRevealRouteImport.update({
+  id: '/$id/reveal',
+  path: '/$id/reveal',
+  getParentRoute: () => ApiSecretsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/secrets': typeof ApiSecretsRouteWithChildren
+  '/s/$id': typeof SIdRoute
+  '/api/secrets/$id/reveal': typeof ApiSecretsIdRevealRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/secrets': typeof ApiSecretsRouteWithChildren
+  '/s/$id': typeof SIdRoute
+  '/api/secrets/$id/reveal': typeof ApiSecretsIdRevealRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/secrets': typeof ApiSecretsRouteWithChildren
+  '/s/$id': typeof SIdRoute
+  '/api/secrets/$id/reveal': typeof ApiSecretsIdRevealRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/api/secrets' | '/s/$id' | '/api/secrets/$id/reveal'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/api/secrets' | '/s/$id' | '/api/secrets/$id/reveal'
+  id: '__root__' | '/' | '/api/secrets' | '/s/$id' | '/api/secrets/$id/reveal'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiSecretsRoute: typeof ApiSecretsRouteWithChildren
+  SIdRoute: typeof SIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +77,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/secrets': {
+      id: '/api/secrets'
+      path: '/api/secrets'
+      fullPath: '/api/secrets'
+      preLoaderRoute: typeof ApiSecretsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/s/$id': {
+      id: '/s/$id'
+      path: '/s/$id'
+      fullPath: '/s/$id'
+      preLoaderRoute: typeof SIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/secrets/$id/reveal': {
+      id: '/api/secrets/$id/reveal'
+      path: '/$id/reveal'
+      fullPath: '/api/secrets/$id/reveal'
+      preLoaderRoute: typeof ApiSecretsIdRevealRouteImport
+      parentRoute: typeof ApiSecretsRoute
+    }
   }
 }
 
+interface ApiSecretsRouteChildren {
+  ApiSecretsIdRevealRoute: typeof ApiSecretsIdRevealRoute
+}
+
+const ApiSecretsRouteChildren: ApiSecretsRouteChildren = {
+  ApiSecretsIdRevealRoute: ApiSecretsIdRevealRoute,
+}
+
+const ApiSecretsRouteWithChildren = ApiSecretsRoute._addFileChildren(
+  ApiSecretsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiSecretsRoute: ApiSecretsRouteWithChildren,
+  SIdRoute: SIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
