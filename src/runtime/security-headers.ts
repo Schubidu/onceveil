@@ -57,7 +57,6 @@ export function withSecretSecurityHeaders(
   })
 }
 
-
 export function isSecretSurface(request: Request): boolean {
   const pathname = new URL(request.url).pathname
   return (
