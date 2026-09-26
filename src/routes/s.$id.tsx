@@ -157,10 +157,17 @@ function SecretReveal({ id }: { id: SecretId }) {
         <h1 id="secret-title">Onceveil</h1>
 
         {plaintext !== undefined ? (
-          <button className="copy-secret" type="button" onClick={() => void copyPlaintext()}>
-            <code>{plaintext}</code>
-            <span>{copied ? 'Copied' : 'Copy'}</span>
-          </button>
+          <div className="secret-result">
+            <pre className="secret-value">{plaintext}</pre>
+            <button
+              className="copy-secret-button"
+              type="button"
+              onClick={() => void copyPlaintext()}
+              aria-label="Copy revealed secret to clipboard"
+            >
+              {copied ? 'Copied' : 'Copy secret'}
+            </button>
+          </div>
         ) : (
           <>
             <p className="status">
