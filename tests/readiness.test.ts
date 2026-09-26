@@ -65,7 +65,10 @@ describe('runtime readiness', () => {
     ['ots-preview.schult.dev', 'preview'],
     ['pr-17.ots-preview.schult.dev', 'preview'],
     ['feat-issue-4-d1-one-time-flow-onceveil.schult.workers.dev', 'preview'],
+    ['localhost', 'preview'],
     ['ots.schult.dev', 'production'],
+    ['onceveil.schult.workers.dev', 'production'],
+    ['unknown.example', undefined],
   ] as const)('classifies %s as %s', (hostname, expected) => {
     expect(runtimeEnvironmentForHostname(hostname)).toBe(expected)
   })

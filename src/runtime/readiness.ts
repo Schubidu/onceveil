@@ -28,19 +28,41 @@ export type SecretDatabaseReadiness =
     }
   | {
       status: 'not_ready'
+      database: 'environment_unknown'
+    }
+  | {
+      status: 'not_ready'
       database: 'unavailable'
     }
 
-export function runtimeEnvironmentForHostname(hostname: string): RuntimeEnvironment {
-  const isPreview =
-    hostname === 'ots-preview.schult.dev' ||
-    hostname.endsWith('.ots-preview.schult.dev') ||
-    hostname.endsWith('-onceveil.schult.workers.dev')
+export function runtimeEnvironmentForHostname(
+  hostname: string,
+): RuntimeEnvironment | undefined {
+  const normalized = hostname.toLowerCase()
 
-  return isPreview ? 'preview' : 'production'
+  const isPreview =
+    normalized === 'ots-preview.schult.dev' ||
+    normalized.endsWith('.ots-preview.schult.dev') ||
+    normalized.endsWith('-onceveil.schult.workers.dev') ||
+    normalized === 'localhost' ||
+    normalized.endsWith('.localhost') ||
+    normalized === '127.0.0.1' ||
+    normalized === '[::1]'
+
+  if (isPreview) {
+    return 'preview'
+  }
+
+  if (normalized === 'ots.schult.dev' || normalized === 'onceveil.schult.workers.dev') {
+    return 'production'
+  }
+
+  return undefined
 }
 
-export function runtimeEnvironmentForRequest(request: Request): RuntimeEnvironment {
+export function runtimeEnvironmentForRequest(
+  request: Request,
+): RuntimeEnvironment | undefined {
   return runtimeEnvironmentForHostname(new URL(request.url).hostname)
 }
 

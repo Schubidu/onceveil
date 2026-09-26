@@ -16,6 +16,12 @@ export const Route = createFileRoute('/api/secrets')({
     handlers: {
       POST: async ({ request }) => {
         const expectedEnvironment = runtimeEnvironmentForRequest(request)
+        if (!expectedEnvironment) {
+          return withSecretSecurityHeaders(
+            Response.json({ error: 'service_unavailable' }, { status: 503 }),
+          )
+        }
+
         const isPreview = expectedEnvironment === 'preview'
 
         try {
@@ -48,19 +54,17 @@ export const Route = createFileRoute('/api/secrets')({
             message: error instanceof Error ? error.message : 'unknown error',
           })
 
-          if (error instanceof D1CreateError) {
-            if (isPreview) {
-              return withSecretSecurityHeaders(
-                Response.json(
-                  {
-                    error: 'd1_create_failed',
-                    stage: error.stage,
-                    detail: error.detail,
-                  },
-                  { status: 500 },
-                ),
-              )
-            }
+          if (error instanceof D1CreateError && isPreview) {
+            return withSecretSecurityHeaders(
+              Response.json(
+                {
+                  error: 'd1_create_failed',
+                  stage: error.stage,
+                  detail: error.detail,
+                },
+                { status: 500 },
+              ),
+            )
           }
 
           return withSecretSecurityHeaders(

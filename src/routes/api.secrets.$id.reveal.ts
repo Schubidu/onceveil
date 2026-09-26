@@ -15,6 +15,12 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
     handlers: {
       POST: async ({ params, request }) => {
         const expectedEnvironment = runtimeEnvironmentForRequest(request)
+        if (!expectedEnvironment) {
+          return withSecretSecurityHeaders(
+            Response.json({ error: 'service_unavailable' }, { status: 503 }),
+          )
+        }
+
         const isPreview = expectedEnvironment === 'preview'
 
         if (request.headers.get('X-Onceveil-Reveal') !== '1') {

@@ -8,7 +8,7 @@ const AES_GCM_TAG_BYTES = 16
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/
 
 export interface EncryptedSecretPayload {
-  id: SecretId
+  contextId: SecretId
   version: typeof SHARE_PROTOCOL_VERSION
   nonce: string
   ciphertext: string
@@ -52,8 +52,8 @@ function canonicalPayload(value: unknown): EncryptedSecretPayload | undefined {
   const candidate = value as Record<string, unknown>
   if (
     candidate.version !== SHARE_PROTOCOL_VERSION ||
-    typeof candidate.id !== 'string' ||
-    !isValidSecretId(candidate.id) ||
+    typeof candidate.contextId !== 'string' ||
+    !isValidSecretId(candidate.contextId) ||
     typeof candidate.nonce !== 'string' ||
     typeof candidate.ciphertext !== 'string'
   ) {
@@ -71,7 +71,7 @@ function canonicalPayload(value: unknown): EncryptedSecretPayload | undefined {
   }
 
   return {
-    id: candidate.id,
+    contextId: candidate.contextId,
     version: SHARE_PROTOCOL_VERSION,
     nonce: candidate.nonce,
     ciphertext: candidate.ciphertext,
@@ -102,6 +102,6 @@ export function decodeEncryptedSecretPayload(
   }
 }
 
-export function shareAssociatedData(id: SecretId): string {
-  return `${SHARE_AAD_PREFIX}:${SHARE_PROTOCOL_VERSION}:${id}`
+export function shareAssociatedData(contextId: SecretId): string {
+  return `${SHARE_AAD_PREFIX}:${SHARE_PROTOCOL_VERSION}:${contextId}`
 }

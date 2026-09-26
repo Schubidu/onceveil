@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 
-import { encryptSecret } from '../browser/secret-crypto'
+import { encryptSecret, sharePath } from '../browser/secret-crypto'
 import { PROJECT_NAME, PROJECT_TAGLINE } from '../core/project'
+import { isValidSecretId } from '../core/secret'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -31,39 +32,37 @@ function Home() {
         body: JSON.stringify({ payload: encrypted.payload }),
       })
 
+      const body = (await response.json().catch(() => undefined)) as
+        | Record<string, unknown>
+        | undefined
+
       if (!response.ok) {
         let code = 'request_failed'
-        try {
-          const body = (await response.json()) as {
-            error?: unknown
-            stage?: unknown
-            detail?: unknown
-            expected?: unknown
-            actual?: unknown
-          }
-          if (typeof body.error === 'string') {
-            code = body.error
-          }
-          if (typeof body.stage === 'string') {
-            code += ` stage=${body.stage}`
-          }
-          if (typeof body.detail === 'string') {
-            code += ` detail=${body.detail}`
-          }
-          if (typeof body.expected === 'string') {
-            code += ` expected=${body.expected}`
-          }
-          if (typeof body.actual === 'string') {
-            code += ` actual=${body.actual}`
-          }
-        } catch {
-          // Keep the generic code when the response is not JSON.
+        if (typeof body?.error === 'string') {
+          code = body.error
+        }
+        if (typeof body?.stage === 'string') {
+          code += ` stage=${body.stage}`
+        }
+        if (typeof body?.detail === 'string') {
+          code += ` detail=${body.detail}`
+        }
+        if (typeof body?.expected === 'string') {
+          code += ` expected=${body.expected}`
+        }
+        if (typeof body?.actual === 'string') {
+          code += ` actual=${body.actual}`
         }
 
         throw new Error(`store failed (${response.status} ${code})`)
       }
 
-      setShareUrl(`${window.location.origin}${encrypted.path}`)
+      const id = typeof body?.id === 'string' && isValidSecretId(body.id) ? body.id : undefined
+      if (!id) {
+        throw new Error('store failed (invalid_response)')
+      }
+
+      setShareUrl(`${window.location.origin}${sharePath(id, encrypted.fragment)}`)
       setSecret('')
     } catch (cause) {
       setError(

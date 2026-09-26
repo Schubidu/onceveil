@@ -12,6 +12,16 @@ export const Route = createFileRoute('/ready')({
     handlers: {
       GET: async ({ request }) => {
         const expectedEnvironment = runtimeEnvironmentForRequest(request)
+        if (!expectedEnvironment) {
+          return Response.json(
+            { status: 'not_ready', database: 'environment_unknown' } satisfies SecretDatabaseReadiness,
+            {
+              status: 503,
+              headers: { 'Cache-Control': 'no-store' },
+            },
+          )
+        }
+
         let readiness: SecretDatabaseReadiness
 
         try {

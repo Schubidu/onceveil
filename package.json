@@ -19,13 +19,13 @@
     "check": "npm run build && npm run check:preview-config && npm run check:generated && npm run typecheck && npm run test && npm run lint && npm run format:check",
     "ci": "npm run check",
     "db:migrate:production": "wrangler d1 migrations apply onceveil-production --remote",
-    "db:migrate:preview": "wrangler d1 migrations apply PREVIEW_DB --remote --config wrangler.preview-migrations.jsonc",
+    "db:migrate:preview": "wrangler d1 migrations apply onceveil-preview --remote --config wrangler.preview-migrations.jsonc",
     "deploy:production": "npm run db:migrate:production && npm run db:mark:production && npm run db:verify:production && wrangler deploy",
     "deploy:preview": "npm run db:migrate:preview && npm run db:mark:preview && npm run db:verify:preview && node scripts/deploy-preview.mjs",
-    "db:verify:production": "wrangler d1 execute onceveil-production --remote --command \"SELECT environment FROM onceveil_environment WHERE id = 1 AND environment = 'production'; SELECT 1 FROM secrets LIMIT 0\"",
-    "db:verify:preview": "wrangler d1 execute PREVIEW_DB --remote --config wrangler.preview-migrations.jsonc --command \"SELECT environment FROM onceveil_environment WHERE id = 1 AND environment = 'preview'; SELECT 1 FROM secrets LIMIT 0\"",
-    "db:mark:production": "wrangler d1 execute onceveil-production --remote --command \"INSERT INTO onceveil_environment (id, environment) VALUES (1, 'production') ON CONFLICT(id) DO UPDATE SET environment = excluded.environment\"",
-    "db:mark:preview": "wrangler d1 execute PREVIEW_DB --remote --config wrangler.preview-migrations.jsonc --command \"INSERT INTO onceveil_environment (id, environment) VALUES (1, 'preview') ON CONFLICT(id) DO UPDATE SET environment = excluded.environment\"",
+    "db:verify:production": "node scripts/d1-environment.mjs verify production onceveil-production",
+    "db:verify:preview": "node scripts/d1-environment.mjs verify preview onceveil-preview wrangler.preview-migrations.jsonc",
+    "db:mark:production": "node scripts/d1-environment.mjs mark production onceveil-production",
+    "db:mark:preview": "node scripts/d1-environment.mjs mark preview onceveil-preview wrangler.preview-migrations.jsonc",
     "check:preview-config": "node scripts/check-preview-config.mjs"
   },
   "dependencies": {

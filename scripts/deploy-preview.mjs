@@ -4,7 +4,13 @@ const wranglerCommand = process.platform === 'win32' ? 'wrangler.cmd' : 'wrangle
 
 function runPreview() {
   return new Promise((resolve, reject) => {
-    const args = ['preview', '--ignore-base-config', '--json']
+    const args = [
+      'preview',
+      '--config',
+      'dist/server/wrangler.json',
+      '--ignore-base-config',
+      '--json',
+    ]
     if (process.env.WORKERS_CI_BRANCH) {
       args.push('--name', process.env.WORKERS_CI_BRANCH)
     }
@@ -83,22 +89,13 @@ try {
 
 console.log(stdout)
 
-const urls = previewUrls(output)
-
-if (process.env.WORKERS_CI_BRANCH) {
-  urls.unshift(
-    `https://${process.env.WORKERS_CI_BRANCH}.ots-preview.schult.dev`,
-    `https://${process.env.WORKERS_CI_BRANCH}-onceveil.schult.workers.dev`,
-  )
-}
-
-const uniqueUrls = [...new Set(urls)]
-if (uniqueUrls.length === 0) {
+const urls = [...new Set(previewUrls(output))]
+if (urls.length === 0) {
   throw new Error('wrangler preview returned no Preview or deployment URL')
 }
 
-console.log(`Checking Preview readiness at: ${uniqueUrls.join(', ')}`)
+console.log(`Checking Preview readiness at: ${urls.join(', ')}`)
 
-for (const url of uniqueUrls) {
+for (const url of urls) {
   await checkReadiness(url)
 }
