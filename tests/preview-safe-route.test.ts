@@ -51,6 +51,14 @@ describe('preview-safe share landing route', () => {
     expect(source).toContain('Create another secret')
   })
 
+  it('uses native sharing only for the recipient link when available', async () => {
+    const source = await readFile(path.resolve('src/routes/index.tsx'), 'utf8')
+
+    expect(source).toContain("typeof navigator.share === 'function'")
+    expect(source).toContain('navigator.share({ url: value })')
+    expect(source).toContain('Share one-time link')
+  })
+
   it('keeps owner pages passive and covered by secret-surface headers', async () => {
     const configuredHandlers = OwnerRoute.options.server?.handlers
     expect(configuredHandlers).toBeDefined()
