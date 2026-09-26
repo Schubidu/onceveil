@@ -7,6 +7,7 @@ function isSecretSurface(request: Request): boolean {
   return (
     pathname === '/api/secrets' ||
     pathname.startsWith('/api/secrets/') ||
+    pathname.startsWith('/o/') ||
     pathname.startsWith('/s/')
   )
 }
