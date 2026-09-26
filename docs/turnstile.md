@@ -8,8 +8,8 @@ The share page that holds the URL fragment key never loads Turnstile or any othe
 
 When the recipient chooses **Verify & reveal secret**:
 
-1. the share page asks the server to prepare a one-time reveal proof;
-2. the server returns that proof only to the share page and stores only its SHA-256 hash together with a separate verification identifier;
+1. the share page asks the server to prepare a one-time reveal proof and presents the reveal authorization kept in the URL fragment;
+2. the server prepares a proof only when that authorization matches the stored replay key of the still-`AVAILABLE` secret, returns the bearer proof only to the share page, and stores only its SHA-256 hash together with a separate verification identifier;
 3. the share page opens a fragment-free verification window with `noopener` and `noreferrer`, passing only the verification identifier;
 4. only that isolated window loads Cloudflare Turnstile;
 5. Turnstile returns a token to the isolated window;
@@ -61,7 +61,7 @@ The client token is never accepted as a reveal proof directly.
 
 Turnstile tokens are single-use and expire independently according to Cloudflare's Turnstile contract.
 
-Onceveil prepares its own one-time server proof before the third-party verification context is opened, but that proof cannot be consumed until successful Siteverify validation activates it. The verification page never receives the bearer proof. This keeps provider-specific tokens and third-party scripts out of the actual secret-consume capability and gives future providers (for example ALTCHA) the same internal proof contract.
+Onceveil prepares its own one-time server proof before the third-party verification context is opened, but preparation requires the fragment-only reveal authorization and the proof cannot be consumed until successful Siteverify validation activates it. The verification page receives neither that authorization nor the bearer proof. This prevents third-party code in the Turnstile document from minting or observing a usable reveal capability, while keeping provider-specific tokens out of the actual secret-consume boundary and giving future providers (for example ALTCHA) the same internal proof contract.
 
 A proof can be burned by a successful proof consume followed by a later infrastructure failure before the secret consume. In that case the secret stays available and the recipient must verify again. Onceveil prefers this fail-closed behavior over reusing a proof.
 
