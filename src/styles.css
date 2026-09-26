@@ -10,14 +10,15 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
 }
 
 .shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
   padding: 2rem;
@@ -129,10 +130,27 @@ button:disabled {
   color: #ffb4ab;
 }
 
-.secret-value {
+.copy-secret {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  border: 1px solid #30363d;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  text-align: left;
+  background: #161b22;
+  color: inherit;
+}
+
+.copy-secret code {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  background: #161b22;
+}
+
+.copy-secret span {
+  color: #8b949e;
+  font-size: 0.875rem;
 }
