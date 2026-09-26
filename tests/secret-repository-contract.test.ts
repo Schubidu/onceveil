@@ -163,7 +163,12 @@ describe('SecretRepository atomic transition contract', () => {
 
     expect(results.filter((result) => result.kind === 'created')).toHaveLength(1)
     expect(results.filter((result) => result.kind === 'replayed')).toHaveLength(2)
-    expect(results.every((result) => result.id === secret.id)).toBe(true)
+    for (const result of results) {
+      expect(result.kind).not.toBe('duplicate_id')
+      if (result.kind !== 'duplicate_id') {
+        expect(result.id).toBe(secret.id)
+      }
+    }
   })
 
   it('reuses the original public identifier when the same create request is replayed', async () => {

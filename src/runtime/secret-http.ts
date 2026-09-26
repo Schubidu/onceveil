@@ -27,7 +27,9 @@ export const MAX_CREATE_REQUEST_BYTES = DEFAULT_SECRET_POLICY.maxPayloadBytes + 
 const PUBLIC_ID_ATTEMPTS = 3
 
 async function encryptedPayloadReplayKey(payload: Uint8Array): Promise<string> {
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', payload))
+  const copy = new Uint8Array(payload.byteLength)
+  copy.set(payload)
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', copy.buffer))
   return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
