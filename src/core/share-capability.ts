@@ -91,6 +91,14 @@ export function encodeEncryptedSecretPayload(payload: EncryptedSecretPayload): U
   return new TextEncoder().encode(JSON.stringify(canonical))
 }
 
+export async function encryptedPayloadReplayKey(
+  payload: EncryptedSecretPayload,
+): Promise<string> {
+  const encoded = encodeEncryptedSecretPayload(payload)
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', encoded))
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
 export function decodeEncryptedSecretPayload(
   bytes: Uint8Array,
 ): EncryptedSecretPayload | undefined {
