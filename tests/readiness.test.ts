@@ -50,7 +50,10 @@ function fakeDatabase(state: DatabaseState): D1DatabaseLike {
             return (state.marker ? { environment: state.marker } : null) as Row | null
           }
 
-          if (query.includes('FROM secrets LIMIT 0') || query.includes('FROM reveal_proofs LIMIT 0')) {
+          if (
+            query.includes('FROM secrets LIMIT 0') ||
+            query.includes('FROM reveal_proofs LIMIT 0')
+          ) {
             if (state.schemaError) {
               throw new Error('schema mismatch')
             }
