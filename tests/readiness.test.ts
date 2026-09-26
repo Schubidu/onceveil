@@ -13,8 +13,10 @@ import {
 interface DatabaseState {
   environmentTable?: boolean
   secretsTable?: boolean
+  revealProofsTable?: boolean
   marker?: string
   schemaError?: boolean
+  databaseError?: boolean
 }
 
 function fakeDatabase(state: DatabaseState): D1DatabaseLike {
@@ -28,6 +30,10 @@ function fakeDatabase(state: DatabaseState): D1DatabaseLike {
           return { success: true, results: [] }
         },
         async first<Row = Record<string, unknown>>(): Promise<Row | null> {
+          if (state.databaseError) {
+            throw new Error('database unavailable')
+          }
+
           if (query.includes("name = 'onceveil_environment'")) {
             return (state.environmentTable ? { present: 1 } : null) as Row | null
           }
@@ -36,11 +42,15 @@ function fakeDatabase(state: DatabaseState): D1DatabaseLike {
             return (state.secretsTable ? { present: 1 } : null) as Row | null
           }
 
+          if (query.includes("name = 'reveal_proofs'")) {
+            return (state.revealProofsTable ? { present: 1 } : null) as Row | null
+          }
+
           if (query.includes('SELECT environment FROM onceveil_environment')) {
             return (state.marker ? { environment: state.marker } : null) as Row | null
           }
 
-          if (query.includes('FROM secrets LIMIT 0')) {
+          if (query.includes('FROM secrets LIMIT 0') || query.includes('FROM reveal_proofs LIMIT 0')) {
             if (state.schemaError) {
               throw new Error('schema mismatch')
             }
@@ -79,6 +89,7 @@ describe('runtime readiness', () => {
         fakeDatabase({
           environmentTable: true,
           secretsTable: true,
+          revealProofsTable: true,
           marker: 'preview',
         }),
         'preview',
@@ -92,7 +103,10 @@ describe('runtime readiness', () => {
 
   it('reports migration_required when required tables are missing', async () => {
     await expect(
-      checkSecretDatabaseReadiness(fakeDatabase({ secretsTable: true }), 'preview'),
+      checkSecretDatabaseReadiness(
+        fakeDatabase({ secretsTable: true, revealProofsTable: true }),
+        'preview',
+      ),
     ).resolves.toEqual({
       status: 'not_ready',
       database: 'migration_required',
@@ -105,6 +119,7 @@ describe('runtime readiness', () => {
         fakeDatabase({
           environmentTable: true,
           secretsTable: true,
+          revealProofsTable: true,
           marker: 'production',
         }),
         'preview',
@@ -117,17 +132,27 @@ describe('runtime readiness', () => {
     })
   })
 
-  it('reports unavailable when the schema query fails', async () => {
+  it('reports migration_required when a required schema column is missing', async () => {
     await expect(
       checkSecretDatabaseReadiness(
         fakeDatabase({
           environmentTable: true,
           secretsTable: true,
+          revealProofsTable: true,
           marker: 'preview',
           schemaError: true,
         }),
         'preview',
       ),
+    ).resolves.toEqual({
+      status: 'not_ready',
+      database: 'migration_required',
+    })
+  })
+
+  it('reports unavailable when the database cannot be queried', async () => {
+    await expect(
+      checkSecretDatabaseReadiness(fakeDatabase({ databaseError: true }), 'preview'),
     ).resolves.toEqual({
       status: 'not_ready',
       database: 'unavailable',
