@@ -208,6 +208,7 @@ function requestEmbeddedRevealProof(
   iframe.title = 'Reveal verification'
   iframe.src = verificationUrl
   iframe.referrerPolicy = 'no-referrer'
+  iframe.sandbox.add('allow-scripts', 'allow-same-origin', 'allow-forms', 'allow-popups')
 
   status.className = 'verification-status'
   status.textContent = 'Complete verification to reveal the secret.'
