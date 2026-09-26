@@ -46,7 +46,21 @@ Cloudflare Worker Previews do not inherit Production settings, so PR previews re
 
 ## Migrations
 
-Apply `migrations/0001_secrets.sql` independently to Production and Preview before exercising the create/reveal flow.
+Apply migrations independently to Production and Preview before exercising the create/reveal flow.
+
+Production:
+
+```sh
+npx wrangler d1 migrations apply DB --remote
+```
+
+Preview uses the separate top-level migration configuration in `wrangler.preview-migrations.jsonc`:
+
+```sh
+npx wrangler d1 migrations apply PREVIEW_DB --remote --config wrangler.preview-migrations.jsonc
+```
+
+This mirrors Cloudflare's Preview-resource guidance: the runtime Preview binding stays under `previews.d1_databases`, while migration tooling gets a dedicated top-level D1 binding pointed at the same Preview database.
 
 The schema stores only opaque encrypted payload bytes and lifecycle metadata. It has no plaintext or decryption-key column.
 
