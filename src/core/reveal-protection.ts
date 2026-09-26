@@ -3,6 +3,7 @@ import type { SecretId } from './secret'
 export const REVEAL_PROTECTION_ACTION = 'onceveil_reveal' as const
 export const REVEAL_PROOF_TTL_MS = 60_000
 export const REVEAL_VERIFICATION_TTL_MS = 5 * 60_000
+export const MAX_ACTIVE_REVEAL_PROOFS_PER_SECRET = 3
 
 export interface RevealChallengeContext {
   token: string
