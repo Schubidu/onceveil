@@ -13,6 +13,7 @@ describe('preview-safe share landing route', () => {
     expect(source).not.toContain('getSecretRepository')
     expect(source).not.toContain('consume(')
     expect(source).toContain("method: 'POST'")
+    expect(source).toContain("'X-Onceveil-Reveal': '1'")
     expect(source).toContain('/reveal')
   })
 
