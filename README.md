@@ -16,7 +16,7 @@ MCP support is planned with secure browser handoff so secret material does not e
 
 ## Current status
 
-The application and Cloudflare runtime baseline are in place, together with the strict one-time lifecycle and browser-side encrypted share-capability foundations. Persistence, reveal HTTP flows, reveal protection, and MCP are intentionally not implemented yet.
+The application and Cloudflare runtime baseline, strict one-time lifecycle, browser-side encryption, and D1-backed create/reveal flow are implemented. The D1 runtime binding still requires separate Production and Preview databases before the flow is deployment-ready. Reveal protection and MCP are intentionally not implemented yet.
 
 ## Development
 
@@ -58,7 +58,7 @@ Cloudflare posts the Preview build status and Preview URL back to the pull reque
 
 The repository contains only non-sensitive Worker structure in `wrangler.jsonc`. **Do not put Cloudflare API tokens, account credentials, Turnstile secrets, application secrets, or other secret values in GitHub Secrets/Variables, workflow files, `wrangler.jsonc`, or committed environment files.** Sensitive runtime configuration belongs in Cloudflare.
 
-At this stage the Worker is intentionally stateless: there is no D1 binding, Turnstile configuration, or secret storage.
+The Worker code now expects a D1 binding named `DB` for the one-time secret flow. Production and Previews must use different physical databases. See [docs/cloudflare-d1.md](docs/cloudflare-d1.md). Turnstile is not configured yet.
 
 ## Architecture boundary
 
