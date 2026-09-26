@@ -80,6 +80,7 @@ describe('Turnstile reveal challenge verifier', () => {
 
     expect(calls).toBe(1)
     expect(capturedInit?.method).toBe('POST')
+    expect(capturedInit?.signal).toBeInstanceOf(AbortSignal)
     expect(capturedInit?.body).toBeInstanceOf(FormData)
     const body = capturedInit?.body as FormData
     expect(body.get('response')).toBe('turnstile-token')
@@ -108,7 +109,7 @@ describe('Turnstile reveal challenge verifier', () => {
         secretId: SECRET_ID,
         hostname: 'ots.schult.dev',
       }),
-    ).resolves.toMatchObject({ kind: 'invalid' })
+    ).resolves.toEqual({ kind: 'invalid' })
 
     expect(warn).toHaveBeenCalledWith(
       'Turnstile Siteverify rejected reveal verification',
@@ -136,7 +137,7 @@ describe('Turnstile reveal challenge verifier', () => {
         secretId: SECRET_ID,
         hostname: 'ots.schult.dev',
       }),
-    ).resolves.toEqual({ kind: 'unavailable', diagnostic: 'siteverify_network_lost' })
+    ).resolves.toEqual({ kind: 'unavailable' })
 
     expect(JSON.stringify(warn.mock.calls)).not.toContain('turnstile-token')
     expect(JSON.stringify(warn.mock.calls)).not.toContain('secret-key')
@@ -152,7 +153,7 @@ describe('Turnstile reveal challenge verifier', () => {
         secretId: SECRET_ID,
         hostname: 'ots.schult.dev',
       }),
-    ).resolves.toEqual({ kind: 'unavailable', diagnostic: 'siteverify_invalid_response' })
+    ).resolves.toEqual({ kind: 'unavailable' })
   })
 
   it('fails closed on a non-successful Siteverify HTTP response', async () => {
@@ -165,6 +166,6 @@ describe('Turnstile reveal challenge verifier', () => {
         secretId: SECRET_ID,
         hostname: 'ots.schult.dev',
       }),
-    ).resolves.toEqual({ kind: 'unavailable', diagnostic: 'siteverify_http_error' })
+    ).resolves.toEqual({ kind: 'unavailable' })
   })
 })
