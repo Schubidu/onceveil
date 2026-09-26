@@ -7,6 +7,7 @@ import {
 
 const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
 const MAX_TOKEN_LENGTH = 2048
+const VERIFY_TIMEOUT_MS = 5_000
 
 export interface TurnstileRevealProtectionConfiguration {
   siteKey: string
@@ -67,6 +68,7 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
       response = await fetchImpl(SITEVERIFY_URL, {
         method: 'POST',
         body,
+        signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : ''
@@ -82,22 +84,27 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
         name: error instanceof Error ? error.name : 'UnknownError',
         diagnostic,
       })
-      return { kind: 'unavailable', diagnostic }
+      return { kind: 'unavailable' }
     }
 
     if (!response.ok) {
-      return { kind: 'unavailable', diagnostic: 'siteverify_http_error' }
+      console.warn('Turnstile Siteverify returned non-success HTTP status', {
+        status: response.status,
+      })
+      return { kind: 'unavailable' }
     }
 
     let result: unknown
     try {
       result = await response.json()
     } catch {
-      return { kind: 'unavailable', diagnostic: 'siteverify_invalid_response' }
+      console.warn('Turnstile Siteverify returned invalid JSON')
+      return { kind: 'unavailable' }
     }
 
     if (typeof result !== 'object' || result === null) {
-      return { kind: 'unavailable', diagnostic: 'siteverify_invalid_response' }
+      console.warn('Turnstile Siteverify returned an invalid response')
+      return { kind: 'unavailable' }
     }
 
     const siteverify = result as SiteverifyResponse
@@ -129,7 +136,7 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
         actionMatches,
         cdataMatches,
       })
-      return { kind: 'invalid', diagnostic }
+      return { kind: 'invalid' }
     }
 
     return { kind: 'verified' }
