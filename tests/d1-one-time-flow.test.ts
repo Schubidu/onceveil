@@ -594,9 +594,9 @@ describe('D1 one-time HTTP flow', () => {
     const cleanupAt = expired.expiresAtMs
     await proofRepository.issue(PUBLIC_ID, cleanupAt)
 
-    const count = d1.database
-      .prepare('SELECT COUNT(*) AS count FROM reveal_proofs')
-      .get() as { count: number }
+    const count = d1.database.prepare('SELECT COUNT(*) AS count FROM reveal_proofs').get() as {
+      count: number
+    }
     expect(count.count).toBe(1)
   })
 
