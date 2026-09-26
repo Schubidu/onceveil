@@ -53,3 +53,70 @@ h1 {
   color: #8b949e;
   line-height: 1.6;
 }
+
+
+.field {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+
+.field span,
+.result strong {
+  font-size: 0.875rem;
+  color: #8b949e;
+}
+
+textarea,
+button {
+  font: inherit;
+}
+
+textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #30363d;
+  border-radius: 0.75rem;
+  padding: 0.875rem;
+  background: #161b22;
+  color: inherit;
+}
+
+button {
+  margin-top: 1rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.75rem 1.1rem;
+  cursor: pointer;
+  font-weight: 650;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.result {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.result code {
+  overflow-wrap: anywhere;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: #161b22;
+}
+
+.error {
+  color: #ffb4ab;
+}
+
+.secret-value {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: #161b22;
+}
