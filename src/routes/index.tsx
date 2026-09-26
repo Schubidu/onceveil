@@ -81,7 +81,9 @@ function Home() {
     try {
       await navigator.clipboard.writeText(shareUrl)
       setCopied(true)
+      setError(undefined)
     } catch {
+      setCopied(false)
       setError('The one-time link could not be copied.')
     }
   }
