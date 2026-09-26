@@ -54,11 +54,15 @@ export async function assertSecretDatabaseEnvironment(expected: RuntimeEnvironme
     row = await database
       .prepare('SELECT environment FROM onceveil_environment WHERE id = 1 LIMIT 1')
       .first<EnvironmentRow>()
-  } catch {
-    throw new SecretDatabaseEnvironmentError(expected, 'unmarked')
+  } catch (error) {
+    const detail =
+      error instanceof Error && error.message
+        ? error.message.replace(/\s+/g, ' ').slice(0, 180)
+        : 'unknown query error'
+    throw new SecretDatabaseEnvironmentError(expected, `query-error:${detail}`)
   }
 
-  const actual = row?.environment ?? 'unmarked'
+  const actual = row?.environment ?? 'missing-marker'
   if (actual !== expected) {
     throw new SecretDatabaseEnvironmentError(expected, actual)
   }
