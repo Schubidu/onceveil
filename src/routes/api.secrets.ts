@@ -4,7 +4,6 @@ import { D1CreateError } from '../adapters/d1-secret-repository'
 import { createSecretResponse } from '../runtime/secret-http'
 import {
   assertSecretDatabaseEnvironment,
-  getSecretDatabaseDiagnostics,
   getSecretRepository,
   SecretDatabaseEnvironmentError,
   SecretDatabaseUnavailableError,
@@ -14,20 +13,6 @@ import { withSecretSecurityHeaders } from '../runtime/security-headers'
 export const Route = createFileRoute('/api/secrets')({
   server: {
     handlers: {
-      GET: async ({ request }) => {
-        const hostname = new URL(request.url).hostname
-        const isPreview =
-          hostname.endsWith('.ots-preview.schult.dev') ||
-          hostname.endsWith('-onceveil.schult.workers.dev')
-
-        if (!isPreview) {
-          return withSecretSecurityHeaders(Response.json({ error: 'not_found' }, { status: 404 }))
-        }
-
-        return withSecretSecurityHeaders(
-          Response.json(await getSecretDatabaseDiagnostics(), { status: 200 }),
-        )
-      },
       POST: async ({ request }) => {
         try {
           await assertSecretDatabaseEnvironment()
