@@ -4,6 +4,7 @@ import { revealSecretResponse } from '../runtime/secret-http'
 import {
   assertSecretDatabaseEnvironment,
   getSecretRepository,
+  runtimeEnvironmentForRequest,
   SecretDatabaseEnvironmentError,
   SecretDatabaseUnavailableError,
 } from '../runtime/secret-repository'
@@ -13,11 +14,8 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
   server: {
     handlers: {
       POST: async ({ params, request }) => {
-        const hostname = new URL(request.url).hostname
-        const isPreview =
-          hostname.endsWith('.ots-preview.schult.dev') ||
-          hostname.endsWith('-onceveil.schult.workers.dev')
-        const expectedEnvironment = isPreview ? 'preview' : 'production'
+        const expectedEnvironment = runtimeEnvironmentForRequest(request)
+        const isPreview = expectedEnvironment === 'preview'
 
         if (request.headers.get('X-Onceveil-Reveal') !== '1') {
           return withSecretSecurityHeaders(

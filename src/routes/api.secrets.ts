@@ -5,6 +5,7 @@ import { createSecretResponse } from '../runtime/secret-http'
 import {
   assertSecretDatabaseEnvironment,
   getSecretRepository,
+  runtimeEnvironmentForRequest,
   SecretDatabaseEnvironmentError,
   SecretDatabaseUnavailableError,
 } from '../runtime/secret-repository'
@@ -14,11 +15,8 @@ export const Route = createFileRoute('/api/secrets')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const hostname = new URL(request.url).hostname
-        const isPreview =
-          hostname.endsWith('.ots-preview.schult.dev') ||
-          hostname.endsWith('-onceveil.schult.workers.dev')
-        const expectedEnvironment = isPreview ? 'preview' : 'production'
+        const expectedEnvironment = runtimeEnvironmentForRequest(request)
+        const isPreview = expectedEnvironment === 'preview'
 
         try {
           await assertSecretDatabaseEnvironment(expectedEnvironment)
