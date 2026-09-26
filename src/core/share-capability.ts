@@ -14,6 +14,3 @@ export function shareAssociatedData(id: SecretId): string {
   return `${SHARE_AAD_PREFIX}:${SHARE_PROTOCOL_VERSION}:${id}`
 }
 
-export function sharePath(id: SecretId, fragment: string): string {
-  return `/s/${encodeURIComponent(id)}#${fragment}`
-}
