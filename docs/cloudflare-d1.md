@@ -78,3 +78,10 @@ The schema stores only opaque encrypted payload bytes and lifecycle metadata. It
 Expiration is logical and synchronous: consume, revoke, and status operations first turn an expired `AVAILABLE` row into `EXPIRED`, so expired ciphertext is never returned.
 
 Physical cleanup is deliberately separate from one-time correctness. A future scheduled maintenance slice may delete terminal rows after a retention period. Until then, terminal ciphertext can remain physically present in D1 and D1 Time Travel while being logically unavailable, matching the backup guarantee in the threat model.
+
+
+## Runtime database environment guard
+
+Each database has an `onceveil_environment` marker. Deployment writes `preview` or `production` after migrations and verifies it before deployment. The Worker also receives `APP_ENV` through Wrangler configuration and checks the database marker before create/reveal operations.
+
+This makes Preview/Production isolation fail closed: if a Preview is ever wired to the Production database (or to an unmarked database), secret access returns `503` instead of reading or writing the wrong environment.
