@@ -81,6 +81,7 @@ interface ReplayRow {
   id: string
   created_at_ms: number
   expires_at_ms: number
+  owner_key_hash: string | null
 }
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
@@ -156,15 +157,19 @@ function unavailableState(row: StatusRow, nowMs: number): Exclude<SecretState, '
 export class D1SecretRepository implements SecretRepository {
   constructor(private readonly db: D1DatabaseLike) {}
 
-  async create(record: PreparedSecretRecord, replayKey: string): Promise<CreateResult> {
+  async create(
+    record: PreparedSecretRecord,
+    replayKey: string,
+    ownerKeyHash: string,
+  ): Promise<CreateResult> {
     const session = this.db.withSession('first-primary')
     let statement: D1PreparedStatementLike
 
     try {
       statement = session.prepare(
         `INSERT OR IGNORE INTO secrets
-          (id, ciphertext, created_at_ms, expires_at_ms, state, replay_key)
-         VALUES (?, ?, ?, ?, 'AVAILABLE', ?)`,
+          (id, ciphertext, created_at_ms, expires_at_ms, state, replay_key, owner_key_hash)
+         VALUES (?, ?, ?, ?, 'AVAILABLE', ?, ?)`,
       )
     } catch (error) {
       throw new D1CreateError('prepare', errorDetail(error))
@@ -177,6 +182,7 @@ export class D1SecretRepository implements SecretRepository {
         record.createdAtMs,
         record.expiresAtMs,
         replayKey,
+        ownerKeyHash,
       )
     } catch (error) {
       throw new D1CreateError('bind', errorDetail(error))
@@ -201,7 +207,7 @@ export class D1SecretRepository implements SecretRepository {
     try {
       replay = await session
         .prepare(
-          'SELECT id, created_at_ms, expires_at_ms FROM secrets WHERE replay_key = ? LIMIT 1',
+          'SELECT id, created_at_ms, expires_at_ms, owner_key_hash FROM secrets WHERE replay_key = ? LIMIT 1',
         )
         .bind(replayKey)
         .first<ReplayRow>()
@@ -219,7 +225,8 @@ export class D1SecretRepository implements SecretRepository {
       if (
         !Number.isSafeInteger(replayTtlMs) ||
         !Number.isSafeInteger(requestedTtlMs) ||
-        replayTtlMs !== requestedTtlMs
+        replayTtlMs !== requestedTtlMs ||
+        replay.owner_key_hash !== ownerKeyHash
       ) {
         return { kind: 'replay_conflict' }
       }
@@ -242,14 +249,14 @@ export class D1SecretRepository implements SecretRepository {
         .prepare(
           `UPDATE secrets
            SET state = 'EXPIRED'
-           WHERE id = ? AND state = 'AVAILABLE' AND expires_at_ms <= ?`,
+           WHERE id = ? AND owner_key_hash = ? AND state = 'AVAILABLE' AND expires_at_ms <= ?`,
         )
-        .bind(id, nowMs),
+        .bind(id, ownerKeyHash, nowMs),
       session
         .prepare(
           `UPDATE secrets
            SET state = 'CONSUMED', consumed_at_ms = ?, consume_token = ?
-           WHERE id = ? AND state = 'AVAILABLE' AND expires_at_ms > ?`,
+           WHERE id = ? AND owner_key_hash = ? AND state = 'AVAILABLE' AND expires_at_ms > ?`,
         )
         .bind(nowMs, token, id, nowMs),
       session
@@ -302,7 +309,11 @@ export class D1SecretRepository implements SecretRepository {
     return { kind: 'unavailable', state: unavailableState(row, nowMs) }
   }
 
-  async revoke(id: SecretId, nowMs: number): Promise<RevokeResult | { kind: 'not_found' }> {
+  async revoke(
+    id: SecretId,
+    ownerKeyHash: string,
+    nowMs: number,
+  ): Promise<RevokeResult | { kind: 'not_found' }> {
     if (!Number.isSafeInteger(nowMs)) {
       return { kind: 'unavailable', state: 'EXPIRED' }
     }
@@ -322,15 +333,15 @@ export class D1SecretRepository implements SecretRepository {
            SET state = 'REVOKED', revoked_at_ms = ?
            WHERE id = ? AND state = 'AVAILABLE' AND expires_at_ms > ?`,
         )
-        .bind(nowMs, id, nowMs),
+        .bind(nowMs, id, ownerKeyHash, nowMs),
       session
         .prepare(
           `SELECT id, created_at_ms, expires_at_ms, state
            FROM secrets
-           WHERE id = ?
+           WHERE id = ? AND owner_key_hash = ?
            LIMIT 1`,
         )
-        .bind(id),
+        .bind(id, ownerKeyHash),
     ])
 
     const row = results[2]?.results[0] as unknown as StatusRow | undefined
@@ -344,7 +355,11 @@ export class D1SecretRepository implements SecretRepository {
       : { kind: 'unavailable', state: unavailableState(row, nowMs) }
   }
 
-  async getStatus(id: SecretId, nowMs: number): Promise<SecretStatus | undefined> {
+  async getStatus(
+    id: SecretId,
+    ownerKeyHash: string,
+    nowMs: number,
+  ): Promise<SecretStatus | undefined> {
     if (!Number.isSafeInteger(nowMs)) {
       return undefined
     }
@@ -355,17 +370,17 @@ export class D1SecretRepository implements SecretRepository {
         .prepare(
           `UPDATE secrets
            SET state = 'EXPIRED'
-           WHERE id = ? AND state = 'AVAILABLE' AND expires_at_ms <= ?`,
+           WHERE id = ? AND owner_key_hash = ? AND state = 'AVAILABLE' AND expires_at_ms <= ?`,
         )
-        .bind(id, nowMs),
+        .bind(id, ownerKeyHash, nowMs),
       session
         .prepare(
           `SELECT id, created_at_ms, expires_at_ms, state
            FROM secrets
-           WHERE id = ?
+           WHERE id = ? AND owner_key_hash = ?
            LIMIT 1`,
         )
-        .bind(id),
+        .bind(id, ownerKeyHash),
     ])
 
     const row = results[1]?.results[0] as unknown as StatusRow | undefined
