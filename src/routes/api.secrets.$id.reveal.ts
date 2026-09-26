@@ -85,6 +85,7 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
             return jsonError('reveal_intent_required', 400)
           }
 
+          getTurnstileSiteKey()
           return await protectedRevealResponse(
             request,
             params.id,
