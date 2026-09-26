@@ -12,9 +12,15 @@ export interface RevealChallengeContext {
   remoteIp?: string
 }
 
+export type RevealChallengeDiagnostic =
+  | 'siteverify_rejected'
+  | 'hostname_mismatch'
+  | 'action_mismatch'
+  | 'cdata_mismatch'
+
 export type RevealChallengeResult =
   | { kind: 'verified' }
-  | { kind: 'invalid' }
+  | { kind: 'invalid'; diagnostic?: RevealChallengeDiagnostic }
   | { kind: 'unavailable' }
 
 export interface RevealChallengeVerifier {
