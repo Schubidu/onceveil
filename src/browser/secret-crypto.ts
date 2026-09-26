@@ -140,7 +140,7 @@ export async function encryptSecret(plaintext: string): Promise<EncryptedShare> 
         tagLength: AES_GCM_TAG_BITS,
       },
       key,
-      encoder.encode(plaintext),
+      toArrayBuffer(encoder.encode(plaintext)),
     ),
   )
 
