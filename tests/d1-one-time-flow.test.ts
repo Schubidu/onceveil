@@ -363,8 +363,16 @@ describe('D1 one-time HTTP flow', () => {
 
   it('rejects a replay that changes the TTL without creating another row', async () => {
     const encrypted = await encryptSecret('retry ttl conflict')
-    const firstBody = JSON.stringify({ payload: encrypted.payload, ownerKeyHash: OWNER_KEY_HASH, ttlMs: 100 })
-    const replayBody = JSON.stringify({ payload: encrypted.payload, ownerKeyHash: OWNER_KEY_HASH, ttlMs: 200 })
+    const firstBody = JSON.stringify({
+      payload: encrypted.payload,
+      ownerKeyHash: OWNER_KEY_HASH,
+      ttlMs: 100,
+    })
+    const replayBody = JSON.stringify({
+      payload: encrypted.payload,
+      ownerKeyHash: OWNER_KEY_HASH,
+      ttlMs: 200,
+    })
     const secondId = 'e'.repeat(32) as SecretId
     const ids = [PUBLIC_ID, secondId]
     let nextId = 0
@@ -407,7 +415,11 @@ describe('D1 one-time HTTP flow', () => {
       new Request('https://onceveil.test/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: encrypted.payload, ownerKeyHash: OWNER_KEY_HASH, ttlMs: null }),
+        body: JSON.stringify({
+          payload: encrypted.payload,
+          ownerKeyHash: OWNER_KEY_HASH,
+          ttlMs: null,
+        }),
       }),
       repository,
       1_000,
@@ -947,7 +959,11 @@ describe('D1 one-time HTTP flow', () => {
       new Request('https://onceveil.test/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: encrypted.payload, ownerKeyHash: OWNER_KEY_HASH, ttlMs: 10 }),
+        body: JSON.stringify({
+          payload: encrypted.payload,
+          ownerKeyHash: OWNER_KEY_HASH,
+          ttlMs: 10,
+        }),
       }),
       repository,
       1_000,
