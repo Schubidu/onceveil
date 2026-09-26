@@ -13,6 +13,12 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
   server: {
     handlers: {
       POST: async ({ params, request }) => {
+        const hostname = new URL(request.url).hostname
+        const isPreview =
+          hostname.endsWith('.ots-preview.schult.dev') ||
+          hostname.endsWith('-onceveil.schult.workers.dev')
+        const expectedEnvironment = isPreview ? 'preview' : 'production'
+
         if (request.headers.get('X-Onceveil-Reveal') !== '1') {
           return withSecretSecurityHeaders(
             Response.json({ error: 'reveal_intent_required' }, { status: 400 }),
@@ -20,7 +26,7 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
         }
 
         try {
-          await assertSecretDatabaseEnvironment()
+          await assertSecretDatabaseEnvironment(expectedEnvironment)
           return await revealSecretResponse(params.id, getSecretRepository())
         } catch (error) {
           if (error instanceof SecretDatabaseUnavailableError) {
@@ -30,11 +36,6 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
           }
 
           if (error instanceof SecretDatabaseEnvironmentError) {
-            const hostname = new URL(request.url).hostname
-            const isPreview =
-              hostname.endsWith('.ots-preview.schult.dev') ||
-              hostname.endsWith('-onceveil.schult.workers.dev')
-
             return withSecretSecurityHeaders(
               Response.json(
                 isPreview
