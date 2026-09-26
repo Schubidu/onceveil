@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { ownerPath } from '../browser/owner-capability'
 import { sharePath } from '../browser/secret-crypto'
@@ -19,9 +19,14 @@ function Home() {
   const [shareUrl, setShareUrl] = useState<string>()
   const [ownerUrl, setOwnerUrl] = useState<string>()
   const [copied, setCopied] = useState<'share' | 'owner'>()
+  const [nativeShareAvailable, setNativeShareAvailable] = useState(false)
   const [error, setError] = useState<string>()
   const [creating, setCreating] = useState(false)
   const [pendingCreate, setPendingCreate] = useState<PendingEncryptedCreate>()
+
+  useEffect(() => {
+    setNativeShareAvailable(typeof navigator.share === 'function')
+  }, [])
 
   async function createSecret() {
     if (!secret || creating) {
@@ -100,6 +105,19 @@ function Home() {
     }
   }
 
+  async function shareSecretLink(value: string) {
+    try {
+      await navigator.share({ url: value })
+      setError(undefined)
+    } catch (cause) {
+      if (cause instanceof DOMException && cause.name === 'AbortError') {
+        return
+      }
+
+      setError('The link could not be shared.')
+    }
+  }
+
   return (
     <main className="shell">
       <section className="card" aria-labelledby="onceveil-title">
@@ -144,6 +162,15 @@ function Home() {
               <code>{shareUrl}</code>
               <span>{copied === 'share' ? 'Copied' : 'Copy'}</span>
             </button>
+            {nativeShareAvailable ? (
+              <button
+                type="button"
+                onClick={() => void shareSecretLink(shareUrl)}
+                aria-label="Share one-time link"
+              >
+                Share
+              </button>
+            ) : null}
           </div>
         ) : null}
 
