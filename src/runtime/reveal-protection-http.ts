@@ -2,7 +2,8 @@ import {
   type RevealChallengeVerifier,
   type RevealProofRepository,
 } from '../core/reveal-protection'
-import type { SecretId } from '../core/secret'
+import type { SecretId, SecretRepository } from '../core/secret'
+import { revealSecretResponse } from './secret-http'
 import { withSecretSecurityHeaders } from './security-headers'
 
 const MAX_PROTECTION_REQUEST_BYTES = 4 * 1024
@@ -125,4 +126,20 @@ export async function consumeRevealProofResponse(
   }
 
   return undefined
+}
+
+
+export async function protectedRevealResponse(
+  request: Request,
+  secretId: SecretId,
+  proofs: RevealProofRepository,
+  secrets: SecretRepository,
+  nowMs = Date.now(),
+): Promise<Response> {
+  const proofFailure = await consumeRevealProofResponse(request, secretId, proofs, nowMs)
+  if (proofFailure) {
+    return proofFailure
+  }
+
+  return revealSecretResponse(secretId, secrets, nowMs)
 }
