@@ -244,6 +244,27 @@ describe('D1 one-time HTTP flow', () => {
     expect(stored.id).not.toBe(encrypted.payload.contextId)
   })
 
+  it('rejects null TTL instead of treating it as the default', async () => {
+    const encrypted = await encryptSecret('invalid ttl')
+    const create = await createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload: encrypted.payload, ttlMs: null }),
+      }),
+      repository,
+      1_000,
+      allocatePublicId,
+    )
+
+    expect(create.status).toBe(400)
+    await expect(create.json()).resolves.toEqual({ error: 'invalid_ttl' })
+    const count = d1.database.prepare('SELECT COUNT(*) AS count FROM secrets').get() as {
+      count: number
+    }
+    expect(count.count).toBe(0)
+  })
+
   it('rejects oversized streamed request bodies before JSON/base64 decoding', async () => {
     const chunk = new Uint8Array(MAX_CREATE_REQUEST_BYTES)
     const body = new ReadableStream<Uint8Array>({

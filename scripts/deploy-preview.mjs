@@ -101,8 +101,8 @@ if (urls.length === 0) {
   throw new Error('wrangler preview returned no Preview or deployment URL')
 }
 
-console.log(`Checking Preview readiness at: ${urls.join(', ')}`)
+const readinessOrigin =
+  urls.find((url) => new URL(url).hostname.endsWith('.workers.dev')) ?? urls[0]
 
-for (const url of urls) {
-  await checkReadiness(url)
-}
+console.log(`Checking Preview readiness at: ${readinessOrigin}`)
+await checkReadiness(readinessOrigin)

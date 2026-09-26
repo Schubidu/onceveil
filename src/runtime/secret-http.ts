@@ -103,9 +103,7 @@ export async function createSecretResponse(
 
   const payload = body.payload
   const ttlMs =
-    body.ttlMs === undefined || body.ttlMs === null || typeof body.ttlMs === 'number'
-      ? body.ttlMs
-      : Number.NaN
+    body.ttlMs === undefined || typeof body.ttlMs === 'number' ? body.ttlMs : Number.NaN
 
   const encoded = encodeEncryptedSecretPayload(payload)
 
