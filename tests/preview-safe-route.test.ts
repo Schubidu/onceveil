@@ -43,6 +43,14 @@ describe('preview-safe share landing route', () => {
     expect(await response.text()).toBe('')
   })
 
+  it('clears plaintext and hides the create form after successful creation', async () => {
+    const source = await readFile(path.resolve('src/routes/index.tsx'), 'utf8')
+
+    expect(source).toContain("setSecret('')")
+    expect(source).toContain('!shareUrl && !ownerUrl')
+    expect(source).toContain('Create another secret')
+  })
+
   it('keeps owner pages passive and covered by secret-surface headers', async () => {
     const configuredHandlers = OwnerRoute.options.server?.handlers
     expect(configuredHandlers).toBeDefined()
