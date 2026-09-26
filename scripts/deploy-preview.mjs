@@ -4,7 +4,12 @@ const wranglerCommand = process.platform === 'win32' ? 'wrangler.cmd' : 'wrangle
 
 function runPreview() {
   return new Promise((resolve, reject) => {
-    const child = spawn(wranglerCommand, ['preview', '--ignore-base-config', '--json'], {
+    const args = ['preview', '--ignore-base-config', '--json']
+    if (process.env.WORKERS_CI_BRANCH) {
+      args.push('--name', process.env.WORKERS_CI_BRANCH)
+    }
+
+    const child = spawn(wranglerCommand, args, {
       env: process.env,
       stdio: ['ignore', 'pipe', 'inherit'],
     })
@@ -29,57 +34,39 @@ function runPreview() {
 
 function previewUrls(output) {
   return [
-    ...(Array.isArray(output?.deployment?.urls) ? output.deployment.urls : []),
     ...(Array.isArray(output?.preview?.urls) ? output.preview.urls : []),
-    ...(Array.isArray(output?.deployment_urls) ? output.deployment_urls : []),
+    ...(Array.isArray(output?.deployment?.urls) ? output.deployment.urls : []),
     ...(Array.isArray(output?.preview_urls) ? output.preview_urls : []),
+    ...(Array.isArray(output?.deployment_urls) ? output.deployment_urls : []),
   ].filter((value) => typeof value === 'string' && value.length > 0)
-}
-
-function selectReadinessOrigin(urls) {
-  return urls.find((value) => new URL(value).hostname.endsWith('.workers.dev')) ?? urls[0]
 }
 
 async function checkReadiness(origin) {
   const readyUrl = new URL('/ready', origin)
+  let lastResult = 'no response'
 
-  for (let attempt = 1; attempt <= 6; attempt += 1) {
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
     try {
       const response = await fetch(readyUrl, {
         signal: AbortSignal.timeout(10_000),
       })
       const body = await response.json().catch(() => null)
+      lastResult = `HTTP ${response.status}: ${JSON.stringify(body)}`
 
       if (response.ok && body?.status === 'ready' && body?.database === 'ok') {
         console.log(`Preview readiness passed at ${readyUrl.origin}`)
         return
       }
-
-      if (body?.status === 'not_ready') {
-        throw new Error(`Preview is not ready: ${JSON.stringify(body)}`)
-      }
-
-      if (attempt === 6) {
-        throw new Error(
-          `Preview readiness returned HTTP ${response.status}: ${JSON.stringify(body)}`,
-        )
-      }
     } catch (error) {
-      if (
-        error instanceof Error &&
-        (error.message.startsWith('Preview is not ready:') ||
-          error.message.startsWith('Preview readiness returned HTTP'))
-      ) {
-        throw error
-      }
+      lastResult = error instanceof Error ? error.message : String(error)
+    }
 
-      if (attempt === 6) {
-        throw error
-      }
-
+    if (attempt < 8) {
       await new Promise((resolve) => setTimeout(resolve, 2_000))
     }
   }
+
+  throw new Error(`Preview readiness failed at ${readyUrl.origin}: ${lastResult}`)
 }
 
 const stdout = await runPreview()
@@ -96,10 +83,11 @@ try {
 
 console.log(stdout)
 
-const urls = previewUrls(output)
-const origin = selectReadinessOrigin(urls)
-if (!origin) {
+const urls = [...new Set(previewUrls(output))]
+if (urls.length === 0) {
   throw new Error('wrangler preview returned no Preview or deployment URL')
 }
 
-await checkReadiness(origin)
+for (const url of urls) {
+  await checkReadiness(url)
+}

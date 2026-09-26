@@ -5,10 +5,7 @@ import {
   runtimeEnvironmentForRequest,
   type SecretDatabaseReadiness,
 } from '../runtime/readiness'
-import {
-  getSecretDatabase,
-  SecretDatabaseUnavailableError,
-} from '../runtime/secret-repository'
+import { getSecretDatabase, SecretDatabaseUnavailableError } from '../runtime/secret-repository'
 
 export const Route = createFileRoute('/ready')({
   server: {
