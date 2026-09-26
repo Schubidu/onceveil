@@ -1,5 +1,6 @@
 import type { SecretId } from '../core/secret'
 
+const VERIFICATION_BYTES = 16
 const VERIFICATION_ID_PATTERN = /^[0-9a-f]{32}$/
 const PROOF_PATTERN = /^[A-Za-z0-9_-]{43}$/
 const REVEAL_AUTHORIZATION_PATTERN = /^[0-9a-f]{64}$/
@@ -8,6 +9,8 @@ const VERIFICATION_TIMEOUT_MS = 5 * 60 * 1000
 export const REVEAL_VERIFICATION_WINDOW_FEATURES = 'popup,noopener,noreferrer,width=520,height=680'
 
 export type RevealVerificationMessage =
+  | { type: 'onceveil-reveal-verification-ready' }
+  | { type: 'onceveil-reveal-prepared' }
   | { type: 'onceveil-reveal-verified' }
   | { type: 'onceveil-reveal-proof-error' }
 
@@ -25,6 +28,12 @@ export interface RevealVerificationHistory {
 interface RevealProofPreparation {
   proof: string
   verificationId: string
+}
+
+function randomVerificationId(): string {
+  const bytes = new Uint8Array(VERIFICATION_BYTES)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 export function revealVerificationUrl(
@@ -63,33 +72,18 @@ export function revealVerificationId(search: string): string | undefined {
     : undefined
 }
 
-export function publishRevealVerificationMessage(
-  verificationId: string,
-  message: RevealVerificationMessage,
-): void {
-  if (!VERIFICATION_ID_PATTERN.test(verificationId)) {
-    return
-  }
-
-  const broadcast = new BroadcastChannel(`onceveil-reveal-${verificationId}`)
-  broadcast.postMessage(message)
-  broadcast.close()
-}
-
 async function prepareRevealProof(
   id: SecretId,
   authorization: string,
+  verificationId: string,
 ): Promise<RevealProofPreparation> {
-  if (!REVEAL_AUTHORIZATION_PATTERN.test(authorization)) {
-    throw new Error('Invalid reveal authorization')
-  }
   const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-Onceveil-Proof-Prepare': '1',
     },
-    body: JSON.stringify({ authorization }),
+    body: JSON.stringify({ authorization, verificationId }),
   })
   const body = (await response.json().catch(() => undefined)) as
     | Partial<RevealProofPreparation>
@@ -99,29 +93,44 @@ async function prepareRevealProof(
     !response.ok ||
     typeof body?.proof !== 'string' ||
     !PROOF_PATTERN.test(body.proof) ||
-    typeof body.verificationId !== 'string' ||
-    !VERIFICATION_ID_PATTERN.test(body.verificationId)
+    body.verificationId !== verificationId
   ) {
     throw new Error('Reveal verification could not be prepared')
   }
 
   return {
     proof: body.proof,
-    verificationId: body.verificationId,
+    verificationId,
   }
 }
 
-export async function requestRevealProof(id: SecretId, authorization: string): Promise<string> {
-  const { proof, verificationId } = await prepareRevealProof(id, authorization)
+export function requestRevealProof(id: SecretId, authorization: string): Promise<string> {
+  if (!REVEAL_AUTHORIZATION_PATTERN.test(authorization)) {
+    return Promise.reject(new Error('Invalid reveal authorization'))
+  }
+
+  const verificationId = randomVerificationId()
   const broadcast = new BroadcastChannel(`onceveil-reveal-${verificationId}`)
   const verificationUrl = revealVerificationUrl(id, verificationId, window.location.origin)
 
-  window.open(verificationUrl, '_blank', REVEAL_VERIFICATION_WINDOW_FEATURES)
-
   return new Promise((resolve, reject) => {
-    const timeout = window.setTimeout(() => {
+    let proof: string | undefined
+    let preparing = false
+    let settled = false
+
+    function finish(action: () => void) {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      window.clearTimeout(timeout)
       broadcast.close()
-      reject(new Error('Reveal verification timed out'))
+      action()
+    }
+
+    const timeout = window.setTimeout(() => {
+      finish(() => reject(new Error('Reveal verification timed out')))
     }, VERIFICATION_TIMEOUT_MS)
 
     broadcast.onmessage = (event: MessageEvent<unknown>) => {
@@ -131,18 +140,42 @@ export async function requestRevealProof(id: SecretId, authorization: string): P
       }
 
       const candidate = message as Partial<RevealVerificationMessage>
-      if (candidate.type === 'onceveil-reveal-verified') {
-        window.clearTimeout(timeout)
-        broadcast.close()
-        resolve(proof)
+      if (
+        candidate.type === 'onceveil-reveal-verification-ready' &&
+        !preparing &&
+        proof === undefined
+      ) {
+        preparing = true
+        void prepareRevealProof(id, authorization, verificationId)
+          .then((prepared) => {
+            if (settled) {
+              return
+            }
+
+            proof = prepared.proof
+            broadcast.postMessage({ type: 'onceveil-reveal-prepared' } satisfies RevealVerificationMessage)
+          })
+          .catch(() => {
+            if (!settled) {
+              broadcast.postMessage({
+                type: 'onceveil-reveal-proof-error',
+              } satisfies RevealVerificationMessage)
+            }
+            finish(() => reject(new Error('Reveal verification could not be prepared')))
+          })
+        return
+      }
+
+      if (candidate.type === 'onceveil-reveal-verified' && proof !== undefined) {
+        finish(() => resolve(proof as string))
         return
       }
 
       if (candidate.type === 'onceveil-reveal-proof-error') {
-        window.clearTimeout(timeout)
-        broadcast.close()
-        reject(new Error('Reveal verification failed'))
+        finish(() => reject(new Error('Reveal verification failed')))
       }
     }
+
+    window.open(verificationUrl, '_blank', REVEAL_VERIFICATION_WINDOW_FEATURES)
   })
 }
