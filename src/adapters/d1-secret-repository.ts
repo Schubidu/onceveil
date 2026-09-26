@@ -99,21 +99,13 @@ export class D1SecretRepository implements SecretRepository {
           (id, ciphertext, created_at_ms, expires_at_ms, state)
          VALUES (?, ?, ?, ?, 'AVAILABLE')`,
       )
-      .bind(
-        record.id,
-        record.ciphertext,
-        record.createdAtMs,
-        record.expiresAtMs,
-      )
+      .bind(record.id, record.ciphertext, record.createdAtMs, record.expiresAtMs)
       .run()
 
     return result.meta?.changes === 1 ? { kind: 'created' } : { kind: 'duplicate' }
   }
 
-  async consume(
-    id: SecretId,
-    nowMs: number,
-  ): Promise<ConsumeResult | { kind: 'not_found' }> {
+  async consume(id: SecretId, nowMs: number): Promise<ConsumeResult | { kind: 'not_found' }> {
     if (!Number.isSafeInteger(nowMs)) {
       return { kind: 'unavailable', state: 'EXPIRED' }
     }
@@ -185,10 +177,7 @@ export class D1SecretRepository implements SecretRepository {
     return { kind: 'unavailable', state: unavailableState(row, nowMs) }
   }
 
-  async revoke(
-    id: SecretId,
-    nowMs: number,
-  ): Promise<RevokeResult | { kind: 'not_found' }> {
+  async revoke(id: SecretId, nowMs: number): Promise<RevokeResult | { kind: 'not_found' }> {
     if (!Number.isSafeInteger(nowMs)) {
       return { kind: 'unavailable', state: 'EXPIRED' }
     }
