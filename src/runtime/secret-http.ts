@@ -92,17 +92,22 @@ export async function createSecretResponse(
     return json({ error: 'payload_too_large' }, 413)
   }
 
-  if (bodyResult.kind !== 'ok' || !isEncryptedSecretPayload(bodyResult.body.payload)) {
+  if (bodyResult.kind !== 'ok') {
     return json({ error: 'invalid_request' }, 400)
   }
 
   const body = bodyResult.body
+  if (!isEncryptedSecretPayload(body.payload)) {
+    return json({ error: 'invalid_request' }, 400)
+  }
+
+  const payload = body.payload
   const ttlMs =
     body.ttlMs === undefined || body.ttlMs === null || typeof body.ttlMs === 'number'
       ? body.ttlMs
       : Number.NaN
 
-  const encoded = encodeEncryptedSecretPayload(body.payload)
+  const encoded = encodeEncryptedSecretPayload(payload)
 
   for (let attempt = 0; attempt < PUBLIC_ID_ATTEMPTS; attempt += 1) {
     const prepared = prepareSecretRecord(generatePublicId(), encoded, nowMs, ttlMs)
