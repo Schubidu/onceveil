@@ -111,8 +111,14 @@ function decodeNonce(encodedNonce: string): Uint8Array {
   return nonce
 }
 
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength)
+  copy.set(bytes)
+  return copy.buffer
+}
+
 async function importKey(keyBytes: Uint8Array): Promise<CryptoKey> {
-  return crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, [
+  return crypto.subtle.importKey('raw', toArrayBuffer(keyBytes), { name: 'AES-GCM' }, false, [
     'encrypt',
     'decrypt',
   ])
@@ -129,8 +135,8 @@ export async function encryptSecret(plaintext: string): Promise<EncryptedShare> 
     await crypto.subtle.encrypt(
       {
         name: 'AES-GCM',
-        iv: nonce,
-        additionalData,
+        iv: toArrayBuffer(nonce),
+        additionalData: toArrayBuffer(additionalData),
         tagLength: AES_GCM_TAG_BITS,
       },
       key,
@@ -171,12 +177,12 @@ export async function decryptSecret(
     const plaintext = await crypto.subtle.decrypt(
       {
         name: 'AES-GCM',
-        iv: nonce,
-        additionalData,
+        iv: toArrayBuffer(nonce),
+        additionalData: toArrayBuffer(additionalData),
         tagLength: AES_GCM_TAG_BITS,
       },
       key,
-      ciphertext,
+      toArrayBuffer(ciphertext),
     )
 
     return decoder.decode(plaintext)
