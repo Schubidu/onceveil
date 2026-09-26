@@ -108,8 +108,8 @@ class AsyncAtomicInMemorySecretRepository implements SecretRepository {
   }
 }
 
-function record(id: SecretId, ciphertext = new Uint8Array([7, 8, 9])): PreparedSecretRecord {
-  const prepared = prepareSecretRecord(id, ciphertext, 100, 900)
+function record(ciphertext = new Uint8Array([7, 8, 9])): PreparedSecretRecord {
+  const prepared = prepareSecretRecord(ciphertext, 100, 900)
 
   if (!prepared.ok) {
     throw new Error(`failed to prepare test secret: ${prepared.reason}`)
@@ -121,15 +121,16 @@ function record(id: SecretId, ciphertext = new Uint8Array([7, 8, 9])): PreparedS
 describe('SecretRepository atomic transition contract', () => {
   it('inserts each identifier only once and never overwrites an existing record', async () => {
     const repository = new AsyncAtomicInMemorySecretRepository()
-    const id = 'duplicate-create-id' as SecretId
-
-    const original = record(id)
-    const replacement = record(id, new Uint8Array([9, 9, 9]))
+    const original = record()
+    const replacement = {
+      ...original,
+      ciphertext: new Uint8Array([9, 9, 9]),
+    } as PreparedSecretRecord
 
     expect(await repository.create(original)).toEqual({ kind: 'created' })
     expect(await repository.create(replacement)).toEqual({ kind: 'duplicate' })
 
-    const consumed = await repository.consume(id, 500)
+    const consumed = await repository.consume(original.id, 500)
     expect(consumed.kind).toBe('revealed')
 
     if (consumed.kind === 'revealed') {
@@ -139,12 +140,12 @@ describe('SecretRepository atomic transition contract', () => {
 
   it('allows only one concurrent create for the same identifier', async () => {
     const repository = new AsyncAtomicInMemorySecretRepository()
-    const id = 'concurrent-create-id' as SecretId
+    const secret = record()
 
     const results = await Promise.all([
-      repository.create(record(id)),
-      repository.create(record(id)),
-      repository.create(record(id)),
+      repository.create(secret),
+      repository.create(secret),
+      repository.create(secret),
     ])
 
     expect(results.filter((result) => result.kind === 'created')).toHaveLength(1)
@@ -153,8 +154,9 @@ describe('SecretRepository atomic transition contract', () => {
 
   it('allows only one winner when consume calls interleave asynchronously', async () => {
     const repository = new AsyncAtomicInMemorySecretRepository()
-    const id = 'consume-race-id' as SecretId
-    await repository.create(record(id))
+    const secret = record()
+    const id = secret.id
+    await repository.create(secret)
 
     const results = await Promise.all([
       repository.consume(id, 500),
@@ -173,8 +175,9 @@ describe('SecretRepository atomic transition contract', () => {
 
   it('allows consume or revoke to win, but never both', async () => {
     const repository = new AsyncAtomicInMemorySecretRepository()
-    const id = 'consume-revoke-race-id' as SecretId
-    await repository.create(record(id))
+    const secret = record()
+    const id = secret.id
+    await repository.create(secret)
 
     const [consume, revoke] = await Promise.all([
       repository.consume(id, 500),
@@ -196,9 +199,10 @@ describe('SecretRepository atomic transition contract', () => {
 
   it('fails closed when persisted temporal data is malformed', async () => {
     const repository = new AsyncAtomicInMemorySecretRepository()
-    const id = 'malformed-time-id' as SecretId
+    const secret = record()
+    const id = secret.id
     const malformed = {
-      ...record(id),
+      ...secret,
       expiresAtMs: Number.NaN,
     } as PreparedSecretRecord
 
@@ -210,10 +214,28 @@ describe('SecretRepository atomic transition contract', () => {
     expect((await repository.getStatus(id, 500))?.state).toBe('EXPIRED')
   })
 
+  it('fails closed for an unknown persisted lifecycle state', async () => {
+    const repository = new AsyncAtomicInMemorySecretRepository()
+    const secret = record()
+    const id = secret.id
+    const malformed = {
+      ...secret,
+      state: 'UNKNOWN',
+    } as unknown as PreparedSecretRecord
+
+    expect(await repository.create(malformed)).toEqual({ kind: 'created' })
+    expect(await repository.consume(id, 500)).toEqual({
+      kind: 'unavailable',
+      state: 'EXPIRED',
+    })
+    expect((await repository.getStatus(id, 500))?.state).toBe('EXPIRED')
+  })
+
   it('never exposes ciphertext through status or revoke operations', async () => {
     const repository = new AsyncAtomicInMemorySecretRepository()
-    const id = 'metadata-test-id' as SecretId
-    await repository.create(record(id))
+    const secret = record()
+    const id = secret.id
+    await repository.create(secret)
 
     const status = await repository.getStatus(id, 500)
     expect(status?.state).toBe('AVAILABLE')
