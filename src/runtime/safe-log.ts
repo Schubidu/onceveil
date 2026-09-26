@@ -41,8 +41,8 @@ export function logRuntimeError(
   fields: Record<string, unknown> = {},
 ): void {
   console.error(event, {
-    name: error instanceof Error ? error.name : 'UnknownError',
     ...safeLogFields(fields),
+    name: error instanceof Error ? error.name : 'UnknownError',
   })
 }
 
