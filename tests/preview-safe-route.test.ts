@@ -28,8 +28,8 @@ describe('preview-safe share landing route', () => {
     } as never)
 
     expect(response).toBeInstanceOf(Response)
-    expect(response?.status).toBe(200)
-    expect(await response?.text()).toBe('')
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('')
   })
 
   it('reveals only from the explicit browser action', async () => {
