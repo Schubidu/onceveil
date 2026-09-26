@@ -9,7 +9,6 @@ import {
 } from '../browser/secret-crypto'
 import {
   discardRevealVerificationFragment,
-  publishRevealVerificationMessage,
   requestRevealProof,
   revealVerificationId,
 } from '../browser/reveal-verification'
@@ -179,16 +178,16 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
 
   useEffect(() => {
     let active = true
+    let started = false
     let script: HTMLScriptElement | undefined
+    const broadcast = new BroadcastChannel(`onceveil-reveal-${verificationId}`)
 
     function failVerification(message: string) {
       if (!active) {
         return
       }
 
-      publishRevealVerificationMessage(verificationId, {
-        type: 'onceveil-reveal-proof-error',
-      })
+      broadcast.postMessage({ type: 'onceveil-reveal-proof-error' })
       setError(message)
     }
 
@@ -211,9 +210,7 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
           throw new Error('Verification could not be completed')
         }
 
-        publishRevealVerificationMessage(verificationId, {
-          type: 'onceveil-reveal-verified',
-        })
+        broadcast.postMessage({ type: 'onceveil-reveal-verified' })
         setStatus('Verified. Returning to the secret…')
         window.close()
       } catch {
@@ -267,11 +264,29 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
       }
     }
 
-    void start()
+    broadcast.onmessage = (event: MessageEvent<unknown>) => {
+      const message = event.data
+      if (typeof message !== 'object' || message === null || !('type' in message)) {
+        return
+      }
+
+      if ((message as { type?: unknown }).type === 'onceveil-reveal-prepared' && !started) {
+        started = true
+        void start()
+        return
+      }
+
+      if ((message as { type?: unknown }).type === 'onceveil-reveal-proof-error') {
+        setError('Verification could not be prepared. Close this window and try again.')
+      }
+    }
+
+    broadcast.postMessage({ type: 'onceveil-reveal-verification-ready' })
 
     return () => {
       active = false
       script?.remove()
+      broadcast.close()
     }
   }, [id, verificationId])
 
