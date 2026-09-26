@@ -21,12 +21,11 @@
     "db:migrate:production": "wrangler d1 migrations apply onceveil-production --remote",
     "db:migrate:preview": "wrangler d1 migrations apply onceveil-preview --remote --config wrangler.preview-migrations.jsonc",
     "deploy:production": "npm run db:migrate:production && npm run db:mark:production && npm run db:verify:production && wrangler deploy",
-    "deploy:preview": "npm run db:migrate:preview && npm run db:mark:preview && npm run db:verify:preview && npm run build:preview && wrangler preview --ignore-base-config",
+    "deploy:preview": "npm run db:migrate:preview && npm run db:mark:preview && npm run db:verify:preview && wrangler preview --ignore-base-config",
     "db:verify:production": "wrangler d1 execute onceveil-production --remote --command \"SELECT environment FROM onceveil_environment WHERE id = 1 AND environment = 'production'; SELECT 1 FROM secrets LIMIT 0\"",
     "db:verify:preview": "wrangler d1 execute onceveil-preview --remote --config wrangler.preview-migrations.jsonc --command \"SELECT environment FROM onceveil_environment WHERE id = 1 AND environment = 'preview'; SELECT 1 FROM secrets LIMIT 0\"",
     "db:mark:production": "wrangler d1 execute onceveil-production --remote --command \"INSERT INTO onceveil_environment (id, environment) VALUES (1, 'production') ON CONFLICT(id) DO UPDATE SET environment = excluded.environment\"",
-    "db:mark:preview": "wrangler d1 execute onceveil-preview --remote --config wrangler.preview-migrations.jsonc --command \"INSERT INTO onceveil_environment (id, environment) VALUES (1, 'preview') ON CONFLICT(id) DO UPDATE SET environment = excluded.environment\"",
-    "build:preview": "CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH=wrangler.preview.jsonc vite build"
+    "db:mark:preview": "wrangler d1 execute onceveil-preview --remote --config wrangler.preview-migrations.jsonc --command \"INSERT INTO onceveil_environment (id, environment) VALUES (1, 'preview') ON CONFLICT(id) DO UPDATE SET environment = excluded.environment\""
   },
   "dependencies": {
     "@tanstack/react-router": "1.170.39",
