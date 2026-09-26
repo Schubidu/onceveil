@@ -170,6 +170,129 @@ describe('D1 one-time HTTP flow', () => {
     await expect(decryptSecret(payload, encrypted.fragment)).resolves.toBe(plaintext)
   })
 
+  it('strips untrusted extra payload fields before persistence', async () => {
+    const encrypted = await encryptSecret('allowlisted payload')
+    const maliciousPayload = {
+      ...encrypted.payload,
+      key: encrypted.fragment,
+      fragment: encrypted.fragment,
+    }
+
+    const create = await createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload: maliciousPayload }),
+      }),
+      repository,
+      1_000,
+    )
+
+    expect(create.status).toBe(201)
+
+    const row = d1.database
+      .prepare('SELECT ciphertext FROM secrets WHERE id = ?')
+      .get(encrypted.payload.id) as { ciphertext: Uint8Array }
+    const stored = new TextDecoder().decode(row.ciphertext)
+
+    expect(stored).not.toContain(encrypted.fragment)
+    expect(stored).not.toContain('"key"')
+    expect(stored).not.toContain('"fragment"')
+  })
+
+  it.each([
+    { nonce: 'x', ciphertext: 'AAAAAAAAAAAAAAAAAAAAAA' },
+    { nonce: 'AAAAAAAAAAAAAAAA', ciphertext: 'y' },
+  ])('rejects malformed encrypted payload sizes before persistence', async (override) => {
+    const encrypted = await encryptSecret('validation')
+    const payload = {
+      ...encrypted.payload,
+      ...override,
+    }
+
+    const create = await createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload }),
+      }),
+      repository,
+      1_000,
+    )
+
+    expect(create.status).toBe(400)
+    const count = d1.database.prepare('SELECT COUNT(*) AS count FROM secrets').get() as {
+      count: number
+    }
+    expect(count.count).toBe(0)
+  })
+
+  it('normalizes ArrayBuffer ciphertext returned by the D1 adapter', async () => {
+    const encrypted = await encryptSecret('array buffer blob')
+    const encoded = new TextEncoder().encode(JSON.stringify(encrypted.payload))
+
+    const database: D1DatabaseLike = {
+      prepare() {
+        throw new Error('not used')
+      },
+      withSession() {
+        const session = {
+          prepare(query: string) {
+            return {
+              bind() {
+                return this
+              },
+              async run<Row = Record<string, unknown>>() {
+                return { success: true, results: [] as Row[] }
+              },
+              async first<Row = Record<string, unknown>>() {
+                return {
+                  id: encrypted.payload.id,
+                  created_at_ms: 1_000,
+                  expires_at_ms: 2_000,
+                  state: 'CONSUMED',
+                } as Row
+              },
+            }
+          },
+          async batch() {
+            return [
+              { success: true, results: [] },
+              { success: true, results: [] },
+              {
+                success: true,
+                results: [
+                  {
+                    id: encrypted.payload.id,
+                    ciphertext: encoded.buffer.slice(0),
+                    created_at_ms: 1_000,
+                    expires_at_ms: 2_000,
+                    state: 'CONSUMED',
+                  },
+                ],
+              },
+              { success: true, results: [] },
+            ]
+          },
+        }
+
+        return session
+      },
+      async batch() {
+        return []
+      },
+    }
+
+    const arrayBufferRepository = new D1SecretRepository(database)
+    const result = await arrayBufferRepository.consume(encrypted.payload.id, 1_001)
+
+    expect(result.kind).toBe('revealed')
+    if (result.kind === 'revealed') {
+      const payload: unknown = JSON.parse(new TextDecoder().decode(result.ciphertext))
+      await expect(decryptSecret(payload, encrypted.fragment)).resolves.toBe('array buffer blob')
+    }
+  })
+
   it('expires before reveal and never returns ciphertext', async () => {
     const encrypted = await encryptSecret('short lived')
     const create = await createSecretResponse(
