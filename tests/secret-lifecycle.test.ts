@@ -130,4 +130,27 @@ describe('secret creation policy', () => {
       }),
     ).toEqual({ ok: false, reason: 'INVALID_POLICY' })
   })
+
+  it.each([
+    {
+      defaultTtlMs: DEFAULT_SECRET_POLICY.defaultTtlMs + 1,
+      maxTtlMs: DEFAULT_SECRET_POLICY.maxTtlMs,
+      maxPayloadBytes: DEFAULT_SECRET_POLICY.maxPayloadBytes,
+    },
+    {
+      defaultTtlMs: DEFAULT_SECRET_POLICY.defaultTtlMs,
+      maxTtlMs: DEFAULT_SECRET_POLICY.maxTtlMs + 1,
+      maxPayloadBytes: DEFAULT_SECRET_POLICY.maxPayloadBytes,
+    },
+    {
+      defaultTtlMs: DEFAULT_SECRET_POLICY.defaultTtlMs,
+      maxTtlMs: DEFAULT_SECRET_POLICY.maxTtlMs,
+      maxPayloadBytes: DEFAULT_SECRET_POLICY.maxPayloadBytes + 1,
+    },
+  ])('rejects policy limits above the safety envelope', (policy) => {
+    expect(validateCreateSecret(1, undefined, policy)).toEqual({
+      ok: false,
+      reason: 'INVALID_POLICY',
+    })
+  })
 })
