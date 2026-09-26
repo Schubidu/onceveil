@@ -38,6 +38,8 @@ function Home() {
             error?: unknown
             stage?: unknown
             detail?: unknown
+            expected?: unknown
+            actual?: unknown
           }
           if (typeof body.error === 'string') {
             code = body.error
@@ -47,6 +49,12 @@ function Home() {
           }
           if (typeof body.detail === 'string') {
             code += ` detail=${body.detail}`
+          }
+          if (typeof body.expected === 'string') {
+            code += ` expected=${body.expected}`
+          }
+          if (typeof body.actual === 'string') {
+            code += ` actual=${body.actual}`
           }
         } catch {
           // Keep the generic code when the response is not JSON.
