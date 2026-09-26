@@ -106,7 +106,10 @@ export function validateCreateSecret(
     policy.defaultTtlMs <= 0 ||
     policy.maxTtlMs <= 0 ||
     policy.maxPayloadBytes <= 0 ||
-    policy.defaultTtlMs > policy.maxTtlMs
+    policy.defaultTtlMs > policy.maxTtlMs ||
+    policy.defaultTtlMs > DEFAULT_SECRET_POLICY.defaultTtlMs ||
+    policy.maxTtlMs > DEFAULT_SECRET_POLICY.maxTtlMs ||
+    policy.maxPayloadBytes > DEFAULT_SECRET_POLICY.maxPayloadBytes
   ) {
     return { ok: false, reason: 'INVALID_POLICY' }
   }
