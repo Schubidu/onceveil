@@ -75,8 +75,13 @@ export async function checkSecretDatabaseReadiness(
     const secretsTable = await database
       .prepare("SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'secrets'")
       .first<PresentRow>()
+    const revealProofsTable = await database
+      .prepare(
+        "SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'reveal_proofs'",
+      )
+      .first<PresentRow>()
 
-    if (!environmentTable || !secretsTable) {
+    if (!environmentTable || !secretsTable || !revealProofsTable) {
       return { status: 'not_ready', database: 'migration_required' }
     }
 
@@ -93,11 +98,20 @@ export async function checkSecretDatabaseReadiness(
       }
     }
 
-    await database
-      .prepare(
-        'SELECT id, ciphertext, created_at_ms, expires_at_ms, state, consumed_at_ms, revoked_at_ms, consume_token, replay_key FROM secrets LIMIT 0',
-      )
-      .first()
+    try {
+      await database
+        .prepare(
+          'SELECT id, ciphertext, created_at_ms, expires_at_ms, state, consumed_at_ms, revoked_at_ms, consume_token, replay_key FROM secrets LIMIT 0',
+        )
+        .first()
+      await database
+        .prepare(
+          'SELECT proof_hash, verification_id, secret_id, issued_at_ms, expires_at_ms, verified_at_ms, consumed_at_ms FROM reveal_proofs LIMIT 0',
+        )
+        .first()
+    } catch {
+      return { status: 'not_ready', database: 'migration_required' }
+    }
 
     return {
       status: 'ready',

@@ -1,6 +1,6 @@
 # Onceveil threat model
 
-This document defines the security guarantees and explicit non-guarantees for the current Onceveil foundations. Persistence adapters, recipient authentication, reveal protection, and MCP integration remain separate implementation slices.
+This document defines the security guarantees and explicit non-guarantees for the current Onceveil foundations. Recipient authentication, portable deployment, and MCP integration remain separate implementation slices.
 
 ## Security invariants
 
@@ -44,7 +44,9 @@ A read followed by a separate write is insufficient because two callers could bo
 
 Possession of a complete anonymous share URL is possession of the reveal capability.
 
-The v1 URL format is `/s/:id#v1.<base64url-key>`. The server allocates the public `:id` with 128 bits of cryptographic randomness when the encrypted payload is stored. The browser independently generates a 256-bit AES-GCM key, a 96-bit nonce, and a 128-bit random crypto context identifier before encryption. The decryption key exists only in the URL fragment, so ordinary HTTP requests and passive link previews do not send it to the server. After the reveal page copies the fragment into page memory, it replaces the current history entry with the fragment-free path immediately.
+The protected share-fragment format is `/s/:id#v2.<base64url-key>.<reveal-authorization>`. The encrypted payload protocol remains `v1`; fragment versioning is independent so the Turnstile security boundary does not silently redefine the existing crypto envelope. The server allocates the public `:id` with 128 bits of cryptographic randomness when the encrypted payload is stored. The browser independently generates a 256-bit AES-GCM key, a 96-bit nonce, and a 128-bit random crypto context identifier before encryption. The reveal authorization is the SHA-256 replay key of the canonical encrypted payload; the server already persists the same value for idempotent create handling. Both values travel in the URL fragment, so ordinary HTTP requests and passive link previews send neither to the server. After the reveal page copies the fragment into page memory, it replaces the current history entry with the fragment-free path immediately. Only the reveal authorization, never the AES key, is later sent back to authorize preparation of the Turnstile proof.
+
+Legacy `/s/:id#v1.<base64url-key>` fragments are recognized as the previous format but cannot satisfy the new proof-preparation boundary because they contain no server-verifiable authorization. Onceveil does not fall back to unprotected reveal and never sends the AES key to the server. Migration `0006_expire_legacy_share_links.sql` therefore makes the security upgrade explicit: it first rejects any new insert without a replay key, then moves still-`AVAILABLE` legacy rows to terminal `EXPIRED` state. This keeps the migration fail-closed even if the previous Worker is still serving briefly during deployment, without adding a separate rollout protocol.
 
 AES-GCM authenticates the ciphertext and associated data `onceveil:v1:<contextId>`. The crypto context identifier is carried inside the encrypted payload envelope and is distinct from the server-issued public reveal identifier. A modified ciphertext, crypto context identifier, version, nonce, or wrong key must fail authentication. This does **not** authenticate a person.
 
@@ -72,11 +74,23 @@ Deployments may configure stricter limits. Invalid configuration or malformed pe
 
 ## D1 persistence and reveal
 
-The server stores only the encoded encrypted payload plus lifecycle timestamps/state. The URL fragment key is never part of the D1 schema or create request body.
+The server stores the encoded encrypted payload, lifecycle metadata, and the SHA-256 replay key used for idempotent create handling and reveal-proof preparation. The URL fragment's AES key is never part of the D1 schema or any request body.
 
 Reveal is a mutating POST operation. D1 performs expiry and the conditional `AVAILABLE → CONSUMED` transition in one batch transaction. A random per-request consume token gates the ciphertext SELECT inside that transaction, so concurrent losing requests cannot read the winner's ciphertext. The token is cleared before the transaction completes.
 
 GET/HEAD rendering of `/s/:id` does not access the repository and cannot consume a secret. Secret surfaces are served with `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, and `X-Content-Type-Options: nosniff`.
+
+## Reveal protection
+
+Cloudflare deployments require a provider-neutral reveal proof before the existing one-time consume may run.
+
+Turnstile executes only in a separate, fragment-free browsing context opened synchronously from the recipient action with `noopener`/`noreferrer`. The browsing context holding the decryption key never loads Turnstile JavaScript. The isolated window first signals readiness over a random public verification channel but does not load Turnstile yet. The key-holding page then presents the fragment-only reveal authorization and that verification identifier to prepare a random opaque proof. The server accepts preparation only when the authorization matches the stored replay key of the still-`AVAILABLE` secret and returns the proof only to the key-holding page. After the parent signals that preparation succeeded, the isolated window loads Turnstile. It receives neither the reveal authorization nor the proof; channel messages carry readiness/success/failure state and never a bearer capability.
+
+The server validates Turnstile through Siteverify and requires the expected action, exact hostname, and secret-bound `cData`. A prepared proof remains unusable until the matching verification identifier is successfully completed. D1 stores only the proof's SHA-256 hash, the verification identifier, verification state, intended secret identifier, and one-time consumption state. Pending verification expires after five minutes; after successful verification the proof expires after 60 seconds. At most three active pending proofs may exist for one secret, and the insert enforces that bound atomically so parallel preparation requests cannot amplify proof storage.
+
+Invalid, missing, expired, replayed, or differently bound proofs cannot reach the secret consume. Provider outage, missing configuration, or proof-storage failure also fails closed and leaves the secret `AVAILABLE`. Onceveil does not treat Turnstile as recipient authentication or cryptographic proof of humanity.
+
+Proof consumption and secret consumption are intentionally sequential rather than a cross-table lease protocol. A proof may therefore be spent by an infrastructure failure immediately before secret consume; the secret remains available and the recipient must verify again.
 
 ## Threats covered
 

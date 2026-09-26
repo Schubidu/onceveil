@@ -1,6 +1,8 @@
 import { isValidSecretId, type SecretId } from './secret'
 
 export const SHARE_PROTOCOL_VERSION = 'v1' as const
+export const SHARE_FRAGMENT_VERSION = 'v2' as const
+export const LEGACY_SHARE_FRAGMENT_VERSION = 'v1' as const
 export const SHARE_AAD_PREFIX = 'onceveil'
 
 const AES_GCM_NONCE_BYTES = 12
@@ -89,6 +91,14 @@ export function encodeEncryptedSecretPayload(payload: EncryptedSecretPayload): U
   }
 
   return new TextEncoder().encode(JSON.stringify(canonical))
+}
+
+export async function encryptedPayloadReplayKey(payload: EncryptedSecretPayload): Promise<string> {
+  const encoded = encodeEncryptedSecretPayload(payload)
+  const bytes = new Uint8Array(encoded.byteLength)
+  bytes.set(encoded)
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes.buffer))
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 export function decodeEncryptedSecretPayload(
