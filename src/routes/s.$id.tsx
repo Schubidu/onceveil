@@ -86,6 +86,7 @@ function SecretReveal({ id }: { id: SecretId }) {
   const [capabilityReady, setCapabilityReady] = useState(false)
   const [revealing, setRevealing] = useState(false)
   const [plaintext, setPlaintext] = useState<string>()
+  const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string>()
 
   useEffect(() => {
@@ -134,6 +135,21 @@ function SecretReveal({ id }: { id: SecretId }) {
     }
   }
 
+  async function copyPlaintext() {
+    if (plaintext === undefined) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(plaintext)
+      setCopied(true)
+      setError(undefined)
+    } catch {
+      setCopied(false)
+      setError('The secret could not be copied.')
+    }
+  }
+
   return (
     <main className="shell">
       <section className="card" aria-labelledby="secret-title">
@@ -141,7 +157,17 @@ function SecretReveal({ id }: { id: SecretId }) {
         <h1 id="secret-title">Onceveil</h1>
 
         {plaintext !== undefined ? (
-          <pre className="secret-value">{plaintext}</pre>
+          <div className="secret-result">
+            <pre className="secret-value">{plaintext}</pre>
+            <button
+              className="copy-secret-button"
+              type="button"
+              onClick={() => void copyPlaintext()}
+              aria-label="Copy revealed secret to clipboard"
+            >
+              {copied ? 'Copied' : 'Copy secret'}
+            </button>
+          </div>
         ) : (
           <>
             <p className="status">

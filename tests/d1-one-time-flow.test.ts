@@ -39,6 +39,7 @@ function sqliteValue(value: D1BindingValue) {
 }
 
 const PUBLIC_ID = 'f'.repeat(32) as SecretId
+const OWNER_KEY_HASH = 'a'.repeat(64)
 const allocatePublicId = () => PUBLIC_ID
 
 class SQLitePreparedStatement implements D1PreparedStatementLike {
@@ -151,10 +152,15 @@ describe('D1 one-time HTTP flow', () => {
       path.resolve('migrations/0006_expire_legacy_share_links.sql'),
       'utf8',
     )
+    const ownerCapabilityMigration = await readFile(
+      path.resolve('migrations/0007_owner_capability.sql'),
+      'utf8',
+    )
     d1.database.exec(replayMigration)
     d1.database.exec(proofMigration)
     d1.database.exec(proofHandoffMigration)
     d1.database.exec(legacyShareMigration)
+    d1.database.exec(ownerCapabilityMigration)
     repository = new D1SecretRepository(d1)
     proofRepository = new D1RevealProofRepository(d1)
     verificationSequence = 0
@@ -200,7 +206,7 @@ describe('D1 one-time HTTP flow', () => {
       new Request('https://onceveil.test/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: encrypted.payload }),
+        body: JSON.stringify({ payload: encrypted.payload, ownerKeyHash: OWNER_KEY_HASH }),
       }),
       repository,
       nowMs,
@@ -238,7 +244,7 @@ describe('D1 one-time HTTP flow', () => {
       new Request('https://onceveil.test/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: encrypted.payload }),
+        body: JSON.stringify({ payload: encrypted.payload, ownerKeyHash: OWNER_KEY_HASH }),
       }),
       failingRepository,
       1_000,
@@ -259,7 +265,7 @@ describe('D1 one-time HTTP flow', () => {
       new Request('https://onceveil.test/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: encrypted.payload }),
+        body: JSON.stringify({ payload: encrypted.payload, ownerKeyHash: OWNER_KEY_HASH }),
       }),
       repository,
       1_000,
@@ -302,7 +308,7 @@ describe('D1 one-time HTTP flow', () => {
       new Request('https://onceveil.test/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: encrypted.payload }),
+        body: JSON.stringify({ payload: encrypted.payload, ownerKeyHash: OWNER_KEY_HASH }),
       }),
       repository,
       1_000,
@@ -319,7 +325,7 @@ describe('D1 one-time HTTP flow', () => {
 
   it('returns the original public identifier when the same encrypted create is replayed', async () => {
     const encrypted = await encryptSecret('retry safe')
-    const body = JSON.stringify({ payload: encrypted.payload })
+    const body = JSON.stringify({ payload: encrypted.payload, ownerKeyHash: OWNER_KEY_HASH })
     const secondId = 'e'.repeat(32) as SecretId
     const ids = [PUBLIC_ID, secondId]
     let nextId = 0
@@ -357,8 +363,16 @@ describe('D1 one-time HTTP flow', () => {
 
   it('rejects a replay that changes the TTL without creating another row', async () => {
     const encrypted = await encryptSecret('retry ttl conflict')
-    const firstBody = JSON.stringify({ payload: encrypted.payload, ttlMs: 100 })
-    const replayBody = JSON.stringify({ payload: encrypted.payload, ttlMs: 200 })
+    const firstBody = JSON.stringify({
+      payload: encrypted.payload,
+      ownerKeyHash: OWNER_KEY_HASH,
+      ttlMs: 100,
+    })
+    const replayBody = JSON.stringify({
+      payload: encrypted.payload,
+      ownerKeyHash: OWNER_KEY_HASH,
+      ttlMs: 200,
+    })
     const secondId = 'e'.repeat(32) as SecretId
     const ids = [PUBLIC_ID, secondId]
     let nextId = 0
@@ -401,7 +415,11 @@ describe('D1 one-time HTTP flow', () => {
       new Request('https://onceveil.test/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: encrypted.payload, ttlMs: null }),
+        body: JSON.stringify({
+          payload: encrypted.payload,
+          ownerKeyHash: OWNER_KEY_HASH,
+          ttlMs: null,
+        }),
       }),
       repository,
       1_000,
@@ -474,7 +492,7 @@ describe('D1 one-time HTTP flow', () => {
       new Request('https://onceveil.test/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: maliciousPayload }),
+        body: JSON.stringify({ payload: maliciousPayload, ownerKeyHash: OWNER_KEY_HASH }),
       }),
       repository,
       1_000,
@@ -593,7 +611,7 @@ describe('D1 one-time HTTP flow', () => {
       new Request('https://onceveil.test/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: encrypted.payload }),
+        body: JSON.stringify({ payload: encrypted.payload, ownerKeyHash: OWNER_KEY_HASH }),
       }),
       repository,
       1_000,
@@ -712,7 +730,7 @@ describe('D1 one-time HTTP flow', () => {
       new Request('https://onceveil.test/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: encrypted.payload }),
+        body: JSON.stringify({ payload: encrypted.payload, ownerKeyHash: OWNER_KEY_HASH }),
       }),
       repository,
       1_000,
@@ -731,7 +749,7 @@ describe('D1 one-time HTTP flow', () => {
       1_001,
     )
     expect(invalid.status).toBe(403)
-    await expect(repository.getStatus(PUBLIC_ID, 1_001)).resolves.toMatchObject({
+    await expect(repository.getStatus(PUBLIC_ID, OWNER_KEY_HASH, 1_001)).resolves.toMatchObject({
       state: 'AVAILABLE',
     })
 
@@ -815,7 +833,7 @@ describe('D1 one-time HTTP flow', () => {
       new Request('https://onceveil.test/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: encrypted.payload }),
+        body: JSON.stringify({ payload: encrypted.payload, ownerKeyHash: OWNER_KEY_HASH }),
       }),
       repository,
       1_000,
@@ -873,7 +891,7 @@ describe('D1 one-time HTTP flow', () => {
     )
     expect(boundResponse.status).toBe(403)
 
-    await expect(repository.getStatus(PUBLIC_ID, 3_002)).resolves.toMatchObject({
+    await expect(repository.getStatus(PUBLIC_ID, OWNER_KEY_HASH, 3_002)).resolves.toMatchObject({
       state: 'AVAILABLE',
     })
   })
@@ -884,7 +902,7 @@ describe('D1 one-time HTTP flow', () => {
       new Request('https://onceveil.test/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: encrypted.payload }),
+        body: JSON.stringify({ payload: encrypted.payload, ownerKeyHash: OWNER_KEY_HASH }),
       }),
       repository,
       1_000,
@@ -910,8 +928,28 @@ describe('D1 one-time HTTP flow', () => {
 
     expect(verification.status).toBe(503)
     await expect(proofRepository.consume(PUBLIC_ID, prepared.value, 1_003)).resolves.toBe(false)
-    await expect(repository.getStatus(PUBLIC_ID, 1_003)).resolves.toMatchObject({
+    await expect(repository.getStatus(PUBLIC_ID, OWNER_KEY_HASH, 1_003)).resolves.toMatchObject({
       state: 'AVAILABLE',
+    })
+  })
+
+  it('requires the matching owner hash for status and revoke', async () => {
+    await storeTestSecret('owner protected')
+
+    await expect(repository.getStatus(PUBLIC_ID, 'b'.repeat(64), 1_001)).resolves.toBeUndefined()
+    await expect(repository.revoke(PUBLIC_ID, 'b'.repeat(64), 1_001)).resolves.toEqual({
+      kind: 'not_found',
+    })
+
+    await expect(repository.getStatus(PUBLIC_ID, OWNER_KEY_HASH, 1_001)).resolves.toMatchObject({
+      state: 'AVAILABLE',
+    })
+    await expect(repository.revoke(PUBLIC_ID, OWNER_KEY_HASH, 1_001)).resolves.toMatchObject({
+      kind: 'revoked',
+    })
+    await expect(repository.consume(PUBLIC_ID, 1_002)).resolves.toEqual({
+      kind: 'unavailable',
+      state: 'REVOKED',
     })
   })
 
@@ -921,7 +959,11 @@ describe('D1 one-time HTTP flow', () => {
       new Request('https://onceveil.test/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: encrypted.payload, ttlMs: 10 }),
+        body: JSON.stringify({
+          payload: encrypted.payload,
+          ownerKeyHash: OWNER_KEY_HASH,
+          ttlMs: 10,
+        }),
       }),
       repository,
       1_000,
@@ -940,7 +982,7 @@ describe('D1 one-time HTTP flow', () => {
       new Request('https://onceveil.test/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: encrypted.payload }),
+        body: JSON.stringify({ payload: encrypted.payload, ownerKeyHash: OWNER_KEY_HASH }),
       }),
       repository,
       1_000,

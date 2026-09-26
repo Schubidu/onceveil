@@ -16,19 +16,33 @@ import {
   type SecretRepository,
 } from '../src/core/secret'
 
+const OWNER_KEY_HASH = 'a'.repeat(64)
+
 class AsyncAtomicInMemorySecretRepository implements SecretRepository {
   private readonly records = new Map<SecretId, SecretRecord>()
-  private readonly replays = new Map<string, { id: SecretId; ttlMs: number }>()
+  private readonly owners = new Map<SecretId, string>()
+  private readonly replays = new Map<
+    string,
+    { id: SecretId; ttlMs: number; ownerKeyHash: string }
+  >()
   private readonly queues = new Map<string, Promise<void>>()
 
-  async create(record: PreparedSecretRecord, replayKey: string): Promise<CreateResult> {
+  async create(
+    record: PreparedSecretRecord,
+    replayKey: string,
+    ownerKeyHash: string,
+  ): Promise<CreateResult> {
     return this.withLock(`create:${replayKey}`, async () => {
       await Promise.resolve()
 
       const replay = this.replays.get(replayKey)
       if (replay) {
         const ttlMs = record.expiresAtMs - record.createdAtMs
-        if (!Number.isSafeInteger(ttlMs) || replay.ttlMs !== ttlMs) {
+        if (
+          !Number.isSafeInteger(ttlMs) ||
+          replay.ttlMs !== ttlMs ||
+          replay.ownerKeyHash !== ownerKeyHash
+        ) {
           return { kind: 'replay_conflict' }
         }
 
@@ -40,9 +54,11 @@ class AsyncAtomicInMemorySecretRepository implements SecretRepository {
       }
 
       this.records.set(record.id, record)
+      this.owners.set(record.id, ownerKeyHash)
       this.replays.set(replayKey, {
         id: record.id,
         ttlMs: record.expiresAtMs - record.createdAtMs,
+        ownerKeyHash,
       })
       return { kind: 'created', id: record.id }
     })
@@ -61,7 +77,15 @@ class AsyncAtomicInMemorySecretRepository implements SecretRepository {
     return result ?? { kind: 'not_found' }
   }
 
-  async revoke(id: SecretId, nowMs: number): Promise<RevokeResult | { kind: 'not_found' }> {
+  async revoke(
+    id: SecretId,
+    ownerKeyHash: string,
+    nowMs: number,
+  ): Promise<RevokeResult | { kind: 'not_found' }> {
+    if (this.owners.get(id) !== ownerKeyHash) {
+      return { kind: 'not_found' }
+    }
+
     const result = await this.mutate(id, async (record) => {
       await Promise.resolve()
       const decision = revokeSecret(record, nowMs)
@@ -74,7 +98,11 @@ class AsyncAtomicInMemorySecretRepository implements SecretRepository {
     return result ?? { kind: 'not_found' }
   }
 
-  async getStatus(id: SecretId, nowMs: number) {
+  async getStatus(id: SecretId, ownerKeyHash: string, nowMs: number) {
+    if (this.owners.get(id) !== ownerKeyHash) {
+      return undefined
+    }
+
     return this.mutate(id, async (record) => {
       await Promise.resolve()
       const nextState = effectiveState(record, nowMs)
@@ -143,11 +171,11 @@ describe('SecretRepository atomic transition contract', () => {
       ciphertext: new Uint8Array([9, 9, 9]),
     } as PreparedSecretRecord
 
-    expect(await repository.create(original, 'replay-original')).toEqual({
+    expect(await repository.create(original, 'replay-original', OWNER_KEY_HASH)).toEqual({
       kind: 'created',
       id: original.id,
     })
-    expect(await repository.create(replacement, 'replay-replacement')).toEqual({
+    expect(await repository.create(replacement, 'replay-replacement', OWNER_KEY_HASH)).toEqual({
       kind: 'duplicate_id',
     })
 
@@ -164,9 +192,9 @@ describe('SecretRepository atomic transition contract', () => {
     const secret = record()
 
     const results = await Promise.all([
-      repository.create(secret, 'replay-secret'),
-      repository.create(secret, 'replay-secret'),
-      repository.create(secret, 'replay-secret'),
+      repository.create(secret, 'replay-secret', OWNER_KEY_HASH),
+      repository.create(secret, 'replay-secret', OWNER_KEY_HASH),
+      repository.create(secret, 'replay-secret', OWNER_KEY_HASH),
     ])
 
     expect(results.filter((result) => result.kind === 'created')).toHaveLength(1)
@@ -184,11 +212,11 @@ describe('SecretRepository atomic transition contract', () => {
     const original = record()
     const replay = record()
 
-    expect(await repository.create(original, 'same-payload')).toEqual({
+    expect(await repository.create(original, 'same-payload', OWNER_KEY_HASH)).toEqual({
       kind: 'created',
       id: original.id,
     })
-    expect(await repository.create(replay, 'same-payload')).toEqual({
+    expect(await repository.create(replay, 'same-payload', OWNER_KEY_HASH)).toEqual({
       kind: 'replayed',
       id: original.id,
     })
@@ -208,11 +236,11 @@ describe('SecretRepository atomic transition contract', () => {
       throw new Error(`failed to prepare replay conflict: ${changedTtl.reason}`)
     }
 
-    expect(await repository.create(original, 'same-payload')).toEqual({
+    expect(await repository.create(original, 'same-payload', OWNER_KEY_HASH)).toEqual({
       kind: 'created',
       id: original.id,
     })
-    expect(await repository.create(changedTtl.record, 'same-payload')).toEqual({
+    expect(await repository.create(changedTtl.record, 'same-payload', OWNER_KEY_HASH)).toEqual({
       kind: 'replay_conflict',
     })
   })
@@ -221,7 +249,7 @@ describe('SecretRepository atomic transition contract', () => {
     const repository = new AsyncAtomicInMemorySecretRepository()
     const secret = record()
     const id = secret.id
-    await repository.create(secret, 'replay-secret')
+    await repository.create(secret, 'replay-secret', OWNER_KEY_HASH)
 
     const results = await Promise.all([
       repository.consume(id, 500),
@@ -235,25 +263,27 @@ describe('SecretRepository atomic transition contract', () => {
     expect(winners).toHaveLength(1)
     expect(losers).toHaveLength(2)
     expect(losers.every((result) => !('ciphertext' in result))).toBe(true)
-    expect((await repository.getStatus(id, 500))?.state).toBe('CONSUMED')
+    expect((await repository.getStatus(id, OWNER_KEY_HASH, 500))?.state).toBe('CONSUMED')
   })
 
   it('allows consume or revoke to win, but never both', async () => {
     const repository = new AsyncAtomicInMemorySecretRepository()
     const secret = record()
     const id = secret.id
-    await repository.create(secret, 'replay-secret')
+    await repository.create(secret, 'replay-secret', OWNER_KEY_HASH)
 
     const [consume, revoke] = await Promise.all([
       repository.consume(id, 500),
-      repository.revoke(id, 500),
+      repository.revoke(id, OWNER_KEY_HASH, 500),
     ])
 
     const consumeWon = consume.kind === 'revealed'
     const revokeWon = revoke.kind === 'revoked'
 
     expect(Number(consumeWon) + Number(revokeWon)).toBe(1)
-    expect((await repository.getStatus(id, 500))?.state).toBe(consumeWon ? 'CONSUMED' : 'REVOKED')
+    expect((await repository.getStatus(id, OWNER_KEY_HASH, 500))?.state).toBe(
+      consumeWon ? 'CONSUMED' : 'REVOKED',
+    )
 
     if (consumeWon) {
       expect(revoke).toEqual({ kind: 'unavailable', state: 'CONSUMED' })
@@ -271,7 +301,7 @@ describe('SecretRepository atomic transition contract', () => {
       expiresAtMs: Number.NaN,
     } as PreparedSecretRecord
 
-    expect(await repository.create(malformed, 'replay-malformed')).toEqual({
+    expect(await repository.create(malformed, 'replay-malformed', OWNER_KEY_HASH)).toEqual({
       kind: 'created',
       id: malformed.id,
     })
@@ -279,7 +309,7 @@ describe('SecretRepository atomic transition contract', () => {
       kind: 'unavailable',
       state: 'EXPIRED',
     })
-    expect((await repository.getStatus(id, 500))?.state).toBe('EXPIRED')
+    expect((await repository.getStatus(id, OWNER_KEY_HASH, 500))?.state).toBe('EXPIRED')
   })
 
   it('fails closed for an unknown persisted lifecycle state', async () => {
@@ -291,7 +321,7 @@ describe('SecretRepository atomic transition contract', () => {
       state: 'UNKNOWN',
     } as unknown as PreparedSecretRecord
 
-    expect(await repository.create(malformed, 'replay-malformed')).toEqual({
+    expect(await repository.create(malformed, 'replay-malformed', OWNER_KEY_HASH)).toEqual({
       kind: 'created',
       id: malformed.id,
     })
@@ -299,20 +329,32 @@ describe('SecretRepository atomic transition contract', () => {
       kind: 'unavailable',
       state: 'EXPIRED',
     })
-    expect((await repository.getStatus(id, 500))?.state).toBe('EXPIRED')
+    expect((await repository.getStatus(id, OWNER_KEY_HASH, 500))?.state).toBe('EXPIRED')
+  })
+
+  it('treats a wrong owner capability as not found', async () => {
+    const repository = new AsyncAtomicInMemorySecretRepository()
+    const secret = record()
+    await repository.create(secret, 'replay-secret', OWNER_KEY_HASH)
+
+    await expect(repository.getStatus(secret.id, 'b'.repeat(64), 500)).resolves.toBeUndefined()
+    await expect(repository.revoke(secret.id, 'b'.repeat(64), 500)).resolves.toEqual({
+      kind: 'not_found',
+    })
+    expect((await repository.getStatus(secret.id, OWNER_KEY_HASH, 500))?.state).toBe('AVAILABLE')
   })
 
   it('never exposes ciphertext through status or revoke operations', async () => {
     const repository = new AsyncAtomicInMemorySecretRepository()
     const secret = record()
     const id = secret.id
-    await repository.create(secret, 'replay-secret')
+    await repository.create(secret, 'replay-secret', OWNER_KEY_HASH)
 
-    const status = await repository.getStatus(id, 500)
+    const status = await repository.getStatus(id, OWNER_KEY_HASH, 500)
     expect(status?.state).toBe('AVAILABLE')
     expect(status && 'ciphertext' in status).toBe(false)
 
-    const revoked = await repository.revoke(id, 500)
+    const revoked = await repository.revoke(id, OWNER_KEY_HASH, 500)
     expect(revoked.kind).toBe('revoked')
     expect('ciphertext' in revoked).toBe(false)
   })

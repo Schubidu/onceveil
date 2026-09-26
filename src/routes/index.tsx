@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
+import { ownerPath } from '../browser/owner-capability'
 import { sharePath } from '../browser/secret-crypto'
 import {
   encryptedShareForCreate,
@@ -16,10 +17,16 @@ export const Route = createFileRoute('/')({
 function Home() {
   const [secret, setSecret] = useState('')
   const [shareUrl, setShareUrl] = useState<string>()
-  const [copied, setCopied] = useState(false)
+  const [ownerUrl, setOwnerUrl] = useState<string>()
+  const [copied, setCopied] = useState<'share' | 'owner'>()
+  const [nativeShareAvailable, setNativeShareAvailable] = useState(false)
   const [error, setError] = useState<string>()
   const [creating, setCreating] = useState(false)
   const [pendingCreate, setPendingCreate] = useState<PendingEncryptedCreate>()
+
+  useEffect(() => {
+    setNativeShareAvailable(typeof navigator.share === 'function')
+  }, [])
 
   async function createSecret() {
     if (!secret || creating) {
@@ -29,7 +36,8 @@ function Home() {
     setCreating(true)
     setError(undefined)
     setShareUrl(undefined)
-    setCopied(false)
+    setOwnerUrl(undefined)
+    setCopied(undefined)
 
     try {
       const pending = await encryptedShareForCreate(secret, pendingCreate)
@@ -38,7 +46,10 @@ function Home() {
       const response = await fetch('/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: pending.encrypted.payload }),
+        body: JSON.stringify({
+          payload: pending.encrypted.payload,
+          ownerKeyHash: pending.ownerCapabilityHash,
+        }),
       })
 
       const body = (await response.json().catch(() => undefined)) as
@@ -60,6 +71,7 @@ function Home() {
       }
 
       setShareUrl(`${window.location.origin}${sharePath(id, pending.encrypted.fragment)}`)
+      setOwnerUrl(`${window.location.origin}${ownerPath(id, pending.ownerCapability)}`)
       setPendingCreate(undefined)
       setSecret('')
     } catch (cause) {
@@ -73,18 +85,36 @@ function Home() {
     }
   }
 
-  async function copyShareUrl() {
-    if (!shareUrl) {
-      return
-    }
+  function resetCreate() {
+    setSecret('')
+    setShareUrl(undefined)
+    setOwnerUrl(undefined)
+    setCopied(undefined)
+    setError(undefined)
+    setPendingCreate(undefined)
+  }
 
+  async function copyUrl(kind: 'share' | 'owner', value: string) {
     try {
-      await navigator.clipboard.writeText(shareUrl)
-      setCopied(true)
+      await navigator.clipboard.writeText(value)
+      setCopied(kind)
       setError(undefined)
     } catch {
-      setCopied(false)
-      setError('The one-time link could not be copied.')
+      setCopied(undefined)
+      setError('The link could not be copied.')
+    }
+  }
+
+  async function shareSecretLink(value: string) {
+    try {
+      await navigator.share({ url: value })
+      setError(undefined)
+    } catch (cause) {
+      if (cause instanceof DOMException && cause.name === 'AbortError') {
+        return
+      }
+
+      setError('The link could not be shared.')
     }
   }
 
@@ -95,27 +125,30 @@ function Home() {
         <h1 id="onceveil-title">{PROJECT_NAME}</h1>
         <p className="tagline">{PROJECT_TAGLINE}</p>
 
-        <label className="field">
-          <span>Secret</span>
-          <textarea
-            value={secret}
-            disabled={creating}
-            onChange={(event) => {
-              const value = event.target.value
-              if (pendingCreate && pendingCreate.secret !== value) {
-                setPendingCreate(undefined)
-              }
-              setSecret(value)
-            }}
-            rows={7}
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </label>
+        {!shareUrl && !ownerUrl ? (
+          <>
+            <label className="field">
+              <span>Secret</span>
+              <textarea
+                value={secret}
+                disabled={creating}
+                onChange={(event) => {
+                  const value = event.target.value
+                  if (pendingCreate && pendingCreate.secret !== value) {
+                    setPendingCreate(undefined)
+                  }
+                  setSecret(value)
+                }}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
 
-        <button type="button" onClick={createSecret} disabled={!secret || creating}>
-          {creating ? 'Encrypting…' : 'Create one-time link'}
-        </button>
+            <button type="button" onClick={createSecret} disabled={!secret || creating}>
+              {creating ? 'Encrypting…' : 'Create one-time link'}
+            </button>
+          </>
+        ) : null}
 
         {shareUrl ? (
           <div className="result" aria-live="polite">
@@ -123,13 +156,43 @@ function Home() {
             <button
               className="copy-link"
               type="button"
-              onClick={copyShareUrl}
+              onClick={() => void copyUrl('share', shareUrl)}
               aria-label="Copy one-time link to clipboard"
             >
               <code>{shareUrl}</code>
-              <span>{copied ? 'Copied' : 'Copy'}</span>
+              <span>{copied === 'share' ? 'Copied' : 'Copy'}</span>
+            </button>
+            {nativeShareAvailable ? (
+              <button
+                type="button"
+                onClick={() => void shareSecretLink(shareUrl)}
+                aria-label="Share one-time link"
+              >
+                Share
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {ownerUrl ? (
+          <div className="result" aria-live="polite">
+            <strong>Keep this owner link private:</strong>
+            <button
+              className="copy-link"
+              type="button"
+              onClick={() => void copyUrl('owner', ownerUrl)}
+              aria-label="Copy owner link to clipboard"
+            >
+              <code>{ownerUrl}</code>
+              <span>{copied === 'owner' ? 'Copied' : 'Copy'}</span>
             </button>
           </div>
+        ) : null}
+
+        {shareUrl && ownerUrl ? (
+          <button type="button" onClick={resetCreate}>
+            Create another secret
+          </button>
         ) : null}
 
         {error ? (
