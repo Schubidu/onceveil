@@ -54,8 +54,11 @@ describe('Turnstile reveal challenge verifier', () => {
 
     expect(calls).toBe(1)
     expect(capturedInit?.method).toBe('POST')
-    expect(String(capturedInit?.body)).toContain('response=turnstile-token')
-    expect(String(capturedInit?.body)).toContain('remoteip=203.0.113.7')
+    expect(capturedInit?.body).toBeInstanceOf(FormData)
+    const body = capturedInit?.body as FormData
+    expect(body.get('response')).toBe('turnstile-token')
+    expect(body.get('remoteip')).toBe('203.0.113.7')
+    expect(body.get('secret')).toBe('secret-key')
   })
 
   it.each([
