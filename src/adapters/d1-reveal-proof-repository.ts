@@ -8,7 +8,6 @@ import {
 import type { SecretId } from '../core/secret'
 
 const PROOF_BYTES = 32
-const VERIFICATION_BYTES = 16
 const PROOF_ATTEMPTS = 3
 const PROOF_PATTERN = /^[A-Za-z0-9_-]{43}$/
 const VERIFICATION_PATTERN = /^[0-9a-f]{32}$/
@@ -29,11 +28,6 @@ function randomProof(): string {
   return encodeBase64Url(bytes)
 }
 
-function randomVerificationId(): string {
-  const bytes = new Uint8Array(VERIFICATION_BYTES)
-  crypto.getRandomValues(bytes)
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
-}
 
 async function proofHash(proof: string): Promise<string> {
   const digest = new Uint8Array(
@@ -55,9 +49,14 @@ export class D1RevealProofRepository implements RevealProofRepository {
   async prepare(
     secretId: SecretId,
     authorization: string,
+    verificationId: string,
     nowMs: number,
   ): Promise<RevealProof | undefined> {
-    if (!AUTHORIZATION_PATTERN.test(authorization) || !Number.isSafeInteger(nowMs)) {
+    if (!AUTHORIZATION_PATTERN.test(authorization) || !VERIFICATION_PATTERN.test(verificationId)) {
+      return undefined
+    }
+
+    if (!Number.isSafeInteger(nowMs)) {
       throw new RevealProofStorageError()
     }
 
@@ -108,7 +107,6 @@ export class D1RevealProofRepository implements RevealProofRepository {
 
     for (let attempt = 0; attempt < PROOF_ATTEMPTS; attempt += 1) {
       const value = randomProof()
-      const verificationId = randomVerificationId()
       const hash = await proofHash(value)
 
       let result: D1ResultLike
