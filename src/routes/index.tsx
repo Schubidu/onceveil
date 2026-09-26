@@ -48,18 +48,6 @@ function Home() {
         if (typeof body?.error === 'string') {
           code = body.error
         }
-        if (typeof body?.stage === 'string') {
-          code += ` stage=${body.stage}`
-        }
-        if (typeof body?.detail === 'string') {
-          code += ` detail=${body.detail}`
-        }
-        if (typeof body?.expected === 'string') {
-          code += ` expected=${body.expected}`
-        }
-        if (typeof body?.actual === 'string') {
-          code += ` actual=${body.actual}`
-        }
 
         throw new Error(`store failed (${response.status} ${code})`)
       }
@@ -94,6 +82,7 @@ function Home() {
           <span>Secret</span>
           <textarea
             value={secret}
+            disabled={creating}
             onChange={(event) => {
               const value = event.target.value
               if (pendingCreate && pendingCreate.secret !== value) {
