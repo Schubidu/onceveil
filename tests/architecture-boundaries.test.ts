@@ -6,6 +6,11 @@ import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 
 const coreDirectory = path.resolve('src/core')
+const serverDirectories = [
+  path.resolve('src/core'),
+  path.resolve('src/runtime'),
+  path.resolve('src/adapters'),
+]
 const nodeBuiltins = new Set(builtinModules.map((module) => module.replace(/^node:/, '')))
 
 function isForbiddenImport(specifier: string) {
@@ -95,5 +100,31 @@ describe('core architecture boundary', () => {
       const forbidden = importedSpecifiers(source, file).filter(isForbiddenImport)
       expect(forbidden, file).toEqual([])
     }
+  })
+})
+
+
+describe('browser secret boundary', () => {
+  it('keeps browser-only modules out of server-side layers', async () => {
+    for (const directory of serverDirectories) {
+      const files = await sourceFiles(directory)
+
+      for (const file of files) {
+        const source = await readFile(file, 'utf8')
+        const browserImports = importedSpecifiers(source, file).filter(
+          (specifier) => specifier.includes('/browser/') || specifier.startsWith('../browser'),
+        )
+        expect(browserImports, file).toEqual([])
+      }
+    }
+  })
+
+  it('does not persist secret material in browser storage APIs', async () => {
+    const source = await readFile(path.resolve('src/browser/secret-crypto.ts'), 'utf8')
+
+    expect(source).not.toContain('localStorage')
+    expect(source).not.toContain('sessionStorage')
+    expect(source).not.toContain('indexedDB')
+    expect(source).not.toContain('document.cookie')
   })
 })
