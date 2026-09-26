@@ -691,6 +691,16 @@ describe('D1 one-time HTTP flow', () => {
         .prepare('SELECT state, replay_key FROM secrets WHERE id = ?')
         .get(PUBLIC_ID) as { state: string; replay_key: string | null }
       expect(row).toEqual({ state: 'EXPIRED', replay_key: null })
+
+      expect(() =>
+        database
+          .prepare(
+            `INSERT INTO secrets
+              (id, ciphertext, created_at_ms, expires_at_ms, state)
+             VALUES (?, ?, ?, ?, 'AVAILABLE')`,
+          )
+          .run('e'.repeat(32), new Uint8Array([1]), 1_000, 2_000),
+      ).toThrow(/replay_key_required/)
     } finally {
       database.close()
     }
