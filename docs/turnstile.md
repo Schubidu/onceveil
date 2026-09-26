@@ -30,7 +30,7 @@ Turnstile-protected links use fragment format `v2.<key>.<reveal-authorization>`.
 
 Pre-existing `v1.<key>` links do not contain a server-verifiable value that can authorize proof preparation. Supporting them transparently would require either sending the AES key to the server or allowing reveal preparation from the public secret id alone; both violate the fail-closed trust boundary. Onceveil therefore recognizes legacy links but does not downgrade them to unprotected reveal.
 
-Migration `0006_expire_legacy_share_links.sql` explicitly invalidates still-`AVAILABLE` pre-v2 rows by moving them to `EXPIRED`. This makes the security boundary deterministic: after migration every `AVAILABLE` secret is expected to have the replay key required by protected reveal preparation.
+Migration `0006_expire_legacy_share_links.sql` first blocks inserts that omit `replay_key`, then invalidates still-`AVAILABLE` pre-v2 rows by moving them to `EXPIRED`. This makes the boundary deterministic even during deployment: once the migration starts, an older Worker can no longer create new legacy rows.
 
 ## Cloudflare configuration
 
