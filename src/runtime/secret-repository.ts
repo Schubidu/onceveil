@@ -44,6 +44,39 @@ export function getSecretRepository(): SecretRepository {
   return new D1SecretRepository(database)
 }
 
+export async function getSecretDatabaseDiagnostics(): Promise<{
+  expected: string
+  actual: string
+  hasSecretsTable: boolean
+}> {
+  const { APP_ENV: expected = 'missing', DB: database } = runtimeEnv()
+  if (!database) {
+    return { expected, actual: 'binding-missing', hasSecretsTable: false }
+  }
+
+  let actual = 'unmarked'
+  try {
+    const row = await database
+      .prepare('SELECT environment FROM onceveil_environment WHERE id = 1 LIMIT 1')
+      .first<EnvironmentRow>()
+    actual = row?.environment ?? 'unmarked'
+  } catch {
+    actual = 'unmarked'
+  }
+
+  let hasSecretsTable = false
+  try {
+    const row = await database
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'secrets' LIMIT 1")
+      .first<{ name: string }>()
+    hasSecretsTable = row?.name === 'secrets'
+  } catch {
+    hasSecretsTable = false
+  }
+
+  return { expected, actual, hasSecretsTable }
+}
+
 export async function assertSecretDatabaseEnvironment(): Promise<void> {
   const { APP_ENV: expected, DB: database } = runtimeEnv()
   if (!database || !expected) {
