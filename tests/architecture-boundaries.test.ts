@@ -103,7 +103,6 @@ describe('core architecture boundary', () => {
   })
 })
 
-
 describe('browser secret boundary', () => {
   it('keeps browser-only modules out of server-side layers', async () => {
     for (const directory of serverDirectories) {
