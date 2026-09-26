@@ -4,10 +4,15 @@ import {
   decryptSecret,
   encryptSecret,
   InvalidShareCapabilityError,
+  revealAuthorizationFromFragment,
   sharePath,
   takeShareFragment,
 } from '../src/browser/secret-crypto'
-import { SHARE_PROTOCOL_VERSION, type EncryptedSecretPayload } from '../src/core/share-capability'
+import {
+  encryptedPayloadReplayKey,
+  SHARE_PROTOCOL_VERSION,
+  type EncryptedSecretPayload,
+} from '../src/core/share-capability'
 import { generateSecretId } from '../src/core/secret'
 
 function alterBase64Url(value: string): string {
@@ -30,6 +35,15 @@ describe('browser secret crypto', () => {
     const publicId = generateSecretId()
 
     expect(sharePath(publicId, encrypted.fragment)).toBe(`/s/${publicId}#${encrypted.fragment}`)
+  })
+
+  it('binds the server-known reveal authorization into the fragment only', async () => {
+    const encrypted = await encryptSecret('fragment authorization')
+
+    expect(revealAuthorizationFromFragment(encrypted.fragment)).toBe(
+      await encryptedPayloadReplayKey(encrypted.payload),
+    )
+    expect(encrypted.fragment.split('.')).toHaveLength(3)
   })
 
   it('keeps key material out of the server-visible payload', async () => {
