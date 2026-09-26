@@ -130,7 +130,13 @@ export async function verifyRevealProofResponse(
   }
 
   if (verification.kind !== 'verified') {
-    return json({ error: 'verification_failed' }, 403)
+    return json(
+      {
+        error: 'verification_failed',
+        ...(verification.diagnostic ? { diagnostic: verification.diagnostic } : {}),
+      },
+      403,
+    )
   }
 
   if (!(await proofs.verify(secretId, verificationId, nowMs))) {
