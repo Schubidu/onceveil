@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { D1RevealProofRepository } from '../src/adapters/d1-reveal-proof-repository'
 import {
   D1SecretRepository,
   type D1BindingValue,
@@ -13,6 +14,10 @@ import {
 } from '../src/adapters/d1-secret-repository'
 import { decryptSecret, encryptSecret } from '../src/browser/secret-crypto'
 import type { SecretId } from '../src/core/secret'
+import {
+  issueRevealProofResponse,
+  protectedRevealResponse,
+} from '../src/runtime/reveal-protection-http'
 import {
   createSecretResponse,
   MAX_CREATE_REQUEST_BYTES,
@@ -124,6 +129,7 @@ class SQLiteD1Database implements D1DatabaseLike {
 describe('D1 one-time HTTP flow', () => {
   let d1: SQLiteD1Database
   let repository: D1SecretRepository
+  let proofRepository: D1RevealProofRepository
 
   beforeEach(async () => {
     d1 = new SQLiteD1Database()
@@ -133,8 +139,11 @@ describe('D1 one-time HTTP flow', () => {
       'utf8',
     )
     d1.database.exec(migration)
+    const proofMigration = await readFile(path.resolve('migrations/0004_reveal_proofs.sql'), 'utf8')
     d1.database.exec(replayMigration)
+    d1.database.exec(proofMigration)
     repository = new D1SecretRepository(d1)
+    proofRepository = new D1RevealProofRepository(d1)
   })
 
   afterEach(() => {
@@ -517,6 +526,160 @@ describe('D1 one-time HTTP flow', () => {
       const payload: unknown = JSON.parse(new TextDecoder().decode(result.ciphertext))
       await expect(decryptSecret(payload, encrypted.fragment)).resolves.toBe('array buffer blob')
     }
+  })
+
+  it('requires a valid one-time proof before the protected reveal can consume', async () => {
+    const encrypted = await encryptSecret('protected reveal')
+    await createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload: encrypted.payload }),
+      }),
+      repository,
+      1_000,
+      allocatePublicId,
+    )
+
+    const invalid = await protectedRevealResponse(
+      new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proof: 'not-a-proof' }),
+      }),
+      PUBLIC_ID,
+      proofRepository,
+      repository,
+      1_001,
+    )
+    expect(invalid.status).toBe(403)
+    await expect(repository.getStatus(PUBLIC_ID, 1_001)).resolves.toMatchObject({
+      state: 'AVAILABLE',
+    })
+
+    const issued = await proofRepository.issue(PUBLIC_ID, 1_002)
+    const revealed = await protectedRevealResponse(
+      new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proof: issued.value }),
+      }),
+      PUBLIC_ID,
+      proofRepository,
+      repository,
+      1_003,
+    )
+    expect(revealed.status).toBe(200)
+
+    const replay = await protectedRevealResponse(
+      new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proof: issued.value }),
+      }),
+      PUBLIC_ID,
+      proofRepository,
+      repository,
+      1_004,
+    )
+    expect(replay.status).toBe(403)
+  })
+
+  it('does not consume the secret when a proof is expired, replayed, or bound elsewhere', async () => {
+    const encrypted = await encryptSecret('proof failures leave available')
+    await createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload: encrypted.payload }),
+      }),
+      repository,
+      1_000,
+      allocatePublicId,
+    )
+
+    const expired = await proofRepository.issue(PUBLIC_ID, 1_001)
+    const expiredResponse = await protectedRevealResponse(
+      new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proof: expired.value }),
+      }),
+      PUBLIC_ID,
+      proofRepository,
+      repository,
+      expired.expiresAtMs,
+    )
+    expect(expiredResponse.status).toBe(403)
+
+    const spent = await proofRepository.issue(PUBLIC_ID, 2_000)
+    await expect(proofRepository.consume(PUBLIC_ID, spent.value, 2_001)).resolves.toBe(true)
+    const replayedResponse = await protectedRevealResponse(
+      new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proof: spent.value }),
+      }),
+      PUBLIC_ID,
+      proofRepository,
+      repository,
+      2_002,
+    )
+    expect(replayedResponse.status).toBe(403)
+
+    const otherId = 'e'.repeat(32) as SecretId
+    const otherProof = await proofRepository.issue(otherId, 3_000)
+    const boundResponse = await protectedRevealResponse(
+      new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proof: otherProof.value }),
+      }),
+      PUBLIC_ID,
+      proofRepository,
+      repository,
+      3_001,
+    )
+    expect(boundResponse.status).toBe(403)
+
+    await expect(repository.getStatus(PUBLIC_ID, 3_001)).resolves.toMatchObject({
+      state: 'AVAILABLE',
+    })
+  })
+
+  it('leaves the secret available when Turnstile verification is unavailable', async () => {
+    const encrypted = await encryptSecret('provider outage')
+    await createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload: encrypted.payload }),
+      }),
+      repository,
+      1_000,
+      allocatePublicId,
+    )
+
+    const verification = await issueRevealProofResponse(
+      new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: 'token' }),
+      }),
+      PUBLIC_ID,
+      {
+        async verify() {
+          return { kind: 'unavailable' }
+        },
+      },
+      proofRepository,
+      1_001,
+    )
+
+    expect(verification.status).toBe(503)
+    await expect(repository.getStatus(PUBLIC_ID, 1_001)).resolves.toMatchObject({
+      state: 'AVAILABLE',
+    })
   })
 
   it('expires before reveal and never returns ciphertext', async () => {
