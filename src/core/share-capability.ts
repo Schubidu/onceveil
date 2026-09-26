@@ -1,6 +1,8 @@
 import { isValidSecretId, type SecretId } from './secret'
 
 export const SHARE_PROTOCOL_VERSION = 'v1' as const
+export const SHARE_FRAGMENT_VERSION = 'v2' as const
+export const LEGACY_SHARE_FRAGMENT_VERSION = 'v1' as const
 export const SHARE_AAD_PREFIX = 'onceveil'
 
 const AES_GCM_NONCE_BYTES = 12
