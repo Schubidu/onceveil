@@ -105,7 +105,9 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
           if (error instanceof SecretDatabaseEnvironmentError) {
             logRuntimeError('secret database environment check failed', error, {
               expected: error.expected,
-              actual: error.actual,
+              diagnostic: error.actual.startsWith('query-error:')
+                ? 'query_error'
+                : 'environment_mismatch',
             })
             return jsonError('service_unavailable', 503)
           }
