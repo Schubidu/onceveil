@@ -4,12 +4,15 @@ import {
   decryptSecret,
   encryptSecret,
   InvalidShareCapabilityError,
+  LegacyShareCapabilityError,
   revealAuthorizationFromFragment,
   sharePath,
   takeShareFragment,
 } from '../src/browser/secret-crypto'
 import {
   encryptedPayloadReplayKey,
+  LEGACY_SHARE_FRAGMENT_VERSION,
+  SHARE_FRAGMENT_VERSION,
   SHARE_PROTOCOL_VERSION,
   type EncryptedSecretPayload,
 } from '../src/core/share-capability'
@@ -44,6 +47,18 @@ describe('browser secret crypto', () => {
       await encryptedPayloadReplayKey(encrypted.payload),
     )
     expect(encrypted.fragment.split('.')).toHaveLength(3)
+    expect(encrypted.fragment.startsWith(`${SHARE_FRAGMENT_VERSION}.`)).toBe(true)
+  })
+
+  it('recognizes legacy v1 fragments without treating them as protected v2 links', async () => {
+    const encrypted = await encryptSecret('legacy fragment')
+    const [, encodedKey] = encrypted.fragment.split('.')
+    const legacyFragment = `${LEGACY_SHARE_FRAGMENT_VERSION}.${encodedKey}`
+
+    await expect(decryptSecret(encrypted.payload, legacyFragment)).resolves.toBe('legacy fragment')
+    expect(() => revealAuthorizationFromFragment(legacyFragment)).toThrow(
+      LegacyShareCapabilityError,
+    )
   })
 
   it('keeps key material out of the server-visible payload', async () => {
@@ -142,14 +157,17 @@ describe('browser secret crypto', () => {
     ).rejects.toBeInstanceOf(InvalidShareCapabilityError)
 
     await expect(
-      decryptSecret(encrypted.payload, encrypted.fragment.replace(/^v1\./, 'v2.')),
+      decryptSecret(
+        encrypted.payload,
+        encrypted.fragment.replace(new RegExp(`^${SHARE_FRAGMENT_VERSION}\\.`), 'v3.'),
+      ),
     ).rejects.toBeInstanceOf(InvalidShareCapabilityError)
   })
 
   it('moves the fragment into memory and immediately removes it from the URL', () => {
     const replacements: Array<{ state: unknown; url: string | URL | null | undefined }> = []
     const location = {
-      hash: '#v1.secret-key-material',
+      hash: '#v2.secret-key-material.authorization',
       pathname: '/s/abc123',
       search: '?ignored=1',
     }
@@ -160,7 +178,7 @@ describe('browser secret crypto', () => {
       },
     }
 
-    expect(takeShareFragment(location, history)).toBe('v1.secret-key-material')
+    expect(takeShareFragment(location, history)).toBe('v2.secret-key-material.authorization')
     expect(replacements).toEqual([
       {
         state: history.state,
