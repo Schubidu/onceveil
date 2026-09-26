@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
+import { D1CreateError } from '../adapters/d1-secret-repository'
 import { createSecretResponse } from '../runtime/secret-http'
 import { getSecretRepository, SecretDatabaseUnavailableError } from '../runtime/secret-repository'
 import { withSecretSecurityHeaders } from '../runtime/security-headers'
@@ -21,6 +22,27 @@ export const Route = createFileRoute('/api/secrets')({
             name: error instanceof Error ? error.name : 'UnknownError',
             message: error instanceof Error ? error.message : 'unknown error',
           })
+
+          if (error instanceof D1CreateError) {
+            const hostname = new URL(request.url).hostname
+            const isPreview =
+              hostname.endsWith('.ots-preview.schult.dev') ||
+              hostname.endsWith('-onceveil.schult.workers.dev')
+
+            if (isPreview) {
+              return withSecretSecurityHeaders(
+                Response.json(
+                  {
+                    error: 'd1_create_failed',
+                    stage: error.stage,
+                    detail: error.detail,
+                  },
+                  { status: 500 },
+                ),
+              )
+            }
+          }
+
           return withSecretSecurityHeaders(
             Response.json({ error: 'internal_error' }, { status: 500 }),
           )
