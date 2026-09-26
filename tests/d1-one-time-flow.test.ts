@@ -16,6 +16,7 @@ import { decryptSecret, encryptSecret } from '../src/browser/secret-crypto'
 import { REVEAL_PROOF_TTL_MS } from '../src/core/reveal-protection'
 import type { SecretId } from '../src/core/secret'
 import {
+  prepareRevealProofResponse,
   protectedRevealResponse,
   verifyRevealProofResponse,
 } from '../src/runtime/reveal-protection-http'
@@ -567,18 +568,37 @@ describe('D1 one-time HTTP flow', () => {
       allocatePublicId,
     )
 
-    await expect(proofRepository.prepare(PUBLIC_ID, '0'.repeat(64), 1_001)).resolves.toBeUndefined()
+    const rejected = await prepareRevealProofResponse(
+      new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ authorization: '0'.repeat(64) }),
+      }),
+      PUBLIC_ID,
+      proofRepository,
+      1_001,
+    )
+    expect(rejected.status).toBe(403)
 
     const count = d1.database.prepare('SELECT COUNT(*) AS count FROM reveal_proofs').get() as {
       count: number
     }
     expect(count.count).toBe(0)
 
-    await expect(
-      proofRepository.prepare(PUBLIC_ID, revealAuthorization(PUBLIC_ID), 1_001),
-    ).resolves.toMatchObject({
+    const prepared = await prepareRevealProofResponse(
+      new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ authorization: revealAuthorization(PUBLIC_ID) }),
+      }),
+      PUBLIC_ID,
+      proofRepository,
+      1_001,
+    )
+    expect(prepared.status).toBe(201)
+    await expect(prepared.json()).resolves.toMatchObject({
       verificationId: expect.stringMatching(/^[0-9a-f]{32}$/),
-      value: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+      proof: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
     })
   })
 
