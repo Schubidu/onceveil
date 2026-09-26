@@ -7,7 +7,6 @@ import {
 
 const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
 const MAX_TOKEN_LENGTH = 2048
-const VERIFY_TIMEOUT_MS = 5_000
 
 export interface TurnstileRevealProtectionConfiguration {
   siteKey: string
@@ -55,10 +54,9 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
       return { kind: 'invalid' }
     }
 
-    const body = new URLSearchParams({
-      secret: this.secretKey,
-      response: token,
-    })
+    const body = new FormData()
+    body.set('secret', this.secretKey)
+    body.set('response', token)
     if (context.remoteIp) {
       body.set('remoteip', context.remoteIp)
     }
@@ -67,9 +65,7 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
     try {
       response = await this.fetchImpl(SITEVERIFY_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body,
-        signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
       })
     } catch {
       return { kind: 'unavailable', diagnostic: 'siteverify_fetch_failed' }
