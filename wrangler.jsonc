@@ -13,5 +13,13 @@
       "migrations_dir": "migrations"
     }
   ],
-  "previews": {}
+  "previews": {
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "onceveil-preview",
+        "database_id": "a8f3fce5-8226-40f1-804a-96677743f541"
+      }
+    ]
+  }
 }
