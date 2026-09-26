@@ -3,12 +3,33 @@ import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { Route as ShareRoute } from '../src/routes/s.$id'
+
 describe('preview-safe share landing route', () => {
-  it('has no passive GET loader or repository access and only reveals on explicit POST', async () => {
+  it('executes the passive HEAD handler without revealing or consuming anything', async () => {
+    const handlers = ShareRoute.options.server?.handlers
+    expect(handlers).toBeDefined()
+    expect(handlers).not.toHaveProperty('GET')
+
+    const head = handlers?.HEAD
+    expect(head).toBeTypeOf('function')
+
+    const response = await head?.({
+      request: new Request('https://ots-preview.schult.dev/s/0123456789abcdef0123456789abcdef', {
+        method: 'HEAD',
+      }),
+      params: { id: '0123456789abcdef0123456789abcdef' },
+      context: undefined,
+    } as never)
+
+    expect(response).toBeInstanceOf(Response)
+    expect(response?.status).toBe(200)
+    expect(await response?.text()).toBe('')
+  })
+
+  it('reveals only from the explicit browser action', async () => {
     const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
 
-    expect(source).toContain('HEAD:')
-    expect(source).not.toContain('GET:')
     expect(source).not.toContain('loader:')
     expect(source).not.toContain('getSecretRepository')
     expect(source).not.toContain('consume(')
@@ -20,10 +41,7 @@ describe('preview-safe share landing route', () => {
   it('does not auto-trigger reveal during page initialization', async () => {
     const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
 
-    const effect = source.slice(
-      source.indexOf('useEffect'),
-      source.indexOf('async function reveal'),
-    )
+    const effect = source.slice(source.indexOf('useEffect'), source.indexOf('async function reveal'))
     expect(effect).toContain('takeShareFragment')
     expect(effect).not.toContain('fetch(')
   })
