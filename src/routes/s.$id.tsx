@@ -92,6 +92,27 @@ function SecretReveal({ id }: { id: SecretId }) {
   useEffect(() => {
     fragment.current = takeShareFragment(window.location, window.history)
     setCapabilityReady(true)
+
+    function clearSensitiveState() {
+      fragment.current = undefined
+      setPlaintext(undefined)
+      setCopied(false)
+    }
+
+    function clearRestoredState(event: PageTransitionEvent) {
+      if (event.persisted) {
+        clearSensitiveState()
+      }
+    }
+
+    window.addEventListener('pagehide', clearSensitiveState)
+    window.addEventListener('pageshow', clearRestoredState)
+
+    return () => {
+      clearSensitiveState()
+      window.removeEventListener('pagehide', clearSensitiveState)
+      window.removeEventListener('pageshow', clearRestoredState)
+    }
   }, [])
 
   async function reveal() {
