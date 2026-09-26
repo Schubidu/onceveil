@@ -194,6 +194,22 @@ describe('SecretRepository atomic transition contract', () => {
     }
   })
 
+  it('fails closed when persisted temporal data is malformed', async () => {
+    const repository = new AsyncAtomicInMemorySecretRepository()
+    const id = 'malformed-time-id' as SecretId
+    const malformed = {
+      ...record(id),
+      expiresAtMs: Number.NaN,
+    } as PreparedSecretRecord
+
+    expect(await repository.create(malformed)).toEqual({ kind: 'created' })
+    expect(await repository.consume(id, 500)).toEqual({
+      kind: 'unavailable',
+      state: 'EXPIRED',
+    })
+    expect((await repository.getStatus(id, 500))?.state).toBe('EXPIRED')
+  })
+
   it('never exposes ciphertext through status or revoke operations', async () => {
     const repository = new AsyncAtomicInMemorySecretRepository()
     const id = 'metadata-test-id' as SecretId
