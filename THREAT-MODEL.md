@@ -68,6 +68,14 @@ The domain default is:
 
 Deployments may configure stricter limits. Invalid configuration or malformed persisted lifecycle state fails closed. Requests above the configured TTL or payload limit are rejected rather than silently clamped. Persistence accepts only records produced by the validated domain creation path, so storage adapters cannot bypass these limits with arbitrary expiry or payload values.
 
+## D1 persistence and reveal
+
+The server stores only the encoded encrypted payload plus lifecycle timestamps/state. The URL fragment key is never part of the D1 schema or create request body.
+
+Reveal is a mutating POST operation. D1 performs expiry and the conditional `AVAILABLE → CONSUMED` transition in one batch transaction. A random per-request consume token gates the ciphertext SELECT inside that transaction, so concurrent losing requests cannot read the winner's ciphertext. The token is cleared before the transaction completes.
+
+GET/HEAD rendering of `/s/:id` does not access the repository and cannot consume a secret. Secret surfaces are served with `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, and `X-Content-Type-Options: nosniff`.
+
 ## Threats covered
 
 ### Passive previews and prefetchers
