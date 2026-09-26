@@ -5,6 +5,9 @@ const CHANNEL_PATTERN = /^[0-9a-f]{32}$/
 const PROOF_PATTERN = /^[A-Za-z0-9_-]{43}$/
 const VERIFICATION_TIMEOUT_MS = 5 * 60 * 1000
 
+export const REVEAL_VERIFICATION_WINDOW_FEATURES =
+  'popup,noopener,noreferrer,width=520,height=680'
+
 export type RevealVerificationMessage =
   | { type: 'onceveil-reveal-proof'; proof: string }
   | { type: 'onceveil-reveal-proof-error' }
@@ -55,7 +58,7 @@ export function requestRevealProof(id: SecretId): Promise<string> {
   window.open(
     verificationUrl,
     '_blank',
-    'popup,noopener,noreferrer,width=520,height=680',
+    REVEAL_VERIFICATION_WINDOW_FEATURES,
   )
 
   return new Promise((resolve, reject) => {
