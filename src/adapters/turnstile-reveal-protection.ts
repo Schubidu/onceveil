@@ -63,7 +63,8 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
 
     let response: Response
     try {
-      response = await this.fetchImpl(SITEVERIFY_URL, {
+      const fetchImpl = this.fetchImpl
+      response = await fetchImpl(SITEVERIFY_URL, {
         method: 'POST',
         body,
       })
