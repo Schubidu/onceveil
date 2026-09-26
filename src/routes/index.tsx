@@ -80,6 +80,15 @@ function Home() {
     }
   }
 
+  function resetCreate() {
+    setSecret('')
+    setShareUrl(undefined)
+    setOwnerUrl(undefined)
+    setCopied(undefined)
+    setError(undefined)
+    setPendingCreate(undefined)
+  }
+
   async function copyUrl(kind: 'share' | 'owner', value: string) {
     try {
       await navigator.clipboard.writeText(value)
@@ -98,27 +107,31 @@ function Home() {
         <h1 id="onceveil-title">{PROJECT_NAME}</h1>
         <p className="tagline">{PROJECT_TAGLINE}</p>
 
-        <label className="field">
-          <span>Secret</span>
-          <textarea
-            value={secret}
-            disabled={creating}
-            onChange={(event) => {
-              const value = event.target.value
-              if (pendingCreate && pendingCreate.secret !== value) {
-                setPendingCreate(undefined)
-              }
-              setSecret(value)
-            }}
-            rows={7}
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </label>
+        {!shareUrl && !ownerUrl ? (
+          <>
+            <label className="field">
+              <span>Secret</span>
+              <textarea
+                value={secret}
+                disabled={creating}
+                onChange={(event) => {
+                  const value = event.target.value
+                  if (pendingCreate && pendingCreate.secret !== value) {
+                    setPendingCreate(undefined)
+                  }
+                  setSecret(value)
+                }}
+                rows={7}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
 
-        <button type="button" onClick={createSecret} disabled={!secret || creating}>
-          {creating ? 'Encrypting…' : 'Create one-time link'}
-        </button>
+            <button type="button" onClick={createSecret} disabled={!secret || creating}>
+              {creating ? 'Encrypting…' : 'Create one-time link'}
+            </button>
+          </>
+        ) : null}
 
         {shareUrl ? (
           <div className="result" aria-live="polite">
@@ -148,6 +161,12 @@ function Home() {
               <span>{copied === 'owner' ? 'Copied' : 'Copy'}</span>
             </button>
           </div>
+        ) : null}
+
+        {shareUrl && ownerUrl ? (
+          <button type="button" onClick={resetCreate}>
+            Create another secret
+          </button>
         ) : null}
 
         {error ? (
