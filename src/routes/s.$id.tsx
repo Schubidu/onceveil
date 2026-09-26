@@ -210,7 +210,15 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
           | undefined
 
         if (!active || !response.ok || body?.verified !== true) {
-          throw new Error('Verification could not be completed')
+          const diagnostic =
+            typeof body?.diagnostic === 'string' &&
+            ['siteverify_rejected', 'hostname_mismatch', 'action_mismatch', 'cdata_mismatch'].includes(
+              body.diagnostic,
+            )
+              ? ` (${body.diagnostic})`
+              : ''
+          failVerification(`Verification failed${diagnostic}. Close this window and try again.`)
+          return
         }
 
         broadcast.postMessage({ type: 'onceveil-reveal-verified' })
