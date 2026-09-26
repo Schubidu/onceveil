@@ -54,6 +54,23 @@ export class D1RevealProofRepository implements RevealProofRepository {
 
     const session = this.db.withSession('first-primary')
 
+    let cleanup: D1ResultLike
+    try {
+      cleanup = await session
+        .prepare(
+          `DELETE FROM reveal_proofs
+           WHERE consumed_at_ms IS NOT NULL OR expires_at_ms <= ?`,
+        )
+        .bind(nowMs)
+        .run()
+    } catch {
+      throw new RevealProofStorageError()
+    }
+
+    if (!cleanup.success) {
+      throw new RevealProofStorageError()
+    }
+
     for (let attempt = 0; attempt < PROOF_ATTEMPTS; attempt += 1) {
       const value = randomProof()
       const hash = await proofHash(value)

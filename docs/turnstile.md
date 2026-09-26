@@ -64,3 +64,5 @@ Turnstile tokens are single-use and expire independently according to Cloudflare
 Onceveil adds its own one-time server proof after successful Siteverify validation. This keeps provider-specific tokens out of the actual secret-consume boundary and gives future providers (for example ALTCHA) the same internal proof contract.
 
 A proof can be burned by a successful proof consume followed by a later infrastructure failure before the secret consume. In that case the secret stays available and the recipient must verify again. Onceveil prefers this fail-closed behavior over reusing a proof.
+
+Proof storage is opportunistically pruned whenever a new proof is issued. Consumed rows and proofs whose expiry has passed are deleted; unexpired, unconsumed proofs are never removed by cleanup. This keeps proof retention bounded without adding a scheduler or queue.

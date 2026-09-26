@@ -585,6 +585,21 @@ describe('D1 one-time HTTP flow', () => {
     expect(replay.status).toBe(403)
   })
 
+  it('prunes consumed and expired reveal proofs when issuing a new proof', async () => {
+    const expired = await proofRepository.issue(PUBLIC_ID, 1_000)
+    const otherId = 'e'.repeat(32) as SecretId
+    const consumed = await proofRepository.issue(otherId, 2_000)
+    await expect(proofRepository.consume(otherId, consumed.value, 2_001)).resolves.toBe(true)
+
+    const cleanupAt = expired.expiresAtMs
+    await proofRepository.issue(PUBLIC_ID, cleanupAt)
+
+    const count = d1.database
+      .prepare('SELECT COUNT(*) AS count FROM reveal_proofs')
+      .get() as { count: number }
+    expect(count.count).toBe(1)
+  })
+
   it('allows only one concurrent consume of the same reveal proof', async () => {
     const proof = await proofRepository.issue(PUBLIC_ID, 1_000)
 

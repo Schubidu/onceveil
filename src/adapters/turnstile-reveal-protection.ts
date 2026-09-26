@@ -9,6 +9,27 @@ const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverif
 const MAX_TOKEN_LENGTH = 2048
 const VERIFY_TIMEOUT_MS = 5_000
 
+export interface TurnstileRevealProtectionConfiguration {
+  siteKey: string
+  secretKey: string
+}
+
+export function turnstileRevealProtectionConfiguration(
+  siteKey: string | undefined,
+  secretKey: string | undefined,
+): TurnstileRevealProtectionConfiguration | undefined {
+  const normalizedSiteKey = siteKey?.trim()
+  const normalizedSecretKey = secretKey?.trim()
+  if (!normalizedSiteKey || !normalizedSecretKey) {
+    return undefined
+  }
+
+  return {
+    siteKey: normalizedSiteKey,
+    secretKey: normalizedSecretKey,
+  }
+}
+
 interface SiteverifyResponse {
   success?: unknown
   hostname?: unknown

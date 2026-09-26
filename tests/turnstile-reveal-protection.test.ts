@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { TurnstileRevealChallengeVerifier } from '../src/adapters/turnstile-reveal-protection'
+import {
+  TurnstileRevealChallengeVerifier,
+  turnstileRevealProtectionConfiguration,
+} from '../src/adapters/turnstile-reveal-protection'
 import { REVEAL_PROTECTION_ACTION } from '../src/core/reveal-protection'
 import type { SecretId } from '../src/core/secret'
 
@@ -11,6 +14,18 @@ function response(body: unknown, status = 200): Response {
 }
 
 describe('Turnstile reveal challenge verifier', () => {
+  it('requires both site and secret keys as one configuration boundary', () => {
+    expect(turnstileRevealProtectionConfiguration('site-key', 'secret-key')).toEqual({
+      siteKey: 'site-key',
+      secretKey: 'secret-key',
+    })
+    expect(turnstileRevealProtectionConfiguration(undefined, 'secret-key')).toBeUndefined()
+    expect(turnstileRevealProtectionConfiguration('site-key', undefined)).toBeUndefined()
+    expect(turnstileRevealProtectionConfiguration('   ', 'secret-key')).toBeUndefined()
+    expect(turnstileRevealProtectionConfiguration('site-key', '   ')).toBeUndefined()
+  })
+
+
   it('accepts only the expected action, hostname and secret-bound cData', async () => {
     let capturedInit: RequestInit | undefined
     let calls = 0
