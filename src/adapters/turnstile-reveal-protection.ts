@@ -35,6 +35,7 @@ interface SiteverifyResponse {
   hostname?: unknown
   action?: unknown
   cdata?: unknown
+  'error-codes'?: unknown
 }
 
 export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier {
@@ -90,13 +91,26 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
     }
 
     const siteverify = result as SiteverifyResponse
-    if (
-      siteverify.success !== true ||
-      siteverify.action !== REVEAL_PROTECTION_ACTION ||
-      typeof siteverify.hostname !== 'string' ||
-      siteverify.hostname.toLowerCase() !== expectedHostname ||
-      siteverify.cdata !== context.secretId
-    ) {
+    const actionMatches = siteverify.action === REVEAL_PROTECTION_ACTION
+    const hostnameMatches =
+      typeof siteverify.hostname === 'string' &&
+      siteverify.hostname.toLowerCase() === expectedHostname
+    const cdataMatches = siteverify.cdata === context.secretId
+
+    if (siteverify.success !== true || !actionMatches || !hostnameMatches || !cdataMatches) {
+      const errorCodes = Array.isArray(siteverify['error-codes'])
+        ? siteverify['error-codes']
+            .filter((code): code is string => typeof code === 'string')
+            .slice(0, 10)
+        : []
+
+      console.warn('Turnstile Siteverify rejected reveal verification', {
+        success: siteverify.success === true,
+        errorCodes,
+        hostnameMatches,
+        actionMatches,
+        cdataMatches,
+      })
       return { kind: 'invalid' }
     }
 
