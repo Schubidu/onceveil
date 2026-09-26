@@ -19,7 +19,10 @@ describe('preview-safe share landing route', () => {
   it('does not auto-trigger reveal during page initialization', async () => {
     const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
 
-    const effect = source.slice(source.indexOf('useEffect'), source.indexOf('async function reveal'))
+    const effect = source.slice(
+      source.indexOf('useEffect'),
+      source.indexOf('async function reveal'),
+    )
     expect(effect).toContain('takeShareFragment')
     expect(effect).not.toContain('fetch(')
   })
