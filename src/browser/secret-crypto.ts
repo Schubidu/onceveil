@@ -1,7 +1,6 @@
 import {
   SHARE_PROTOCOL_VERSION,
   shareAssociatedData,
-  sharePath,
   type EncryptedSecretPayload,
 } from '../core/share-capability'
 import { generateSecretId } from '../core/secret'
@@ -28,6 +27,10 @@ export interface FragmentLocation {
 export interface FragmentHistory {
   state: unknown
   replaceState(data: unknown, unused: string, url?: string | URL | null): void
+}
+
+function sharePath(id: EncryptedSecretPayload['id'], fragment: string): string {
+  return `/s/${encodeURIComponent(id)}#${fragment}`
 }
 
 export class InvalidShareCapabilityError extends Error {
