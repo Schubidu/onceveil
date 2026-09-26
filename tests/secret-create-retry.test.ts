@@ -2,11 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { encryptedShareForCreate } from '../src/browser/secret-create-retry'
 import type { EncryptedShare } from '../src/browser/secret-crypto'
+import type { SecretId } from '../src/core/secret'
 
 function encrypted(label: string): EncryptedShare {
   return {
     payload: {
-      contextId: '0123456789abcdef0123456789abcdef',
+      contextId: '0123456789abcdef0123456789abcdef' as SecretId,
       version: 'v1',
       nonce: 'AAAAAAAAAAAAAAAA',
       ciphertext: 'AAAAAAAAAAAAAAAAAAAAAA',
