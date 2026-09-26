@@ -214,6 +214,7 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
             typeof body?.diagnostic === 'string' &&
             [
               'siteverify_rejected',
+              'siteverify_unavailable',
               'hostname_mismatch',
               'action_mismatch',
               'cdata_mismatch',
