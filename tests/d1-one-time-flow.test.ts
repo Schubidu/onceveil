@@ -189,6 +189,21 @@ describe('D1 one-time HTTP flow', () => {
     return proof
   }
 
+  async function storeTestSecret(plaintext: string, nowMs = 0) {
+    const encrypted = await encryptSecret(plaintext)
+    const response = await createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload: encrypted.payload }),
+      }),
+      repository,
+      nowMs,
+      allocatePublicId,
+    )
+    expect(response.status).toBe(201)
+  }
+
   it('reports the failing D1 create stage without secret material', async () => {
     const failingDatabase: D1DatabaseLike = {
       prepare() {
@@ -682,6 +697,7 @@ describe('D1 one-time HTTP flow', () => {
   })
 
   it('prunes consumed and expired reveal proofs when issuing a new proof', async () => {
+    await storeTestSecret('proof cleanup')
     const expired = await prepareProof(PUBLIC_ID, 1_000)
     const consumed = await prepareProof(PUBLIC_ID, 2_000)
     await expect(proofRepository.verify(PUBLIC_ID, consumed.verificationId, 2_001)).resolves.toBe(
@@ -699,6 +715,7 @@ describe('D1 one-time HTTP flow', () => {
   })
 
   it('keeps the proof unusable until its matching verification is completed', async () => {
+    await storeTestSecret('pending proof')
     const proof = await prepareProof(PUBLIC_ID, 1_000)
     const otherId = 'e'.repeat(32) as SecretId
 
@@ -710,6 +727,7 @@ describe('D1 one-time HTTP flow', () => {
   })
 
   it('allows only one concurrent consume of the same verified reveal proof', async () => {
+    await storeTestSecret('concurrent proof')
     const proof = await prepareProof(PUBLIC_ID, 1_000)
     await expect(proofRepository.verify(PUBLIC_ID, proof.verificationId, 1_001)).resolves.toBe(true)
 
