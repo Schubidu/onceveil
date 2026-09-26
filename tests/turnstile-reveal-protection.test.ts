@@ -93,10 +93,8 @@ describe('Turnstile reveal challenge verifier', () => {
   })
 
   it('fails closed on a null Siteverify response', async () => {
-    const verifier = new TurnstileRevealChallengeVerifier(
-      'secret-key',
-      (async () => response(null)) as typeof fetch,
-    )
+    const verifier = new TurnstileRevealChallengeVerifier('secret-key', (async () =>
+      response(null)) as typeof fetch)
 
     await expect(
       verifier.verify({
