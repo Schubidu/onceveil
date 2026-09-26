@@ -164,7 +164,7 @@ describe('D1 one-time HTTP flow', () => {
       1_000,
     )
 
-    await expect(create).rejects.toMatchObject<D1CreateError>({
+    await expect(create).rejects.toMatchObject({
       name: 'D1CreateError',
       stage: 'run',
       detail: 'D1_ERROR: test failure',
