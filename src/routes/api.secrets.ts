@@ -22,8 +22,6 @@ export const Route = createFileRoute('/api/secrets')({
           )
         }
 
-        const isPreview = expectedEnvironment === 'preview'
-
         try {
           await assertSecretDatabaseEnvironment(expectedEnvironment)
           return await createSecretResponse(request, getSecretRepository())
@@ -35,17 +33,12 @@ export const Route = createFileRoute('/api/secrets')({
           }
 
           if (error instanceof SecretDatabaseEnvironmentError) {
+            console.error('secret database environment check failed', {
+              expected: error.expected,
+              actual: error.actual,
+            })
             return withSecretSecurityHeaders(
-              Response.json(
-                isPreview
-                  ? {
-                      error: 'database_environment_mismatch',
-                      expected: error.expected,
-                      actual: error.actual,
-                    }
-                  : { error: 'service_unavailable' },
-                { status: 503 },
-              ),
+              Response.json({ error: 'service_unavailable' }, { status: 503 }),
             )
           }
 
@@ -54,16 +47,14 @@ export const Route = createFileRoute('/api/secrets')({
             message: error instanceof Error ? error.message : 'unknown error',
           })
 
-          if (error instanceof D1CreateError && isPreview) {
+          if (error instanceof D1CreateError) {
+            console.error('secret create failed', {
+              name: error.name,
+              stage: error.stage,
+              detail: error.detail,
+            })
             return withSecretSecurityHeaders(
-              Response.json(
-                {
-                  error: 'd1_create_failed',
-                  stage: error.stage,
-                  detail: error.detail,
-                },
-                { status: 500 },
-              ),
+              Response.json({ error: 'internal_error' }, { status: 500 }),
             )
           }
 
