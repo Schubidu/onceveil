@@ -121,7 +121,6 @@ function Home() {
                   }
                   setSecret(value)
                 }}
-                rows={7}
                 autoComplete="off"
                 spellCheck={false}
               />
