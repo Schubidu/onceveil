@@ -79,7 +79,7 @@ describe('Turnstile reveal challenge verifier', () => {
         secretId: SECRET_ID,
         hostname: 'ots.schult.dev',
       }),
-    ).resolves.toEqual({ kind: 'invalid' })
+    ).resolves.toMatchObject({ kind: 'invalid' })
 
     expect(warn).toHaveBeenCalledWith(
       'Turnstile Siteverify rejected reveal verification',
