@@ -112,3 +112,13 @@ Before relying on `previews.d1_databases`:
 After switching, trigger a fresh Preview build so the branch deployment is recreated with the new Preview bindings.
 
 The switch is irreversible. After switching, branch builds use the `previews` block and can bind `DB` to `onceveil-preview`. Before the switch, the legacy preview model can use production settings and must not be trusted for isolated D1 testing.
+
+
+## Public readiness endpoint
+
+`GET /ready` is intentionally coarse-grained and returns only `{"status":"ready"}` or `{"status":"not_ready"}`.
+It does not expose D1 schema, environment-marker, binding, or query diagnostics to unauthenticated callers.
+
+Detailed database isolation and schema verification remains deployment-side through `db:verify:production` and
+`db:verify:preview`, which fail closed before a Worker deployment proceeds. Runtime create/reveal routes also
+enforce the expected environment marker and return only generic public errors on database failures.
