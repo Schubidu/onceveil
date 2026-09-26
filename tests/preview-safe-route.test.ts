@@ -6,6 +6,12 @@ import { describe, expect, it } from 'vitest'
 import { Route as ShareRoute } from '../src/routes/s.$id'
 
 describe('preview-safe share landing route', () => {
+  it('locks the plaintext field while a create request is in flight', async () => {
+    const source = await readFile(path.resolve('src/routes/index.tsx'), 'utf8')
+
+    expect(source).toContain('disabled={creating}')
+  })
+
   it('executes the passive HEAD handler without revealing or consuming anything', async () => {
     const configuredHandlers = ShareRoute.options.server?.handlers
     expect(configuredHandlers).toBeDefined()
