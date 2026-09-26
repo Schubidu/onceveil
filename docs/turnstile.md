@@ -20,9 +20,9 @@ When the recipient chooses **Verify & reveal secret**:
 10. the verification window sends only success/failure state through the same-origin `BroadcastChannel`;
 11. reveal atomically consumes the verified proof before attempting the existing strict one-time secret consume.
 
-A pending verification expires after five minutes. Once verified, its proof is bound to one secret, expires after 60 seconds, and can be consumed once.
+A pending verification expires after five minutes. At most three active pending proofs are allowed per secret, including under concurrent preparation. Once verified, its proof is bound to one secret, expires after 60 seconds, and can be consumed once.
 
-If Turnstile, its configuration, D1 proof storage, or proof validation is unavailable, reveal fails closed and the secret remains `AVAILABLE`.
+If Turnstile, its configuration, D1 proof storage, or proof validation is unavailable, reveal fails closed and the secret remains `AVAILABLE`. The complete Turnstile configuration is checked again immediately before consuming a verified proof.
 
 ## Share-fragment migration
 
@@ -30,7 +30,7 @@ Turnstile-protected links use fragment format `v2.<key>.<reveal-authorization>`.
 
 Pre-existing `v1.<key>` links do not contain a server-verifiable value that can authorize proof preparation. Supporting them transparently would require either sending the AES key to the server or allowing reveal preparation from the public secret id alone; both violate the fail-closed trust boundary. Onceveil therefore recognizes legacy links but does not downgrade them to unprotected reveal.
 
-Before enabling this change in a deployment that has issued v1 links, let those links expire naturally first (bounded by the configured maximum TTL, currently seven days) or explicitly accept their invalidation.
+Migration `0006_expire_legacy_share_links.sql` explicitly invalidates still-`AVAILABLE` pre-v2 rows by moving them to `EXPIRED`. This makes the security boundary deterministic: after migration every `AVAILABLE` secret is expected to have the replay key required by protected reveal preparation.
 
 ## Cloudflare configuration
 
