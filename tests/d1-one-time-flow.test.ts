@@ -156,6 +156,26 @@ describe('D1 one-time HTTP flow', () => {
     d1.close()
   })
 
+  function revealAuthorization(id: SecretId): string {
+    const row = d1.database
+      .prepare('SELECT replay_key FROM secrets WHERE id = ?')
+      .get(id) as { replay_key?: string } | undefined
+    if (typeof row?.replay_key !== 'string') {
+      throw new Error('missing reveal authorization')
+    }
+
+    return row.replay_key
+  }
+
+  async function prepareProof(id: SecretId, nowMs: number) {
+    const proof = await proofRepository.prepare(id, revealAuthorization(id), nowMs)
+    if (!proof) {
+      throw new Error('proof preparation failed')
+    }
+
+    return proof
+  }
+
   it('reports the failing D1 create stage without secret material', async () => {
     const failingDatabase: D1DatabaseLike = {
       prepare() {
@@ -534,6 +554,34 @@ describe('D1 one-time HTTP flow', () => {
     }
   })
 
+  it('requires the fragment-only authorization before preparing a reveal proof', async () => {
+    const encrypted = await encryptSecret('authorized proof preparation')
+    await createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload: encrypted.payload }),
+      }),
+      repository,
+      1_000,
+      allocatePublicId,
+    )
+
+    await expect(proofRepository.prepare(PUBLIC_ID, '0'.repeat(64), 1_001)).resolves.toBeUndefined()
+
+    const count = d1.database.prepare('SELECT COUNT(*) AS count FROM reveal_proofs').get() as {
+      count: number
+    }
+    expect(count.count).toBe(0)
+
+    await expect(
+      proofRepository.prepare(PUBLIC_ID, revealAuthorization(PUBLIC_ID), 1_001),
+    ).resolves.toMatchObject({
+      verificationId: expect.stringMatching(/^[0-9a-f]{32}$/),
+      value: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+    })
+  })
+
   it('requires a valid one-time proof before the protected reveal can consume', async () => {
     const encrypted = await encryptSecret('protected reveal')
     await createSecretResponse(
@@ -563,7 +611,7 @@ describe('D1 one-time HTTP flow', () => {
       state: 'AVAILABLE',
     })
 
-    const issued = await proofRepository.prepare(PUBLIC_ID, 1_002)
+    const issued = await prepareProof(PUBLIC_ID, 1_002)
     await expect(proofRepository.verify(PUBLIC_ID, issued.verificationId, 1_003)).resolves.toBe(
       true,
     )
@@ -595,16 +643,15 @@ describe('D1 one-time HTTP flow', () => {
   })
 
   it('prunes consumed and expired reveal proofs when issuing a new proof', async () => {
-    const expired = await proofRepository.prepare(PUBLIC_ID, 1_000)
-    const otherId = 'e'.repeat(32) as SecretId
-    const consumed = await proofRepository.prepare(otherId, 2_000)
-    await expect(proofRepository.verify(otherId, consumed.verificationId, 2_001)).resolves.toBe(
+    const expired = await prepareProof(PUBLIC_ID, 1_000)
+    const consumed = await prepareProof(PUBLIC_ID, 2_000)
+    await expect(proofRepository.verify(PUBLIC_ID, consumed.verificationId, 2_001)).resolves.toBe(
       true,
     )
-    await expect(proofRepository.consume(otherId, consumed.value, 2_002)).resolves.toBe(true)
+    await expect(proofRepository.consume(PUBLIC_ID, consumed.value, 2_002)).resolves.toBe(true)
 
     const cleanupAt = expired.expiresAtMs
-    await proofRepository.prepare(PUBLIC_ID, cleanupAt)
+    await prepareProof(PUBLIC_ID, cleanupAt)
 
     const count = d1.database.prepare('SELECT COUNT(*) AS count FROM reveal_proofs').get() as {
       count: number
@@ -613,7 +660,7 @@ describe('D1 one-time HTTP flow', () => {
   })
 
   it('keeps the proof unusable until its matching verification is completed', async () => {
-    const proof = await proofRepository.prepare(PUBLIC_ID, 1_000)
+    const proof = await prepareProof(PUBLIC_ID, 1_000)
     const otherId = 'e'.repeat(32) as SecretId
 
     await expect(proofRepository.consume(PUBLIC_ID, proof.value, 1_001)).resolves.toBe(false)
@@ -624,7 +671,7 @@ describe('D1 one-time HTTP flow', () => {
   })
 
   it('allows only one concurrent consume of the same verified reveal proof', async () => {
-    const proof = await proofRepository.prepare(PUBLIC_ID, 1_000)
+    const proof = await prepareProof(PUBLIC_ID, 1_000)
     await expect(proofRepository.verify(PUBLIC_ID, proof.verificationId, 1_001)).resolves.toBe(true)
 
     const results = await Promise.all(
@@ -648,7 +695,7 @@ describe('D1 one-time HTTP flow', () => {
       allocatePublicId,
     )
 
-    const expired = await proofRepository.prepare(PUBLIC_ID, 1_001)
+    const expired = await prepareProof(PUBLIC_ID, 1_001)
     await expect(proofRepository.verify(PUBLIC_ID, expired.verificationId, 1_002)).resolves.toBe(
       true,
     )
@@ -665,7 +712,7 @@ describe('D1 one-time HTTP flow', () => {
     )
     expect(expiredResponse.status).toBe(403)
 
-    const spent = await proofRepository.prepare(PUBLIC_ID, 2_000)
+    const spent = await prepareProof(PUBLIC_ID, 2_000)
     await expect(proofRepository.verify(PUBLIC_ID, spent.verificationId, 2_001)).resolves.toBe(true)
     await expect(proofRepository.consume(PUBLIC_ID, spent.value, 2_002)).resolves.toBe(true)
     const replayedResponse = await protectedRevealResponse(
@@ -682,17 +729,17 @@ describe('D1 one-time HTTP flow', () => {
     expect(replayedResponse.status).toBe(403)
 
     const otherId = 'e'.repeat(32) as SecretId
-    const otherProof = await proofRepository.prepare(otherId, 3_000)
-    await expect(proofRepository.verify(otherId, otherProof.verificationId, 3_001)).resolves.toBe(
+    const otherProof = await prepareProof(PUBLIC_ID, 3_000)
+    await expect(proofRepository.verify(PUBLIC_ID, otherProof.verificationId, 3_001)).resolves.toBe(
       true,
     )
     const boundResponse = await protectedRevealResponse(
-      new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
+      new Request(`https://onceveil.test/api/secrets/${otherId}/reveal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ proof: otherProof.value }),
       }),
-      PUBLIC_ID,
+      otherId,
       proofRepository,
       repository,
       3_002,
@@ -717,7 +764,7 @@ describe('D1 one-time HTTP flow', () => {
       allocatePublicId,
     )
 
-    const prepared = await proofRepository.prepare(PUBLIC_ID, 1_001)
+    const prepared = await prepareProof(PUBLIC_ID, 1_001)
     const verification = await verifyRevealProofResponse(
       new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
         method: 'POST',
