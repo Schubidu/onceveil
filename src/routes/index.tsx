@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 
+import { ownerPath } from '../browser/owner-capability'
 import { sharePath } from '../browser/secret-crypto'
 import {
   encryptedShareForCreate,
@@ -16,7 +17,8 @@ export const Route = createFileRoute('/')({
 function Home() {
   const [secret, setSecret] = useState('')
   const [shareUrl, setShareUrl] = useState<string>()
-  const [copied, setCopied] = useState(false)
+  const [ownerUrl, setOwnerUrl] = useState<string>()
+  const [copied, setCopied] = useState<'share' | 'owner'>()
   const [error, setError] = useState<string>()
   const [creating, setCreating] = useState(false)
   const [pendingCreate, setPendingCreate] = useState<PendingEncryptedCreate>()
@@ -29,7 +31,8 @@ function Home() {
     setCreating(true)
     setError(undefined)
     setShareUrl(undefined)
-    setCopied(false)
+    setOwnerUrl(undefined)
+    setCopied(undefined)
 
     try {
       const pending = await encryptedShareForCreate(secret, pendingCreate)
@@ -38,7 +41,10 @@ function Home() {
       const response = await fetch('/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: pending.encrypted.payload }),
+        body: JSON.stringify({
+          payload: pending.encrypted.payload,
+          ownerKeyHash: pending.ownerCapabilityHash,
+        }),
       })
 
       const body = (await response.json().catch(() => undefined)) as
@@ -60,6 +66,7 @@ function Home() {
       }
 
       setShareUrl(`${window.location.origin}${sharePath(id, pending.encrypted.fragment)}`)
+      setOwnerUrl(`${window.location.origin}${ownerPath(id, pending.ownerCapability)}`)
       setPendingCreate(undefined)
       setSecret('')
     } catch (cause) {
@@ -73,18 +80,14 @@ function Home() {
     }
   }
 
-  async function copyShareUrl() {
-    if (!shareUrl) {
-      return
-    }
-
+  async function copyUrl(kind: 'share' | 'owner', value: string) {
     try {
-      await navigator.clipboard.writeText(shareUrl)
-      setCopied(true)
+      await navigator.clipboard.writeText(value)
+      setCopied(kind)
       setError(undefined)
     } catch {
-      setCopied(false)
-      setError('The one-time link could not be copied.')
+      setCopied(undefined)
+      setError('The link could not be copied.')
     }
   }
 
@@ -123,11 +126,26 @@ function Home() {
             <button
               className="copy-link"
               type="button"
-              onClick={copyShareUrl}
+              onClick={() => void copyUrl('share', shareUrl)}
               aria-label="Copy one-time link to clipboard"
             >
               <code>{shareUrl}</code>
-              <span>{copied ? 'Copied' : 'Copy'}</span>
+              <span>{copied === 'share' ? 'Copied' : 'Copy'}</span>
+            </button>
+          </div>
+        ) : null}
+
+        {ownerUrl ? (
+          <div className="result" aria-live="polite">
+            <strong>Keep this owner link private:</strong>
+            <button
+              className="copy-link"
+              type="button"
+              onClick={() => void copyUrl('owner', ownerUrl)}
+              aria-label="Copy owner link to clipboard"
+            >
+              <code>{ownerUrl}</code>
+              <span>{copied === 'owner' ? 'Copied' : 'Copy'}</span>
             </button>
           </div>
         ) : null}
