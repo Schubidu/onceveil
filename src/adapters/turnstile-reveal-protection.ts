@@ -103,6 +103,14 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
             .filter((code): code is string => typeof code === 'string')
             .slice(0, 10)
         : []
+      const diagnostic =
+        siteverify.success !== true
+          ? 'siteverify_rejected'
+          : !hostnameMatches
+            ? 'hostname_mismatch'
+            : !actionMatches
+              ? 'action_mismatch'
+              : 'cdata_mismatch'
 
       console.warn('Turnstile Siteverify rejected reveal verification', {
         success: siteverify.success === true,
@@ -111,7 +119,7 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
         actionMatches,
         cdataMatches,
       })
-      return { kind: 'invalid' }
+      return { kind: 'invalid', diagnostic }
     }
 
     return { kind: 'verified' }
