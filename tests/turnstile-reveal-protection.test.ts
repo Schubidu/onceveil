@@ -98,9 +98,10 @@ describe('Turnstile reveal challenge verifier', () => {
     expect(JSON.stringify(warn.mock.calls)).not.toContain('secret-key')
   })
 
-  it('fails closed when Siteverify is unavailable', async () => {
+  it('fails closed and classifies a lost Siteverify connection', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const verifier = new TurnstileRevealChallengeVerifier('secret-key', (async () => {
-      throw new Error('network down')
+      throw new Error('Network connection lost')
     }) as typeof fetch)
 
     await expect(
@@ -109,7 +110,10 @@ describe('Turnstile reveal challenge verifier', () => {
         secretId: SECRET_ID,
         hostname: 'ots.schult.dev',
       }),
-    ).resolves.toEqual({ kind: 'unavailable', diagnostic: 'siteverify_fetch_failed' })
+    ).resolves.toEqual({ kind: 'unavailable', diagnostic: 'siteverify_network_lost' })
+
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('turnstile-token')
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('secret-key')
   })
 
   it('fails closed on a null Siteverify response', async () => {
