@@ -153,7 +153,9 @@ export function requestRevealProof(id: SecretId, authorization: string): Promise
             }
 
             proof = prepared.proof
-            broadcast.postMessage({ type: 'onceveil-reveal-prepared' } satisfies RevealVerificationMessage)
+            broadcast.postMessage({
+              type: 'onceveil-reveal-prepared',
+            } satisfies RevealVerificationMessage)
           })
           .catch(() => {
             if (!settled) {
