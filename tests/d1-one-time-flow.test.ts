@@ -5,7 +5,6 @@ import { DatabaseSync } from 'node:sqlite'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
-  D1CreateError,
   D1SecretRepository,
   type D1BindingValue,
   type D1DatabaseLike,
