@@ -2,7 +2,6 @@ type SafeLogValue = string | number | boolean | readonly string[]
 
 const SAFE_LOG_FIELDS = new Set([
   'actionMatches',
-  'actual',
   'cdataMatches',
   'diagnostic',
   'errorCodes',
