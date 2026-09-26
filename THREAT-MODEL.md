@@ -1,6 +1,6 @@
 # Onceveil threat model
 
-This document defines the security guarantees and explicit non-guarantees for the current Onceveil foundations. Persistence adapters, recipient authentication, reveal protection, and MCP integration remain separate implementation slices.
+This document defines the security guarantees and explicit non-guarantees for the current Onceveil foundations. Recipient authentication, portable deployment, and MCP integration remain separate implementation slices.
 
 ## Security invariants
 
@@ -77,6 +77,18 @@ The server stores only the encoded encrypted payload plus lifecycle timestamps/s
 Reveal is a mutating POST operation. D1 performs expiry and the conditional `AVAILABLE → CONSUMED` transition in one batch transaction. A random per-request consume token gates the ciphertext SELECT inside that transaction, so concurrent losing requests cannot read the winner's ciphertext. The token is cleared before the transaction completes.
 
 GET/HEAD rendering of `/s/:id` does not access the repository and cannot consume a secret. Secret surfaces are served with `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, and `X-Content-Type-Options: nosniff`.
+
+## Reveal protection
+
+Cloudflare deployments require a provider-neutral reveal proof before the existing one-time consume may run.
+
+Turnstile executes only in a separate, fragment-free browsing context opened with `noopener`/`noreferrer`. The browsing context holding the decryption key never loads Turnstile JavaScript. The two same-origin contexts exchange only a short-lived opaque proof through a random `BroadcastChannel`.
+
+The server validates Turnstile through Siteverify and requires the expected action, exact hostname, and secret-bound `cData`. A successful challenge issues a 60-second random proof. D1 stores only its SHA-256 hash together with the intended secret identifier and one-time consumption state.
+
+Invalid, missing, expired, replayed, or differently bound proofs cannot reach the secret consume. Provider outage, missing configuration, or proof-storage failure also fails closed and leaves the secret `AVAILABLE`. Onceveil does not treat Turnstile as recipient authentication or cryptographic proof of humanity.
+
+Proof consumption and secret consumption are intentionally sequential rather than a cross-table lease protocol. A proof may therefore be spent by an infrastructure failure immediately before secret consume; the secret remains available and the recipient must verify again.
 
 ## Threats covered
 
