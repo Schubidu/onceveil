@@ -44,7 +44,9 @@ A read followed by a separate write is insufficient because two callers could bo
 
 Possession of a complete anonymous share URL is possession of the reveal capability.
 
-The planned URL format keeps the decryption key in the URL fragment so ordinary HTTP requests and passive link previews do not send it to the server. This does **not** authenticate a person.
+The v1 URL format is `/s/:id#v1.<base64url-key>`. The browser generates a fresh 256-bit AES-GCM key and 96-bit nonce for each secret. The decryption key exists only in the URL fragment, so ordinary HTTP requests and passive link previews do not send it to the server. After the reveal page copies the fragment into page memory, it replaces the current history entry with the fragment-free path immediately.
+
+AES-GCM authenticates both the ciphertext and associated data `onceveil:v1:<secretId>`, binding the protocol version and secret identifier to the ciphertext. A modified ciphertext, identifier, version, nonce, or wrong key must fail authentication. This does **not** authenticate a person.
 
 A recipient-authenticated mode may be added later, but it is outside the current scope.
 
@@ -89,6 +91,10 @@ Backups may retain encrypted ciphertext after logical consumption, expiration, r
 ### Active browser automation
 
 A system that receives the complete share URL and runs a real browser can execute JavaScript, read `location.hash`, and intentionally perform the reveal action. The passive-preview guarantee does not protect against such an active recipient.
+
+### Browser persistence
+
+Plaintext and decryption keys are not stored in localStorage, sessionStorage, IndexedDB, cookies, query parameters, request bodies, or server-visible routes. The browser holds the key only in page memory for the reveal operation. JavaScript cannot guarantee physical memory erasure after values become unreachable.
 
 ### Compromised recipient device
 
