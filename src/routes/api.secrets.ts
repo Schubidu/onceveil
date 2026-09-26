@@ -2,7 +2,12 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { D1CreateError } from '../adapters/d1-secret-repository'
 import { createSecretResponse } from '../runtime/secret-http'
-import { getSecretRepository, SecretDatabaseUnavailableError } from '../runtime/secret-repository'
+import {
+  assertSecretDatabaseEnvironment,
+  getSecretRepository,
+  SecretDatabaseEnvironmentError,
+  SecretDatabaseUnavailableError,
+} from '../runtime/secret-repository'
 import { withSecretSecurityHeaders } from '../runtime/security-headers'
 
 export const Route = createFileRoute('/api/secrets')({
@@ -10,11 +15,32 @@ export const Route = createFileRoute('/api/secrets')({
     handlers: {
       POST: async ({ request }) => {
         try {
+          await assertSecretDatabaseEnvironment()
           return await createSecretResponse(request, getSecretRepository())
         } catch (error) {
           if (error instanceof SecretDatabaseUnavailableError) {
             return withSecretSecurityHeaders(
               Response.json({ error: 'service_unavailable' }, { status: 503 }),
+            )
+          }
+
+          if (error instanceof SecretDatabaseEnvironmentError) {
+            const hostname = new URL(request.url).hostname
+            const isPreview =
+              hostname.endsWith('.ots-preview.schult.dev') ||
+              hostname.endsWith('-onceveil.schult.workers.dev')
+
+            return withSecretSecurityHeaders(
+              Response.json(
+                isPreview
+                  ? {
+                      error: 'database_environment_mismatch',
+                      expected: error.expected,
+                      actual: error.actual,
+                    }
+                  : { error: 'service_unavailable' },
+                { status: 503 },
+              ),
             )
           }
 
