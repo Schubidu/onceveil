@@ -7,7 +7,13 @@ import { withSecretSecurityHeaders } from '../runtime/security-headers'
 export const Route = createFileRoute('/api/secrets/$id/reveal')({
   server: {
     handlers: {
-      POST: async ({ params }) => {
+      POST: async ({ params, request }) => {
+        if (request.headers.get('X-Onceveil-Reveal') !== '1') {
+          return withSecretSecurityHeaders(
+            Response.json({ error: 'reveal_intent_required' }, { status: 400 }),
+          )
+        }
+
         try {
           return await revealSecretResponse(params.id, getSecretRepository())
         } catch (error) {
