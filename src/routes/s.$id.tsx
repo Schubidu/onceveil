@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   decryptSecret,
   InvalidShareCapabilityError,
+  LegacyShareCapabilityError,
   revealAuthorizationFromFragment,
   takeShareFragment,
 } from '../browser/secret-crypto'
@@ -122,9 +123,11 @@ function SecretReveal({ id }: { id: SecretId }) {
       setPlaintext(revealed)
     } catch (cause) {
       setError(
-        cause instanceof InvalidShareCapabilityError
-          ? 'The share capability is invalid or the encrypted payload was modified.'
-          : 'Verification or reveal failed.',
+        cause instanceof LegacyShareCapabilityError
+          ? 'This link uses the previous share format and cannot be revealed after the security upgrade.'
+          : cause instanceof InvalidShareCapabilityError
+            ? 'The share capability is invalid or the encrypted payload was modified.'
+            : 'Verification or reveal failed.',
       )
     } finally {
       setRevealing(false)
