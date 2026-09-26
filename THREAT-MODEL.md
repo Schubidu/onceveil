@@ -64,7 +64,7 @@ The domain default is:
 - maximum TTL: 7 days;
 - maximum ciphertext payload: 64 KiB.
 
-Deployments may configure stricter limits. Invalid configuration fails closed. Requests above the configured TTL or payload limit are rejected rather than silently clamped.
+Deployments may configure stricter limits. Invalid configuration fails closed. Requests above the configured TTL or payload limit are rejected rather than silently clamped. Persistence accepts only records produced by the validated domain creation path, so storage adapters cannot bypass these limits with arbitrary expiry or payload values.
 
 ## Threats covered
 
