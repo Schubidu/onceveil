@@ -8,6 +8,7 @@ import {
   SecretDatabaseUnavailableError,
 } from '../runtime/secret-repository'
 import { runtimeEnvironmentForRequest } from '../runtime/readiness'
+import { logRuntimeError } from '../runtime/safe-log'
 import { withSecretSecurityHeaders } from '../runtime/security-headers'
 
 function jsonError(error: string, status: number): Response {
@@ -32,17 +33,14 @@ async function withOwnerRepository(
     }
 
     if (error instanceof SecretDatabaseEnvironmentError) {
-      console.error('secret database environment check failed', {
+      logRuntimeError('secret database environment check failed', error, {
         expected: error.expected,
         actual: error.actual,
       })
       return jsonError('service_unavailable', 503)
     }
 
-    console.error('secret owner operation failed', {
-      name: error instanceof Error ? error.name : 'UnknownError',
-      message: error instanceof Error ? error.message : 'unknown error',
-    })
+    logRuntimeError('secret owner operation failed', error)
     return jsonError('internal_error', 500)
   }
 }
