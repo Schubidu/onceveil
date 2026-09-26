@@ -157,11 +157,7 @@ function SecretReveal({ id }: { id: SecretId }) {
         <h1 id="secret-title">Onceveil</h1>
 
         {plaintext !== undefined ? (
-          <button
-            className="copy-secret"
-            type="button"
-            onClick={() => void copyPlaintext()}
-          >
+          <button className="copy-secret" type="button" onClick={() => void copyPlaintext()}>
             <code>{plaintext}</code>
             <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
