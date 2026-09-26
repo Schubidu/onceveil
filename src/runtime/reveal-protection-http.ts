@@ -100,8 +100,7 @@ export async function verifyRevealProofResponse(
   }
 
   const token = bodyResult.kind === 'ok' ? bodyResult.body.token : undefined
-  const verificationId =
-    bodyResult.kind === 'ok' ? bodyResult.body.verificationId : undefined
+  const verificationId = bodyResult.kind === 'ok' ? bodyResult.body.verificationId : undefined
   if (typeof token !== 'string' || typeof verificationId !== 'string') {
     return json({ error: 'invalid_verification' }, 400)
   }
