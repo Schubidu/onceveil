@@ -1,6 +1,7 @@
 import {
   decodeEncryptedSecretPayload,
   encodeEncryptedSecretPayload,
+  encryptedPayloadReplayKey,
   isEncryptedSecretPayload,
 } from '../core/share-capability'
 import {
@@ -26,12 +27,6 @@ type CreateBodyReadResult =
 export const MAX_CREATE_REQUEST_BYTES = DEFAULT_SECRET_POLICY.maxPayloadBytes + 2 * 1024
 const PUBLIC_ID_ATTEMPTS = 3
 
-async function encryptedPayloadReplayKey(payload: Uint8Array): Promise<string> {
-  const copy = new Uint8Array(payload.byteLength)
-  copy.set(payload)
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', copy.buffer))
-  return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('')
-}
 
 function json(data: unknown, status: number): Response {
   return withSecretSecurityHeaders(Response.json(data, { status }))
@@ -112,7 +107,7 @@ export async function createSecretResponse(
   const ttlMs = body.ttlMs === undefined || typeof body.ttlMs === 'number' ? body.ttlMs : Number.NaN
 
   const encoded = encodeEncryptedSecretPayload(payload)
-  const replayKey = await encryptedPayloadReplayKey(encoded)
+  const replayKey = await encryptedPayloadReplayKey(payload)
 
   for (let attempt = 0; attempt < PUBLIC_ID_ATTEMPTS; attempt += 1) {
     const prepared = prepareSecretRecord(generatePublicId(), encoded, nowMs, ttlMs)
