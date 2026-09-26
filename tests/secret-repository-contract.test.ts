@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest'
 import {
   consumeSecret,
   effectiveState,
+  prepareSecretRecord,
   revokeSecret,
   toSecretStatus,
   type ConsumeResult,
   type CreateResult,
+  type PreparedSecretRecord,
   type RevokeResult,
   type SecretId,
   type SecretRecord,
@@ -17,7 +19,7 @@ class AsyncAtomicInMemorySecretRepository implements SecretRepository {
   private readonly records = new Map<SecretId, SecretRecord>()
   private readonly queues = new Map<SecretId, Promise<void>>()
 
-  async create(record: SecretRecord): Promise<CreateResult> {
+  async create(record: PreparedSecretRecord): Promise<CreateResult> {
     return this.withLock(record.id, async () => {
       await Promise.resolve()
 
@@ -106,14 +108,14 @@ class AsyncAtomicInMemorySecretRepository implements SecretRepository {
   }
 }
 
-function record(id: SecretId): SecretRecord {
-  return {
-    id,
-    ciphertext: new Uint8Array([7, 8, 9]),
-    createdAtMs: 100,
-    expiresAtMs: 1_000,
-    state: 'AVAILABLE',
+function record(id: SecretId, ciphertext = new Uint8Array([7, 8, 9])): PreparedSecretRecord {
+  const prepared = prepareSecretRecord(id, ciphertext, 100, 900)
+
+  if (!prepared.ok) {
+    throw new Error(`failed to prepare test secret: ${prepared.reason}`)
   }
+
+  return prepared.record
 }
 
 describe('SecretRepository atomic transition contract', () => {
@@ -122,10 +124,7 @@ describe('SecretRepository atomic transition contract', () => {
     const id = 'duplicate-create-id' as SecretId
 
     const original = record(id)
-    const replacement = {
-      ...record(id),
-      ciphertext: new Uint8Array([9, 9, 9]),
-    }
+    const replacement = record(id, new Uint8Array([9, 9, 9]))
 
     expect(await repository.create(original)).toEqual({ kind: 'created' })
     expect(await repository.create(replacement)).toEqual({ kind: 'duplicate' })
