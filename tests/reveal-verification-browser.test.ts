@@ -58,16 +58,12 @@ describe('reveal verification browser isolation', () => {
       pairedCloudflareVerificationOrigin(
         'https://feat-issue-20-embedded-reveal-verification.ots-preview.schult.dev',
       ),
-    ).toBe(
-      'https://feat-issue-20-embedded-reveal-verification-onceveil.schult.workers.dev',
-    )
+    ).toBe('https://feat-issue-20-embedded-reveal-verification-onceveil.schult.workers.dev')
     expect(
       pairedCloudflareVerificationOrigin(
         'https://feat-issue-20-embedded-reveal-verification-onceveil.schult.workers.dev',
       ),
-    ).toBe(
-      'https://feat-issue-20-embedded-reveal-verification.ots-preview.schult.dev',
-    )
+    ).toBe('https://feat-issue-20-embedded-reveal-verification.ots-preview.schult.dev')
     expect(pairedCloudflareVerificationOrigin('https://example.test')).toBeUndefined()
   })
 
