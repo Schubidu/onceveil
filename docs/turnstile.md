@@ -45,12 +45,9 @@ Cloudflare authorizes subdomains of a configured hostname, so the Preview entry 
 
 If the `workers.dev` URLs are used for interactive reveal testing, configure the corresponding Workers hostname as well.
 
-Configure these values separately for Production and Preview in **Workers & Pages → onceveil → Settings**:
+The public `TURNSTILE_SITE_KEY` is committed in `wrangler.jsonc` for both Production (`vars`) and Preview (`previews.vars`) so generated Preview configuration keeps the correct site key.
 
-- `TURNSTILE_SITE_KEY`: the public widget sitekey;
-- `TURNSTILE_SECRET_KEY`: the private Siteverify secret.
-
-Keep `TURNSTILE_SECRET_KEY` as a Cloudflare secret. Do not commit it or copy it to GitHub Actions.
+Configure `TURNSTILE_SECRET_KEY` separately for Production and Preview in **Workers & Pages → onceveil → Settings**. Keep it as a Cloudflare secret; do not commit it or copy it to GitHub Actions.
 
 Both values are mandatory at runtime. Missing values do not disable protection; they make verification unavailable and reveal returns a generic service error.
 
