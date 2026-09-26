@@ -82,17 +82,8 @@ Physical cleanup is deliberately separate from one-time correctness. A future sc
 
 ## Runtime database environment guard
 
-Each database has an `onceveil_environment` marker. Deployment writes `preview` or `production` after migrations and verifies it before deployment. The Worker also receives `APP_ENV` through Wrangler configuration and checks the database marker before create/reveal operations.
+Each database has an `onceveil_environment` marker. Deployment writes `preview` or `production` after migrations and verifies it before deployment. The Worker derives the expected environment from the request hostname and checks the database marker before create/reveal operations. Preview hostnames require the `preview` marker; Production hostnames require `production`.
 
 This makes Preview/Production isolation fail closed: if a Preview is ever wired to the Production database (or to an unmarked database), secret access returns `503` instead of reading or writing the wrong environment.
 
 
-## Cloudflare Vite build boundary
-
-The Cloudflare Vite plugin generates a flattened output `wrangler.json` during `vite build`, and Wrangler uses that generated file for deployment. A normal build therefore snapshots the top-level Production bindings.
-
-Preview deployment deliberately rebuilds with `wrangler.preview.jsonc` through `CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH`. That input contains Preview-safe bindings as top-level settings, so the generated flattened deployment config also points at `onceveil-preview`.
-
-The Preview deploy then runs `wrangler preview --ignore-base-config` so dashboard Preview Base settings cannot override that generated Preview-safe deployment configuration.
-
-This extra Preview build is intentional: correctness and Production/Preview isolation are more important than avoiding the duplicate CI build.
