@@ -5,6 +5,7 @@ const VERIFICATION_ID_PATTERN = /^[0-9a-f]{32}$/
 const PROOF_PATTERN = /^[A-Za-z0-9_-]{43}$/
 const REVEAL_AUTHORIZATION_PATTERN = /^[0-9a-f]{64}$/
 const VERIFICATION_TIMEOUT_MS = 5 * 60 * 1000
+const VERIFICATION_READY_TIMEOUT_MS = 10 * 1000
 
 export const REVEAL_VERIFICATION_WINDOW_FEATURES = 'popup,noopener,noreferrer,width=520,height=680'
 
@@ -125,6 +126,7 @@ export function requestRevealProof(id: SecretId, authorization: string): Promise
 
       settled = true
       window.clearTimeout(timeout)
+      window.clearTimeout(readyTimeout)
       broadcast.close()
       action()
     }
@@ -132,6 +134,9 @@ export function requestRevealProof(id: SecretId, authorization: string): Promise
     const timeout = window.setTimeout(() => {
       finish(() => reject(new Error('Reveal verification timed out')))
     }, VERIFICATION_TIMEOUT_MS)
+    const readyTimeout = window.setTimeout(() => {
+      finish(() => reject(new Error('Reveal verification window did not start')))
+    }, VERIFICATION_READY_TIMEOUT_MS)
 
     broadcast.onmessage = (event: MessageEvent<unknown>) => {
       const message = event.data
@@ -145,6 +150,7 @@ export function requestRevealProof(id: SecretId, authorization: string): Promise
         !preparing &&
         proof === undefined
       ) {
+        window.clearTimeout(readyTimeout)
         preparing = true
         void prepareRevealProof(id, authorization, verificationId)
           .then((prepared) => {
