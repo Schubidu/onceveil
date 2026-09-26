@@ -67,8 +67,22 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
         method: 'POST',
         body,
       })
-    } catch {
-      return { kind: 'unavailable', diagnostic: 'siteverify_fetch_failed' }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : ''
+      const diagnostic =
+        /network connection lost/i.test(message)
+          ? 'siteverify_network_lost'
+          : /1042|same.zone|another worker/i.test(message)
+            ? 'siteverify_worker_routing'
+            : /cannot access|host.*not.*allowed|requested a host/i.test(message)
+              ? 'siteverify_host_blocked'
+              : 'siteverify_fetch_failed'
+
+      console.warn('Turnstile Siteverify fetch failed', {
+        name: error instanceof Error ? error.name : 'UnknownError',
+        diagnostic,
+      })
+      return { kind: 'unavailable', diagnostic }
     }
 
     if (!response.ok) {
