@@ -70,6 +70,13 @@ describe('preview-safe share landing route', () => {
     expect(source).toContain('/reveal')
   })
 
+  it('copies revealed plaintext only from an explicit user action', async () => {
+    const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
+
+    expect(source).toContain('navigator.clipboard.writeText(plaintext)')
+    expect(source).toContain('Copy revealed secret to clipboard')
+  })
+
   it('does not auto-trigger reveal during page initialization', async () => {
     const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
 
