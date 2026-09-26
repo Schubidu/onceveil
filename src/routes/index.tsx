@@ -1,7 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 
-import { encryptSecret, sharePath } from '../browser/secret-crypto'
+import { sharePath } from '../browser/secret-crypto'
+import {
+  encryptedShareForCreate,
+  type PendingEncryptedCreate,
+} from '../browser/secret-create-retry'
 import { PROJECT_NAME, PROJECT_TAGLINE } from '../core/project'
 import { isValidSecretId } from '../core/secret'
 
@@ -14,6 +18,7 @@ function Home() {
   const [shareUrl, setShareUrl] = useState<string>()
   const [error, setError] = useState<string>()
   const [creating, setCreating] = useState(false)
+  const [pendingCreate, setPendingCreate] = useState<PendingEncryptedCreate>()
 
   async function createSecret() {
     if (!secret || creating) {
@@ -25,11 +30,13 @@ function Home() {
     setShareUrl(undefined)
 
     try {
-      const encrypted = await encryptSecret(secret)
+      const pending = await encryptedShareForCreate(secret, pendingCreate)
+      setPendingCreate(pending)
+
       const response = await fetch('/api/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: encrypted.payload }),
+        body: JSON.stringify({ payload: pending.encrypted.payload }),
       })
 
       const body = (await response.json().catch(() => undefined)) as
@@ -62,7 +69,8 @@ function Home() {
         throw new Error('store failed (invalid_response)')
       }
 
-      setShareUrl(`${window.location.origin}${sharePath(id, encrypted.fragment)}`)
+      setShareUrl(`${window.location.origin}${sharePath(id, pending.encrypted.fragment)}`)
+      setPendingCreate(undefined)
       setSecret('')
     } catch (cause) {
       setError(
@@ -86,7 +94,13 @@ function Home() {
           <span>Secret</span>
           <textarea
             value={secret}
-            onChange={(event) => setSecret(event.target.value)}
+            onChange={(event) => {
+              const value = event.target.value
+              if (pendingCreate && pendingCreate.secret !== value) {
+                setPendingCreate(undefined)
+              }
+              setSecret(value)
+            }}
             rows={7}
             autoComplete="off"
             spellCheck={false}
