@@ -4,7 +4,11 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 describe('public error surfaces', () => {
-  it.each(['src/routes/api.secrets.ts', 'src/routes/api.secrets.$id.reveal.ts'])(
+  it.each([
+    'src/routes/api.secrets.ts',
+    'src/routes/api.secrets.$id.owner.ts',
+    'src/routes/api.secrets.$id.reveal.ts',
+  ])(
     '%s does not serialize database diagnostics',
     async (routePath) => {
       const source = await readFile(path.resolve(routePath), 'utf8')
