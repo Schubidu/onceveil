@@ -42,15 +42,18 @@ describe('Turnstile reveal challenge verifier', () => {
   })
 
   it.each([
-    { success: false, action: REVEAL_PROTECTION_ACTION, hostname: 'ots.schult.dev', cdata: SECRET_ID },
+    {
+      success: false,
+      action: REVEAL_PROTECTION_ACTION,
+      hostname: 'ots.schult.dev',
+      cdata: SECRET_ID,
+    },
     { success: true, action: 'other', hostname: 'ots.schult.dev', cdata: SECRET_ID },
     { success: true, action: REVEAL_PROTECTION_ACTION, hostname: 'evil.example', cdata: SECRET_ID },
     { success: true, action: REVEAL_PROTECTION_ACTION, hostname: 'ots.schult.dev', cdata: 'other' },
   ])('rejects mismatched verification context %#', async (siteverify) => {
-    const verifier = new TurnstileRevealChallengeVerifier(
-      'secret-key',
-      (async () => response(siteverify)) as typeof fetch,
-    )
+    const verifier = new TurnstileRevealChallengeVerifier('secret-key', (async () =>
+      response(siteverify)) as typeof fetch)
 
     await expect(
       verifier.verify({
@@ -62,12 +65,9 @@ describe('Turnstile reveal challenge verifier', () => {
   })
 
   it('fails closed when Siteverify is unavailable', async () => {
-    const verifier = new TurnstileRevealChallengeVerifier(
-      'secret-key',
-      (async () => {
-        throw new Error('network down')
-      }) as typeof fetch,
-    )
+    const verifier = new TurnstileRevealChallengeVerifier('secret-key', (async () => {
+      throw new Error('network down')
+    }) as typeof fetch)
 
     await expect(
       verifier.verify({
@@ -79,10 +79,8 @@ describe('Turnstile reveal challenge verifier', () => {
   })
 
   it('fails closed on a non-successful Siteverify HTTP response', async () => {
-    const verifier = new TurnstileRevealChallengeVerifier(
-      'secret-key',
-      (async () => response({}, 503)) as typeof fetch,
-    )
+    const verifier = new TurnstileRevealChallengeVerifier('secret-key', (async () =>
+      response({}, 503)) as typeof fetch)
 
     await expect(
       verifier.verify({
