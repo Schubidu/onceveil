@@ -109,4 +109,6 @@ Before relying on `previews.d1_databases`:
 5. Ensure the Preview command invokes `npm run deploy:preview` (which in turn invokes `wrangler preview`).
 6. Choose **Switch to Worker Previews**.
 
+After switching, trigger a fresh Preview build so the branch deployment is recreated with the new Preview bindings.
+
 The switch is irreversible. After switching, branch builds use the `previews` block and can bind `DB` to `onceveil-preview`. Before the switch, the legacy preview model can use production settings and must not be trusted for isolated D1 testing.
