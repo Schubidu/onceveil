@@ -279,7 +279,7 @@ describe('D1 one-time HTTP flow', () => {
       },
       withSession() {
         const session = {
-          prepare(query: string) {
+          prepare(_query: string) {
             return {
               bind() {
                 return this
