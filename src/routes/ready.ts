@@ -15,10 +15,7 @@ export const Route = createFileRoute('/ready')({
         let readiness: SecretDatabaseReadiness
 
         try {
-          readiness = await checkSecretDatabaseReadiness(
-            getSecretDatabase(),
-            expectedEnvironment,
-          )
+          readiness = await checkSecretDatabaseReadiness(getSecretDatabase(), expectedEnvironment)
         } catch (error) {
           if (!(error instanceof SecretDatabaseUnavailableError)) {
             throw error
