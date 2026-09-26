@@ -2,6 +2,7 @@ import type { SecretId } from '../core/secret'
 
 const VERIFICATION_ID_PATTERN = /^[0-9a-f]{32}$/
 const PROOF_PATTERN = /^[A-Za-z0-9_-]{43}$/
+const REVEAL_AUTHORIZATION_PATTERN = /^[0-9a-f]{64}$/
 const VERIFICATION_TIMEOUT_MS = 5 * 60 * 1000
 
 export const REVEAL_VERIFICATION_WINDOW_FEATURES = 'popup,noopener,noreferrer,width=520,height=680'
@@ -75,12 +76,20 @@ export function publishRevealVerificationMessage(
   broadcast.close()
 }
 
-async function prepareRevealProof(id: SecretId): Promise<RevealProofPreparation> {
+async function prepareRevealProof(
+  id: SecretId,
+  authorization: string,
+): Promise<RevealProofPreparation> {
+  if (!REVEAL_AUTHORIZATION_PATTERN.test(authorization)) {
+    throw new Error('Invalid reveal authorization')
+  }
   const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
     method: 'POST',
     headers: {
+      'Content-Type': 'application/json',
       'X-Onceveil-Proof-Prepare': '1',
     },
+    body: JSON.stringify({ authorization }),
   })
   const body = (await response.json().catch(() => undefined)) as
     | Partial<RevealProofPreparation>
@@ -102,8 +111,8 @@ async function prepareRevealProof(id: SecretId): Promise<RevealProofPreparation>
   }
 }
 
-export async function requestRevealProof(id: SecretId): Promise<string> {
-  const { proof, verificationId } = await prepareRevealProof(id)
+export async function requestRevealProof(id: SecretId, authorization: string): Promise<string> {
+  const { proof, verificationId } = await prepareRevealProof(id, authorization)
   const broadcast = new BroadcastChannel(`onceveil-reveal-${verificationId}`)
   const verificationUrl = revealVerificationUrl(id, verificationId, window.location.origin)
 
