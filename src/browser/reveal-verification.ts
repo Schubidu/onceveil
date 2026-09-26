@@ -1,4 +1,5 @@
 import type { SecretId } from '../core/secret'
+import { pairedCloudflareVerificationOrigin } from '../platform/cloudflare-verification-origin'
 
 const VERIFICATION_BYTES = 16
 const VERIFICATION_ID_PATTERN = /^[0-9a-f]{32}$/
@@ -14,6 +15,10 @@ export type RevealVerificationMessage =
   | { type: 'onceveil-reveal-prepared' }
   | { type: 'onceveil-reveal-verified' }
   | { type: 'onceveil-reveal-proof-error' }
+
+export type RevealVerificationWindowMessage = RevealVerificationMessage & {
+  verificationId: string
+}
 
 export interface RevealVerificationLocation {
   hash: string
@@ -105,11 +110,7 @@ async function prepareRevealProof(
   }
 }
 
-export function requestRevealProof(id: SecretId, authorization: string): Promise<string> {
-  if (!REVEAL_AUTHORIZATION_PATTERN.test(authorization)) {
-    return Promise.reject(new Error('Invalid reveal authorization'))
-  }
-
+function requestRevealProofPopup(id: SecretId, authorization: string): Promise<string> {
   const verificationId = randomVerificationId()
   const broadcast = new BroadcastChannel(`onceveil-reveal-${verificationId}`)
   const verificationUrl = revealVerificationUrl(id, verificationId, window.location.origin)
@@ -175,7 +176,7 @@ export function requestRevealProof(id: SecretId, authorization: string): Promise
       }
 
       if (candidate.type === 'onceveil-reveal-verified' && proof !== undefined) {
-        finish(() => resolve(proof as string))
+        finish(() => resolve(proof))
         return
       }
 
@@ -186,4 +187,184 @@ export function requestRevealProof(id: SecretId, authorization: string): Promise
 
     window.open(verificationUrl, '_blank', REVEAL_VERIFICATION_WINDOW_FEATURES)
   })
+}
+
+function requestEmbeddedRevealProof(
+  id: SecretId,
+  authorization: string,
+  verificationOrigin: string,
+): Promise<string> {
+  const verificationId = randomVerificationId()
+  const verificationUrl = revealVerificationUrl(id, verificationId, verificationOrigin)
+  const dialog = document.createElement('dialog')
+  const iframe = document.createElement('iframe')
+  const fallback = document.createElement('button')
+  const status = document.createElement('p')
+
+  dialog.className = 'verification-dialog'
+  dialog.setAttribute('aria-label', 'Reveal verification')
+
+  iframe.className = 'verification-frame'
+  iframe.title = 'Reveal verification'
+  iframe.src = verificationUrl
+  iframe.referrerPolicy = 'no-referrer'
+
+  status.className = 'verification-status'
+  status.textContent = 'Complete verification to reveal the secret.'
+
+  fallback.type = 'button'
+  fallback.className = 'verification-fallback'
+  fallback.textContent = 'Open verification in new window'
+
+  dialog.append(iframe, status, fallback)
+  document.body.append(dialog)
+
+  return new Promise((resolve, reject) => {
+    let proof: string | undefined
+    let preparing = false
+    let settled = false
+    let fallbackStarted = false
+
+    const timeout = window.setTimeout(() => {
+      finish(() => reject(new Error('Reveal verification timed out')))
+    }, VERIFICATION_TIMEOUT_MS)
+    const readyTimeout = window.setTimeout(() => {
+      status.textContent = 'Embedded verification did not start. Open it in a new window instead.'
+    }, VERIFICATION_READY_TIMEOUT_MS)
+
+    function cleanupEmbedded() {
+      window.clearTimeout(timeout)
+      window.clearTimeout(readyTimeout)
+      window.removeEventListener('message', onMessage)
+      dialog.removeEventListener('cancel', onCancel)
+      fallback.removeEventListener('click', startFallback)
+      if (dialog.open) {
+        dialog.close()
+      }
+      dialog.remove()
+    }
+
+    function finish(action: () => void) {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      cleanupEmbedded()
+      action()
+    }
+
+    function startFallback() {
+      if (settled || fallbackStarted) {
+        return
+      }
+
+      fallbackStarted = true
+      cleanupEmbedded()
+      void requestRevealProofPopup(id, authorization).then(
+        (popupProof) => {
+          if (!settled) {
+            settled = true
+            resolve(popupProof)
+          }
+        },
+        (cause) => {
+          if (!settled) {
+            settled = true
+            reject(cause)
+          }
+        },
+      )
+    }
+
+    function onCancel(event: Event) {
+      event.preventDefault()
+      finish(() => reject(new Error('Reveal verification cancelled')))
+    }
+
+    function postToVerification(message: RevealVerificationMessage) {
+      iframe.contentWindow?.postMessage(
+        {
+          ...message,
+          verificationId,
+        } satisfies RevealVerificationWindowMessage,
+        verificationOrigin,
+      )
+    }
+
+    function onMessage(event: MessageEvent<unknown>) {
+      if (event.origin !== verificationOrigin || event.source !== iframe.contentWindow) {
+        return
+      }
+
+      const message = event.data
+      if (typeof message !== 'object' || message === null || !('type' in message)) {
+        return
+      }
+
+      const candidate = message as Partial<RevealVerificationWindowMessage>
+      if (candidate.verificationId !== verificationId) {
+        return
+      }
+
+      if (
+        candidate.type === 'onceveil-reveal-verification-ready' &&
+        !preparing &&
+        proof === undefined
+      ) {
+        window.clearTimeout(readyTimeout)
+        preparing = true
+        void prepareRevealProof(id, authorization, verificationId)
+          .then((prepared) => {
+            if (settled || fallbackStarted) {
+              return
+            }
+
+            proof = prepared.proof
+            postToVerification({ type: 'onceveil-reveal-prepared' })
+          })
+          .catch(() => {
+            if (!settled && !fallbackStarted) {
+              postToVerification({ type: 'onceveil-reveal-proof-error' })
+            }
+            finish(() => reject(new Error('Reveal verification could not be prepared')))
+          })
+        return
+      }
+
+      if (candidate.type === 'onceveil-reveal-verified' && proof !== undefined) {
+        finish(() => resolve(proof))
+        return
+      }
+
+      if (candidate.type === 'onceveil-reveal-proof-error') {
+        finish(() => reject(new Error('Reveal verification failed')))
+      }
+    }
+
+    window.addEventListener('message', onMessage)
+    dialog.addEventListener('cancel', onCancel)
+    fallback.addEventListener('click', startFallback)
+
+    try {
+      dialog.showModal()
+    } catch {
+      startFallback()
+    }
+  })
+}
+
+export function requestRevealProof(id: SecretId, authorization: string): Promise<string> {
+  if (!REVEAL_AUTHORIZATION_PATTERN.test(authorization)) {
+    return Promise.reject(new Error('Invalid reveal authorization'))
+  }
+
+  const verificationOrigin = pairedCloudflareVerificationOrigin(window.location.origin)
+  const supportsDialog =
+    typeof HTMLDialogElement !== 'undefined' &&
+    typeof document.createElement('dialog').showModal === 'function'
+
+  return verificationOrigin && supportsDialog
+    ? requestEmbeddedRevealProof(id, authorization, verificationOrigin)
+    : requestRevealProofPopup(id, authorization)
 }
