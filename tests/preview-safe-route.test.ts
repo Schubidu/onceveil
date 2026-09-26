@@ -3,6 +3,7 @@ import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { Route as OwnerRoute } from '../src/routes/o.$id'
 import { Route as ShareRoute } from '../src/routes/s.$id'
 
 describe('preview-safe share landing route', () => {
@@ -40,6 +41,22 @@ describe('preview-safe share landing route', () => {
     expect(response).toBeInstanceOf(Response)
     expect(response.status).toBe(200)
     expect(await response.text()).toBe('')
+  })
+
+  it('keeps owner pages passive and covered by secret-surface headers', async () => {
+    const configuredHandlers = OwnerRoute.options.server?.handlers
+    expect(configuredHandlers).toBeDefined()
+    expect(typeof configuredHandlers).not.toBe('function')
+    if (!configuredHandlers || typeof configuredHandlers === 'function') {
+      throw new Error('expected static owner route handlers')
+    }
+
+    const handlers = configuredHandlers as Record<string, unknown>
+    expect(handlers).not.toHaveProperty('GET')
+    expect(handlers.HEAD).toBeTypeOf('function')
+
+    const serverSource = await readFile(path.resolve('src/server.ts'), 'utf8')
+    expect(serverSource).toContain("pathname.startsWith('/o/')")
   })
 
   it('reveals only from the explicit browser action', async () => {
