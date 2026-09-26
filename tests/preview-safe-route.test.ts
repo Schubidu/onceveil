@@ -73,9 +73,7 @@ describe('preview-safe share landing route', () => {
     expect(handlers.HEAD).toBeTypeOf('function')
 
     expect(
-      isSecretSurface(
-        new Request('https://onceveil.test/o/0123456789abcdef0123456789abcdef'),
-      ),
+      isSecretSurface(new Request('https://onceveil.test/o/0123456789abcdef0123456789abcdef')),
     ).toBe(true)
   })
 
