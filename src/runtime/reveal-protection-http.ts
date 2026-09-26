@@ -126,33 +126,15 @@ export async function verifyRevealProofResponse(
   })
 
   if (verification.kind === 'unavailable') {
-    return json(
-      {
-        error: 'verification_unavailable',
-        ...(verification.diagnostic ? { diagnostic: verification.diagnostic } : {}),
-      },
-      503,
-    )
+    return json({ error: 'verification_unavailable' }, 503)
   }
 
   if (verification.kind !== 'verified') {
-    return json(
-      {
-        error: 'verification_failed',
-        ...(verification.diagnostic ? { diagnostic: verification.diagnostic } : {}),
-      },
-      403,
-    )
+    return json({ error: 'verification_failed' }, 403)
   }
 
   if (!(await proofs.verify(secretId, verificationId, nowMs))) {
-    return json(
-      {
-        error: 'verification_failed',
-        diagnostic: 'proof_activation_failed',
-      },
-      403,
-    )
+    return json({ error: 'verification_failed' }, 403)
   }
 
   return json({ verified: true }, 200)
