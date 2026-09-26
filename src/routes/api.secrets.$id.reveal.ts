@@ -19,6 +19,7 @@ import {
   SecretDatabaseUnavailableError,
 } from '../runtime/secret-repository'
 import { runtimeEnvironmentForRequest } from '../runtime/readiness'
+import { logRuntimeError } from '../runtime/safe-log'
 import { withSecretSecurityHeaders } from '../runtime/security-headers'
 import { REVEAL_PROTECTION_ACTION } from '../core/reveal-protection'
 import { RevealProofStorageError } from '../adapters/d1-reveal-proof-repository'
@@ -102,17 +103,14 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
           }
 
           if (error instanceof SecretDatabaseEnvironmentError) {
-            console.error('secret database environment check failed', {
+            logRuntimeError('secret database environment check failed', error, {
               expected: error.expected,
               actual: error.actual,
             })
             return jsonError('service_unavailable', 503)
           }
 
-          console.error('protected secret reveal failed', {
-            name: error instanceof Error ? error.name : 'UnknownError',
-            message: error instanceof Error ? error.message : 'unknown error',
-          })
+          logRuntimeError('protected secret reveal failed', error)
           return jsonError('internal_error', 500)
         }
       },
