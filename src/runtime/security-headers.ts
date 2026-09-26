@@ -21,9 +21,7 @@ function contentSecurityPolicy(policy: SecretSurfacePolicy): string {
     turnstile
       ? "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com"
       : "script-src 'self' 'unsafe-inline'",
-    turnstile
-      ? "connect-src 'self' https://challenges.cloudflare.com"
-      : "connect-src 'self'",
+    turnstile ? "connect-src 'self' https://challenges.cloudflare.com" : "connect-src 'self'",
     turnstile ? 'frame-src https://challenges.cloudflare.com' : "frame-src 'none'",
   ].join('; ')
 }
