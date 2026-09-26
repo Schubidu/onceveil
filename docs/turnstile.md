@@ -8,15 +8,17 @@ The share page that holds the URL fragment key never loads Turnstile or any othe
 
 When the recipient chooses **Verify & reveal secret**:
 
-1. the share page asks the server to prepare a one-time reveal proof and presents the reveal authorization kept in the URL fragment;
-2. the server prepares a proof only when that authorization matches the stored replay key of the still-`AVAILABLE` secret, returns the bearer proof only to the share page, and stores only its SHA-256 hash together with a separate verification identifier;
-3. the share page opens a fragment-free verification window with `noopener` and `noreferrer`, passing only the verification identifier;
-4. only that isolated window loads Cloudflare Turnstile;
-5. Turnstile returns a token to the isolated window;
-6. the server validates that token with Siteverify and checks the expected action, exact request hostname, and secret-bound `cData`;
-7. successful validation marks the matching prepared proof as verified without returning the bearer proof to the verification window;
-8. the verification window sends only success/failure state through the same-origin `BroadcastChannel`;
-9. reveal atomically consumes the verified proof before attempting the existing strict one-time secret consume.
+1. the share page synchronously opens a fragment-free verification window with `noopener` and `noreferrer`, passing only a random public verification identifier;
+2. the isolated window signals that it is ready but does not load Turnstile yet;
+3. the share page asks the server to prepare a one-time reveal proof, presenting both the fragment-only reveal authorization and that verification identifier;
+4. the server prepares a proof only when the authorization matches the stored replay key of the still-`AVAILABLE` secret, returns the bearer proof only to the share page, and stores only its SHA-256 hash;
+5. the share page signals that preparation succeeded;
+6. only then does the isolated window load Cloudflare Turnstile;
+7. Turnstile returns a token to the isolated window;
+8. the server validates that token with Siteverify and checks the expected action, exact request hostname, and secret-bound `cData`;
+9. successful validation marks the matching prepared proof as verified without returning the bearer proof to the verification window;
+10. the verification window sends only success/failure state through the same-origin `BroadcastChannel`;
+11. reveal atomically consumes the verified proof before attempting the existing strict one-time secret consume.
 
 A pending verification expires after five minutes. Once verified, its proof is bound to one secret, expires after 60 seconds, and can be consumed once.
 
