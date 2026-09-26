@@ -1,4 +1,6 @@
 import {
+  LEGACY_SHARE_FRAGMENT_VERSION,
+  SHARE_FRAGMENT_VERSION,
   SHARE_PROTOCOL_VERSION,
   encryptedPayloadReplayKey,
   isEncryptedSecretPayload,
@@ -39,6 +41,13 @@ export class InvalidShareCapabilityError extends Error {
   constructor() {
     super('Invalid or unauthenticated share capability')
     this.name = 'InvalidShareCapabilityError'
+  }
+}
+
+export class LegacyShareCapabilityError extends InvalidShareCapabilityError {
+  constructor() {
+    super()
+    this.name = 'LegacyShareCapabilityError'
   }
 }
 
@@ -87,19 +96,25 @@ function decodeBase64Url(value: string): Uint8Array {
 }
 
 function encodeFragment(keyBytes: Uint8Array, revealAuthorization: string): string {
-  return `${SHARE_PROTOCOL_VERSION}.${encodeBase64Url(keyBytes)}.${revealAuthorization}`
+  return `${SHARE_FRAGMENT_VERSION}.${encodeBase64Url(keyBytes)}.${revealAuthorization}`
 }
 
 function decodeFragment(fragment: string): {
   keyBytes: Uint8Array
-  revealAuthorization: string
+  revealAuthorization?: string
 } {
   const [version, encodedKey, revealAuthorization, extra] = fragment.split('.')
+  const legacy =
+    version === LEGACY_SHARE_FRAGMENT_VERSION &&
+    typeof encodedKey === 'string' &&
+    revealAuthorization === undefined
+
   if (
-    version !== SHARE_PROTOCOL_VERSION ||
+    (!legacy &&
+      (version !== SHARE_FRAGMENT_VERSION ||
+        !revealAuthorization ||
+        !REVEAL_AUTHORIZATION_PATTERN.test(revealAuthorization))) ||
     !encodedKey ||
-    !revealAuthorization ||
-    !REVEAL_AUTHORIZATION_PATTERN.test(revealAuthorization) ||
     extra !== undefined
   ) {
     throw new InvalidShareCapabilityError()
@@ -114,7 +129,12 @@ function decodeFragment(fragment: string): {
 }
 
 export function revealAuthorizationFromFragment(fragment: string): string {
-  return decodeFragment(fragment).revealAuthorization
+  const authorization = decodeFragment(fragment).revealAuthorization
+  if (!authorization) {
+    throw new LegacyShareCapabilityError()
+  }
+
+  return authorization
 }
 
 function decodeNonce(encodedNonce: string): Uint8Array {
