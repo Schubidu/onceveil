@@ -16,7 +16,7 @@ MCP support is planned with secure browser handoff so secret material does not e
 
 ## Current status
 
-The application and Cloudflare runtime baseline, strict one-time lifecycle, browser-side encryption, and D1-backed create/reveal flow are implemented. The D1 runtime binding still requires separate Production and Preview databases before the flow is deployment-ready. Reveal protection and MCP are intentionally not implemented yet.
+The application and Cloudflare runtime baseline, strict one-time lifecycle, browser-side encryption, and D1-backed create/reveal flow are implemented. Production and Preview use separate D1 databases. Reveal protection beyond the explicit browser-intent guard and MCP are intentionally not implemented yet.
 
 ## Development
 
@@ -50,8 +50,8 @@ One-time Cloudflare dashboard setup:
 2. Use `main` as the production branch.
 3. In the GitHub `Main` ruleset, require the `validate` status check and keep strict/up-to-date checks enabled before allowing merges to `main`.
 4. Set the build command to `npm run build`.
-5. Set the production deploy command to `npx wrangler deploy`.
-6. Enable Preview Builds and use `npx wrangler preview` as the Preview command.
+5. Set the production deploy command to `npm run deploy:production`.
+6. Enable Preview Builds and use `npm run deploy:preview` as the Preview command.
 7. Keep Production and Preview variables, secrets, and bindings configured separately in Cloudflare.
 
 Cloudflare posts the Preview build status and Preview URL back to the pull request; subsequent pushes update the branch Preview without touching Production.
