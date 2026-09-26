@@ -129,7 +129,7 @@ export async function verifyRevealProofResponse(
     return json(
       {
         error: 'verification_unavailable',
-        diagnostic: 'siteverify_unavailable',
+        ...(verification.diagnostic ? { diagnostic: verification.diagnostic } : {}),
       },
       503,
     )
