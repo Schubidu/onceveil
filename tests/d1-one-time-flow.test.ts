@@ -12,7 +12,12 @@ import {
   type D1ResultLike,
 } from '../src/adapters/d1-secret-repository'
 import { decryptSecret, encryptSecret } from '../src/browser/secret-crypto'
-import { createSecretResponse, revealSecretResponse } from '../src/runtime/secret-http'
+import type { SecretId } from '../src/core/secret'
+import {
+  createSecretResponse,
+  MAX_CREATE_REQUEST_BYTES,
+  revealSecretResponse,
+} from '../src/runtime/secret-http'
 
 function sqliteValue(value: D1BindingValue) {
   if (value instanceof ArrayBuffer) {
@@ -25,6 +30,9 @@ function sqliteValue(value: D1BindingValue) {
 
   return value
 }
+
+const PUBLIC_ID = 'f'.repeat(32) as SecretId
+const allocatePublicId = () => PUBLIC_ID
 
 class SQLitePreparedStatement implements D1PreparedStatementLike {
   constructor(
@@ -161,6 +169,7 @@ describe('D1 one-time HTTP flow', () => {
       }),
       failingRepository,
       1_000,
+      allocatePublicId,
     )
 
     await expect(create).rejects.toMatchObject({
@@ -181,15 +190,17 @@ describe('D1 one-time HTTP flow', () => {
       }),
       repository,
       1_000,
+      allocatePublicId,
     )
 
     expect(create.status).toBe(201)
+    await expect(create.clone().json()).resolves.toEqual({ id: PUBLIC_ID })
     expect(create.headers.get('cache-control')).toBe('no-store')
     expect(create.headers.get('referrer-policy')).toBe('no-referrer')
 
     const row = d1.database
       .prepare('SELECT ciphertext FROM secrets WHERE id = ?')
-      .get(encrypted.payload.id) as { ciphertext: Uint8Array }
+      .get(PUBLIC_ID) as { ciphertext: Uint8Array }
     const stored = new TextDecoder().decode(row.ciphertext)
 
     expect(stored).not.toContain(plaintext)
@@ -198,7 +209,7 @@ describe('D1 one-time HTTP flow', () => {
 
     const responses = await Promise.all(
       Array.from({ length: 8 }, () =>
-        revealSecretResponse(encrypted.payload.id, repository, 1_001),
+        revealSecretResponse(PUBLIC_ID, repository, 1_001),
       ),
     )
 
@@ -210,6 +221,78 @@ describe('D1 one-time HTTP flow', () => {
 
     const payload: unknown = await winners[0].json()
     await expect(decryptSecret(payload, encrypted.fragment)).resolves.toBe(plaintext)
+  })
+
+  it('allocates the public reveal identifier on the server', async () => {
+    const encrypted = await encryptSecret('server id')
+    expect(encrypted.payload.contextId).not.toBe(PUBLIC_ID)
+
+    const create = await createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload: encrypted.payload }),
+      }),
+      repository,
+      1_000,
+      allocatePublicId,
+    )
+
+    expect(create.status).toBe(201)
+    await expect(create.json()).resolves.toEqual({ id: PUBLIC_ID })
+
+    const stored = d1.database.prepare('SELECT id FROM secrets LIMIT 1').get() as { id: string }
+    expect(stored.id).toBe(PUBLIC_ID)
+    expect(stored.id).not.toBe(encrypted.payload.contextId)
+  })
+
+  it('rejects oversized streamed request bodies before JSON/base64 decoding', async () => {
+    const chunk = new Uint8Array(MAX_CREATE_REQUEST_BYTES)
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(chunk)
+        controller.enqueue(new Uint8Array([1]))
+        controller.close()
+      },
+    })
+
+    const request = new Request(
+      'https://onceveil.test/api/secrets',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        duplex: 'half',
+      } as RequestInit & { duplex: 'half' },
+    )
+
+    const create = await createSecretResponse(request, repository, 1_000, allocatePublicId)
+
+    expect(create.status).toBe(413)
+    await expect(create.json()).resolves.toEqual({ error: 'payload_too_large' })
+    const count = d1.database.prepare('SELECT COUNT(*) AS count FROM secrets').get() as {
+      count: number
+    }
+    expect(count.count).toBe(0)
+  })
+
+  it('rejects an oversized declared content length before reading the body', async () => {
+    const create = await createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': String(MAX_CREATE_REQUEST_BYTES + 1),
+        },
+        body: '{}',
+      }),
+      repository,
+      1_000,
+      allocatePublicId,
+    )
+
+    expect(create.status).toBe(413)
+    await expect(create.json()).resolves.toEqual({ error: 'payload_too_large' })
   })
 
   it('strips untrusted extra payload fields before persistence', async () => {
@@ -228,13 +311,14 @@ describe('D1 one-time HTTP flow', () => {
       }),
       repository,
       1_000,
+      allocatePublicId,
     )
 
     expect(create.status).toBe(201)
 
     const row = d1.database
       .prepare('SELECT ciphertext FROM secrets WHERE id = ?')
-      .get(encrypted.payload.id) as { ciphertext: Uint8Array }
+      .get(PUBLIC_ID) as { ciphertext: Uint8Array }
     const stored = new TextDecoder().decode(row.ciphertext)
 
     expect(stored).not.toContain(encrypted.fragment)
@@ -260,6 +344,7 @@ describe('D1 one-time HTTP flow', () => {
       }),
       repository,
       1_000,
+      allocatePublicId,
     )
 
     expect(create.status).toBe(400)
@@ -289,7 +374,7 @@ describe('D1 one-time HTTP flow', () => {
               },
               async first<Row = Record<string, unknown>>() {
                 return {
-                  id: encrypted.payload.id,
+                  id: PUBLIC_ID,
                   created_at_ms: 1_000,
                   expires_at_ms: 2_000,
                   state: 'CONSUMED',
@@ -305,7 +390,7 @@ describe('D1 one-time HTTP flow', () => {
                 success: true,
                 results: [
                   {
-                    id: encrypted.payload.id,
+                    id: PUBLIC_ID,
                     ciphertext: encoded.buffer.slice(0),
                     created_at_ms: 1_000,
                     expires_at_ms: 2_000,
@@ -326,7 +411,7 @@ describe('D1 one-time HTTP flow', () => {
     }
 
     const arrayBufferRepository = new D1SecretRepository(database)
-    const result = await arrayBufferRepository.consume(encrypted.payload.id, 1_001)
+    const result = await arrayBufferRepository.consume(PUBLIC_ID, 1_001)
 
     expect(result.kind).toBe('revealed')
     if (result.kind === 'revealed') {
@@ -345,10 +430,11 @@ describe('D1 one-time HTTP flow', () => {
       }),
       repository,
       1_000,
+      allocatePublicId,
     )
     expect(create.status).toBe(201)
 
-    const reveal = await revealSecretResponse(encrypted.payload.id, repository, 1_010)
+    const reveal = await revealSecretResponse(PUBLIC_ID, repository, 1_010)
     expect(reveal.status).toBe(410)
     await expect(reveal.json()).resolves.toEqual({ error: 'unavailable' })
   })
@@ -363,12 +449,13 @@ describe('D1 one-time HTTP flow', () => {
       }),
       repository,
       1_000,
+      allocatePublicId,
     )
 
     const invalid = await revealSecretResponse('not-an-id', repository, 1_001)
     expect(invalid.status).toBe(404)
 
-    const valid = await revealSecretResponse(encrypted.payload.id, repository, 1_001)
+    const valid = await revealSecretResponse(PUBLIC_ID, repository, 1_001)
     expect(valid.status).toBe(200)
   })
 })
