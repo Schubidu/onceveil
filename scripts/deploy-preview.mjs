@@ -83,11 +83,22 @@ try {
 
 console.log(stdout)
 
-const urls = [...new Set(previewUrls(output))]
-if (urls.length === 0) {
+const urls = previewUrls(output)
+
+if (process.env.WORKERS_CI_BRANCH) {
+  urls.unshift(
+    `https://${process.env.WORKERS_CI_BRANCH}.ots-preview.schult.dev`,
+    `https://${process.env.WORKERS_CI_BRANCH}-onceveil.schult.workers.dev`,
+  )
+}
+
+const uniqueUrls = [...new Set(urls)]
+if (uniqueUrls.length === 0) {
   throw new Error('wrangler preview returned no Preview or deployment URL')
 }
 
-for (const url of urls) {
+console.log(`Checking Preview readiness at: ${uniqueUrls.join(', ')}`)
+
+for (const url of uniqueUrls) {
   await checkReadiness(url)
 }
