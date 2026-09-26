@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   consumeSecret,
   effectiveState,
+  generateSecretId,
   prepareSecretRecord,
   revokeSecret,
   toSecretStatus,
@@ -109,7 +110,7 @@ class AsyncAtomicInMemorySecretRepository implements SecretRepository {
 }
 
 function record(ciphertext = new Uint8Array([7, 8, 9])): PreparedSecretRecord {
-  const prepared = prepareSecretRecord(ciphertext, 100, 900)
+  const prepared = prepareSecretRecord(generateSecretId(), ciphertext, 100, 900)
 
   if (!prepared.ok) {
     throw new Error(`failed to prepare test secret: ${prepared.reason}`)

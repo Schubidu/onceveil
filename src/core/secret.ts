@@ -8,6 +8,8 @@ export const DEFAULT_SECRET_POLICY = {
 
 export type SecretId = string & { readonly __secretId: unique symbol }
 
+const SECRET_ID_PATTERN = /^[0-9a-f]{32}$/
+
 export type SecretState = 'AVAILABLE' | 'CONSUMED' | 'EXPIRED' | 'REVOKED'
 
 export interface SecretPolicy {
@@ -44,13 +46,20 @@ export function generateSecretId(): SecretId {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('') as SecretId
 }
 
+export function isValidSecretId(value: string): value is SecretId {
+  return SECRET_ID_PATTERN.test(value)
+}
+
 function isSecretState(value: unknown): value is SecretState {
   return value === 'AVAILABLE' || value === 'CONSUMED' || value === 'EXPIRED' || value === 'REVOKED'
 }
 
 export type CreateSecretValidation =
   | { ok: true; ttlMs: number }
-  | { ok: false; reason: 'INVALID_POLICY' | 'INVALID_TTL' | 'PAYLOAD_TOO_LARGE' }
+  | {
+      ok: false
+      reason: 'INVALID_ID' | 'INVALID_POLICY' | 'INVALID_TTL' | 'PAYLOAD_TOO_LARGE'
+    }
 
 export type CreateResult = { kind: 'created' } | { kind: 'duplicate' }
 
@@ -146,11 +155,16 @@ export function validateCreateSecret(
 }
 
 export function prepareSecretRecord(
+  id: SecretId,
   ciphertext: Uint8Array,
   createdAtMs: number,
   requestedTtlMs: number | null | undefined,
   policy: SecretPolicy | null | undefined = DEFAULT_SECRET_POLICY,
 ): { ok: true; record: PreparedSecretRecord } | Extract<CreateSecretValidation, { ok: false }> {
+  if (!isValidSecretId(id)) {
+    return { ok: false, reason: 'INVALID_ID' }
+  }
+
   const validation = validateCreateSecret(ciphertext.byteLength, requestedTtlMs, policy)
   if (!validation.ok) {
     return validation
@@ -164,7 +178,7 @@ export function prepareSecretRecord(
   return {
     ok: true,
     record: {
-      id: generateSecretId(),
+      id,
       ciphertext,
       createdAtMs,
       expiresAtMs,
