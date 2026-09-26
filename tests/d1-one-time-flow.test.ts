@@ -128,7 +128,10 @@ describe('D1 one-time HTTP flow', () => {
   beforeEach(async () => {
     d1 = new SQLiteD1Database()
     const migration = await readFile(path.resolve('migrations/0001_secrets.sql'), 'utf8')
-    const replayMigration = await readFile(path.resolve('migrations/0003_secret_replay_key.sql'), 'utf8')
+    const replayMigration = await readFile(
+      path.resolve('migrations/0003_secret_replay_key.sql'),
+      'utf8',
+    )
     d1.database.exec(migration)
     d1.database.exec(replayMigration)
     repository = new D1SecretRepository(d1)
