@@ -287,6 +287,46 @@ describe('D1 one-time HTTP flow', () => {
     expect(rows).toEqual([{ id: PUBLIC_ID }])
   })
 
+  it('rejects a replay that changes the TTL without creating another row', async () => {
+    const encrypted = await encryptSecret('retry ttl conflict')
+    const firstBody = JSON.stringify({ payload: encrypted.payload, ttlMs: 100 })
+    const replayBody = JSON.stringify({ payload: encrypted.payload, ttlMs: 200 })
+    const secondId = 'e'.repeat(32) as SecretId
+    const ids = [PUBLIC_ID, secondId]
+    let nextId = 0
+    const allocate = () => ids[nextId++] ?? secondId
+
+    const first = await createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: firstBody,
+      }),
+      repository,
+      1_000,
+      allocate,
+    )
+    const conflict = await createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: replayBody,
+      }),
+      repository,
+      1_001,
+      allocate,
+    )
+
+    expect(first.status).toBe(201)
+    expect(conflict.status).toBe(409)
+    await expect(conflict.json()).resolves.toEqual({ error: 'replay_conflict' })
+
+    const rows = d1.database
+      .prepare('SELECT id, created_at_ms, expires_at_ms FROM secrets')
+      .all() as Array<{ id: string; created_at_ms: number; expires_at_ms: number }>
+    expect(rows).toEqual([{ id: PUBLIC_ID, created_at_ms: 1_000, expires_at_ms: 1_100 }])
+  })
+
   it('rejects null TTL instead of treating it as the default', async () => {
     const encrypted = await encryptSecret('invalid ttl')
     const create = await createSecretResponse(
