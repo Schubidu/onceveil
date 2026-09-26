@@ -92,6 +92,21 @@ describe('Turnstile reveal challenge verifier', () => {
     ).resolves.toEqual({ kind: 'unavailable' })
   })
 
+  it('fails closed on a null Siteverify response', async () => {
+    const verifier = new TurnstileRevealChallengeVerifier(
+      'secret-key',
+      (async () => response(null)) as typeof fetch,
+    )
+
+    await expect(
+      verifier.verify({
+        token: 'turnstile-token',
+        secretId: SECRET_ID,
+        hostname: 'ots.schult.dev',
+      }),
+    ).resolves.toEqual({ kind: 'unavailable' })
+  })
+
   it('fails closed on a non-successful Siteverify HTTP response', async () => {
     const verifier = new TurnstileRevealChallengeVerifier('secret-key', (async () =>
       response({}, 503)) as typeof fetch)
