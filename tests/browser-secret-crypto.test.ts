@@ -4,6 +4,7 @@ import {
   decryptSecret,
   encryptSecret,
   InvalidShareCapabilityError,
+  sharePath,
   takeShareFragment,
 } from '../src/browser/secret-crypto'
 import { SHARE_PROTOCOL_VERSION, type EncryptedSecretPayload } from '../src/core/share-capability'
@@ -19,16 +20,27 @@ describe('browser secret crypto', () => {
     const encrypted = await encryptSecret('correct horse battery staple')
 
     expect(encrypted.payload.version).toBe(SHARE_PROTOCOL_VERSION)
-    expect(encrypted.path).toBe(`/s/${encrypted.payload.id}#${encrypted.fragment}`)
     await expect(decryptSecret(encrypted.payload, encrypted.fragment)).resolves.toBe(
       'correct horse battery staple',
     )
   })
 
+  it('builds the share path from the server-issued public identifier', async () => {
+    const encrypted = await encryptSecret('server allocated path')
+    const publicId = generateSecretId()
+
+    expect(sharePath(publicId, encrypted.fragment)).toBe(`/s/${publicId}#${encrypted.fragment}`)
+  })
+
   it('keeps key material out of the server-visible payload', async () => {
     const encrypted = await encryptSecret('server must only see ciphertext')
 
-    expect(Object.keys(encrypted.payload).sort()).toEqual(['ciphertext', 'id', 'nonce', 'version'])
+    expect(Object.keys(encrypted.payload).sort()).toEqual([
+      'ciphertext',
+      'contextId',
+      'nonce',
+      'version',
+    ])
     expect('fragment' in encrypted.payload).toBe(false)
     expect('key' in encrypted.payload).toBe(false)
   })
@@ -58,11 +70,11 @@ describe('browser secret crypto', () => {
     )
   })
 
-  it('rejects a different secret identifier because it changes AAD', async () => {
+  it('rejects a different crypto context identifier because it changes AAD', async () => {
     const encrypted = await encryptSecret('aad bound')
     const tampered: EncryptedSecretPayload = {
       ...encrypted.payload,
-      id: generateSecretId(),
+      contextId: generateSecretId(),
     }
 
     await expect(decryptSecret(tampered, encrypted.fragment)).rejects.toBeInstanceOf(
@@ -90,10 +102,10 @@ describe('browser secret crypto', () => {
     null,
     {},
     { version: SHARE_PROTOCOL_VERSION },
-    { version: SHARE_PROTOCOL_VERSION, id: 123, nonce: 'x', ciphertext: 'y' },
+    { version: SHARE_PROTOCOL_VERSION, contextId: 123, nonce: 'x', ciphertext: 'y' },
     {
       version: SHARE_PROTOCOL_VERSION,
-      id: 'not-a-secret-id',
+      contextId: 'not-a-secret-id',
       nonce: 'x',
       ciphertext: 'y',
     },

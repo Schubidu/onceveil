@@ -1,9 +1,10 @@
 import {
   SHARE_PROTOCOL_VERSION,
+  isEncryptedSecretPayload,
   shareAssociatedData,
   type EncryptedSecretPayload,
 } from '../core/share-capability'
-import { generateSecretId, isValidSecretId } from '../core/secret'
+import { generateSecretId, type SecretId } from '../core/secret'
 
 const AES_KEY_BYTES = 32
 const AES_GCM_NONCE_BYTES = 12
@@ -15,7 +16,6 @@ const decoder = new TextDecoder('utf-8', { ignoreBOM: true })
 export interface EncryptedShare {
   payload: EncryptedSecretPayload
   fragment: string
-  path: string
 }
 
 export interface FragmentLocation {
@@ -29,7 +29,7 @@ export interface FragmentHistory {
   replaceState(data: unknown, unused: string, url?: string | URL | null): void
 }
 
-function sharePath(id: EncryptedSecretPayload['id'], fragment: string): string {
+export function sharePath(id: SecretId, fragment: string): string {
   return `/s/${encodeURIComponent(id)}#${fragment}`
 }
 
@@ -125,11 +125,11 @@ async function importKey(keyBytes: Uint8Array): Promise<CryptoKey> {
 }
 
 export async function encryptSecret(plaintext: string): Promise<EncryptedShare> {
-  const id = generateSecretId()
+  const contextId = generateSecretId()
   const keyBytes = randomBytes(AES_KEY_BYTES)
   const nonce = randomBytes(AES_GCM_NONCE_BYTES)
   const key = await importKey(keyBytes)
-  const additionalData = encoder.encode(shareAssociatedData(id))
+  const additionalData = encoder.encode(shareAssociatedData(contextId))
 
   const ciphertext = new Uint8Array(
     await crypto.subtle.encrypt(
@@ -146,7 +146,7 @@ export async function encryptSecret(plaintext: string): Promise<EncryptedShare> 
 
   const fragment = encodeFragment(keyBytes)
   const payload: EncryptedSecretPayload = {
-    id,
+    contextId,
     version: SHARE_PROTOCOL_VERSION,
     nonce: encodeBase64Url(nonce),
     ciphertext: encodeBase64Url(ciphertext),
@@ -155,35 +155,19 @@ export async function encryptSecret(plaintext: string): Promise<EncryptedShare> 
   return {
     payload,
     fragment,
-    path: sharePath(id, fragment),
-  }
-}
-
-function assertEncryptedSecretPayload(payload: unknown): asserts payload is EncryptedSecretPayload {
-  if (typeof payload !== 'object' || payload === null) {
-    throw new InvalidShareCapabilityError()
-  }
-
-  const candidate = payload as Record<string, unknown>
-  if (
-    candidate.version !== SHARE_PROTOCOL_VERSION ||
-    typeof candidate.id !== 'string' ||
-    !isValidSecretId(candidate.id) ||
-    typeof candidate.nonce !== 'string' ||
-    typeof candidate.ciphertext !== 'string'
-  ) {
-    throw new InvalidShareCapabilityError()
   }
 }
 
 export async function decryptSecret(payload: unknown, fragment: string): Promise<string> {
-  assertEncryptedSecretPayload(payload)
+  if (!isEncryptedSecretPayload(payload)) {
+    throw new InvalidShareCapabilityError()
+  }
 
   const keyBytes = decodeFragment(fragment)
   const nonce = decodeNonce(payload.nonce)
   const ciphertext = decodeBase64Url(payload.ciphertext)
   const key = await importKey(keyBytes)
-  const additionalData = encoder.encode(shareAssociatedData(payload.id))
+  const additionalData = encoder.encode(shareAssociatedData(payload.contextId))
 
   try {
     const plaintext = await crypto.subtle.decrypt(

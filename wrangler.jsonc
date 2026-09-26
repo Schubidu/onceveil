@@ -5,5 +5,21 @@
   "compatibility_date": "2026-09-25",
   "compatibility_flags": ["nodejs_compat"],
   "preview_urls": true,
-  "previews": {}
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "onceveil-production",
+      "database_id": "1d203155-cdad-4d27-9c84-383c59c059ab",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "previews": {
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "onceveil-preview",
+        "database_id": "a8f3fce5-8226-40f1-804a-96677743f541"
+      }
+    ]
+  }
 }

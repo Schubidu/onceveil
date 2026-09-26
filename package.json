@@ -16,8 +16,17 @@
     "lint": "biome lint .",
     "format": "biome format . --write",
     "format:check": "biome format .",
-    "check": "npm run build && npm run check:generated && npm run typecheck && npm run test && npm run lint && npm run format:check",
-    "ci": "npm run check"
+    "check": "npm run build && npm run check:preview-config && npm run check:generated && npm run typecheck && npm run test && npm run lint && npm run format:check",
+    "ci": "npm run check",
+    "db:migrate:production": "wrangler d1 migrations apply onceveil-production --remote",
+    "db:migrate:preview": "wrangler d1 migrations apply onceveil-preview --remote --config wrangler.preview-migrations.jsonc",
+    "deploy:production": "npm run db:migrate:production && npm run db:mark:production && npm run db:verify:production && wrangler deploy",
+    "deploy:preview": "npm run build && npm run check:preview-config && npm run db:migrate:preview && npm run db:mark:preview && npm run db:verify:preview && wrangler preview --config dist/server/wrangler.json --ignore-base-config",
+    "db:verify:production": "node scripts/d1-environment.mjs verify production onceveil-production",
+    "db:verify:preview": "node scripts/d1-environment.mjs verify preview onceveil-preview wrangler.preview-migrations.jsonc",
+    "db:mark:production": "node scripts/d1-environment.mjs mark production onceveil-production",
+    "db:mark:preview": "node scripts/d1-environment.mjs mark preview onceveil-preview wrangler.preview-migrations.jsonc",
+    "check:preview-config": "node scripts/check-preview-config.mjs"
   },
   "dependencies": {
     "@tanstack/react-router": "1.170.39",

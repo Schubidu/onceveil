@@ -44,19 +44,21 @@ A read followed by a separate write is insufficient because two callers could bo
 
 Possession of a complete anonymous share URL is possession of the reveal capability.
 
-The v1 URL format is `/s/:id#v1.<base64url-key>`. The browser generates a fresh 256-bit AES-GCM key and 96-bit nonce for each secret. The decryption key exists only in the URL fragment, so ordinary HTTP requests and passive link previews do not send it to the server. After the reveal page copies the fragment into page memory, it replaces the current history entry with the fragment-free path immediately.
+The v1 URL format is `/s/:id#v1.<base64url-key>`. The server allocates the public `:id` with 128 bits of cryptographic randomness when the encrypted payload is stored. The browser independently generates a 256-bit AES-GCM key, a 96-bit nonce, and a 128-bit random crypto context identifier before encryption. The decryption key exists only in the URL fragment, so ordinary HTTP requests and passive link previews do not send it to the server. After the reveal page copies the fragment into page memory, it replaces the current history entry with the fragment-free path immediately.
 
-AES-GCM authenticates both the ciphertext and associated data `onceveil:v1:<secretId>`, binding the protocol version and secret identifier to the ciphertext. A modified ciphertext, identifier, version, nonce, or wrong key must fail authentication. This does **not** authenticate a person.
+AES-GCM authenticates the ciphertext and associated data `onceveil:v1:<contextId>`. The crypto context identifier is carried inside the encrypted payload envelope and is distinct from the server-issued public reveal identifier. A modified ciphertext, crypto context identifier, version, nonce, or wrong key must fail authentication. This does **not** authenticate a person.
 
 A recipient-authenticated mode may be added later, but it is outside the current scope.
 
 ## Identifier requirements
 
-Secret identifiers must be unpredictable and non-enumerable. The browser creation path generates the identifier before encryption with Web Crypto using 128 bits of cryptographic randomness so the same identifier can be authenticated as AAD and later persisted. The persistence preparation boundary reuses that identifier and validates its canonical 32-character lowercase hexadecimal representation.
+Public reveal identifiers must be unpredictable, non-enumerable, and allocated by the server. The creation boundary uses Web Crypto to generate 128 bits of randomness and persists only the server-issued identifier as the D1 row key. Callers cannot choose the public reveal identifier.
+
+The browser-generated crypto context identifier is also 128 bits of Web Crypto randomness, but it is used only for AES-GCM associated data and does not select a server resource.
 
 Sequential identifiers, timestamps, counters, database row IDs, malformed identifiers, and non-cryptographic randomness are not acceptable.
 
-Creation is insert-only. A duplicate identifier must be rejected atomically and must never replace an existing `AVAILABLE` or terminal record.
+Creation is insert-only. A duplicate server-issued identifier is retried with a fresh random identifier and must never replace an existing `AVAILABLE` or terminal record. The server also derives a SHA-256 replay key from the canonical encrypted payload. Retrying the same encrypted payload with the same TTL reuses the original public identifier and never creates a second deliverable row. Replaying that payload with a different TTL fails closed with a conflict instead of mutating the original lifetime or creating another row.
 
 ## Default limits
 
@@ -66,7 +68,15 @@ The domain default is:
 - maximum TTL: 7 days;
 - maximum ciphertext payload: 64 KiB.
 
-Deployments may configure stricter limits. Invalid configuration or malformed persisted lifecycle state fails closed. Requests above the configured TTL or payload limit are rejected rather than silently clamped. Persistence accepts only records produced by the validated domain creation path, so storage adapters cannot bypass these limits with arbitrary expiry or payload values.
+Deployments may configure stricter limits. Invalid configuration or malformed persisted lifecycle state fails closed. Requests are bounded before JSON/base64 decoding, and requests above the configured TTL or payload limit are rejected rather than silently clamped. Persistence accepts only records produced by the validated domain creation path, so storage adapters cannot bypass these limits with arbitrary expiry or payload values.
+
+## D1 persistence and reveal
+
+The server stores only the encoded encrypted payload plus lifecycle timestamps/state. The URL fragment key is never part of the D1 schema or create request body.
+
+Reveal is a mutating POST operation. D1 performs expiry and the conditional `AVAILABLE → CONSUMED` transition in one batch transaction. A random per-request consume token gates the ciphertext SELECT inside that transaction, so concurrent losing requests cannot read the winner's ciphertext. The token is cleared before the transaction completes.
+
+GET/HEAD rendering of `/s/:id` does not access the repository and cannot consume a secret. Secret surfaces are served with `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, and `X-Content-Type-Options: nosniff`.
 
 ## Threats covered
 
