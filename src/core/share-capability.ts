@@ -95,7 +95,9 @@ export async function encryptedPayloadReplayKey(
   payload: EncryptedSecretPayload,
 ): Promise<string> {
   const encoded = encodeEncryptedSecretPayload(payload)
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', encoded))
+  const bytes = new Uint8Array(encoded.byteLength)
+  bytes.set(encoded)
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes.buffer))
   return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
