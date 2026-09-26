@@ -35,7 +35,9 @@ export function encodeEncryptedSecretPayload(payload: EncryptedSecretPayload): U
   return new TextEncoder().encode(JSON.stringify(payload))
 }
 
-export function decodeEncryptedSecretPayload(bytes: Uint8Array): EncryptedSecretPayload | undefined {
+export function decodeEncryptedSecretPayload(
+  bytes: Uint8Array,
+): EncryptedSecretPayload | undefined {
   try {
     const value: unknown = JSON.parse(new TextDecoder().decode(bytes))
     return isEncryptedSecretPayload(value) ? value : undefined
