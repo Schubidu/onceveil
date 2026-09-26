@@ -96,7 +96,11 @@ export interface SecretRepository {
    * with the same TTL returns the original public identifier instead of creating
    * another row. A replay with different create semantics fails closed.
    */
-  create(record: PreparedSecretRecord, replayKey: string): Promise<CreateResult>
+  create(
+    record: PreparedSecretRecord,
+    replayKey: string,
+    ownerKeyHash: string,
+  ): Promise<CreateResult>
 
   /**
    * Atomically evaluate expiry and transition AVAILABLE -> CONSUMED.
@@ -105,17 +109,27 @@ export interface SecretRepository {
   consume(id: SecretId, nowMs: number): Promise<ConsumeResult | { kind: 'not_found' }>
 
   /**
-   * Atomically evaluate expiry and transition AVAILABLE -> REVOKED.
-   * This operation must never overwrite CONSUMED, EXPIRED, or REVOKED.
+   * Atomically evaluate expiry and transition AVAILABLE -> REVOKED for the
+   * matching owner capability hash. A wrong capability is indistinguishable
+   * from an unknown identifier.
    */
-  revoke(id: SecretId, nowMs: number): Promise<RevokeResult | { kind: 'not_found' }>
+  revoke(
+    id: SecretId,
+    ownerKeyHash: string,
+    nowMs: number,
+  ): Promise<RevokeResult | { kind: 'not_found' }>
 
   /**
-   * Read lifecycle metadata only. Ciphertext is intentionally unavailable
-   * outside the winning consume result. Implementations may atomically record
-   * AVAILABLE -> EXPIRED when the deadline has passed.
+   * Read lifecycle metadata only for the matching owner capability hash.
+   * Ciphertext is intentionally unavailable outside the winning consume result.
+   * Implementations may atomically record AVAILABLE -> EXPIRED when the deadline
+   * has passed. A wrong capability is indistinguishable from an unknown id.
    */
-  getStatus(id: SecretId, nowMs: number): Promise<SecretStatus | undefined>
+  getStatus(
+    id: SecretId,
+    ownerKeyHash: string,
+    nowMs: number,
+  ): Promise<SecretStatus | undefined>
 }
 
 export function validateCreateSecret(
