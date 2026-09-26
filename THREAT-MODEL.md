@@ -44,7 +44,7 @@ A read followed by a separate write is insufficient because two callers could bo
 
 Possession of a complete anonymous share URL is possession of the reveal capability.
 
-The v1 URL format is `/s/:id#v1.<base64url-key>`. The server allocates the public `:id` with 128 bits of cryptographic randomness when the encrypted payload is stored. The browser independently generates a 256-bit AES-GCM key, a 96-bit nonce, and a 128-bit random crypto context identifier before encryption. The decryption key exists only in the URL fragment, so ordinary HTTP requests and passive link previews do not send it to the server. After the reveal page copies the fragment into page memory, it replaces the current history entry with the fragment-free path immediately.
+The v1 URL format is `/s/:id#v1.<base64url-key>.<reveal-authorization>`. The server allocates the public `:id` with 128 bits of cryptographic randomness when the encrypted payload is stored. The browser independently generates a 256-bit AES-GCM key, a 96-bit nonce, and a 128-bit random crypto context identifier before encryption. The reveal authorization is the SHA-256 replay key of the canonical encrypted payload; the server already persists the same value for idempotent create handling. Both values travel in the URL fragment, so ordinary HTTP requests and passive link previews send neither to the server. After the reveal page copies the fragment into page memory, it replaces the current history entry with the fragment-free path immediately. Only the reveal authorization, never the AES key, is later sent back to authorize preparation of the Turnstile proof.
 
 AES-GCM authenticates the ciphertext and associated data `onceveil:v1:<contextId>`. The crypto context identifier is carried inside the encrypted payload envelope and is distinct from the server-issued public reveal identifier. A modified ciphertext, crypto context identifier, version, nonce, or wrong key must fail authentication. This does **not** authenticate a person.
 
@@ -72,7 +72,7 @@ Deployments may configure stricter limits. Invalid configuration or malformed pe
 
 ## D1 persistence and reveal
 
-The server stores only the encoded encrypted payload plus lifecycle timestamps/state. The URL fragment key is never part of the D1 schema or create request body.
+The server stores the encoded encrypted payload, lifecycle metadata, and the SHA-256 replay key used for idempotent create handling and reveal-proof preparation. The URL fragment's AES key is never part of the D1 schema or any request body.
 
 Reveal is a mutating POST operation. D1 performs expiry and the conditional `AVAILABLE → CONSUMED` transition in one batch transaction. A random per-request consume token gates the ciphertext SELECT inside that transaction, so concurrent losing requests cannot read the winner's ciphertext. The token is cleared before the transaction completes.
 
@@ -82,7 +82,7 @@ GET/HEAD rendering of `/s/:id` does not access the repository and cannot consume
 
 Cloudflare deployments require a provider-neutral reveal proof before the existing one-time consume may run.
 
-Turnstile executes only in a separate, fragment-free browsing context opened with `noopener`/`noreferrer`. The browsing context holding the decryption key never loads Turnstile JavaScript. Before opening that verification window, the server prepares a random opaque proof and returns it only to the key-holding page. The verification window receives only a separate public verification identifier; its `BroadcastChannel` messages carry success/failure state and never the bearer proof.
+Turnstile executes only in a separate, fragment-free browsing context opened with `noopener`/`noreferrer`. The browsing context holding the decryption key never loads Turnstile JavaScript. Before opening that verification window, the key-holding page presents the fragment-only reveal authorization to prepare a random opaque proof. The server accepts that preparation only when the authorization matches the stored replay key of the still-`AVAILABLE` secret and returns the proof only to the key-holding page. The verification window receives neither the reveal authorization nor the proof, only a separate public verification identifier; its `BroadcastChannel` messages carry success/failure state and never a bearer capability.
 
 The server validates Turnstile through Siteverify and requires the expected action, exact hostname, and secret-bound `cData`. A prepared proof remains unusable until the matching verification identifier is successfully completed. D1 stores only the proof's SHA-256 hash, the verification identifier, verification state, intended secret identifier, and one-time consumption state. Pending verification expires after five minutes; after successful verification the proof expires after 60 seconds.
 
