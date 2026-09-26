@@ -1,10 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { createSecretResponse } from '../runtime/secret-http'
-import {
-  getSecretRepository,
-  SecretDatabaseUnavailableError,
-} from '../runtime/secret-repository'
+import { getSecretRepository, SecretDatabaseUnavailableError } from '../runtime/secret-repository'
 import { withSecretSecurityHeaders } from '../runtime/security-headers'
 
 export const Route = createFileRoute('/api/secrets')({
