@@ -25,6 +25,10 @@ describe('create retry encryption', () => {
 
     expect(retry).toBe(first)
     expect(retry.encrypted).toBe(first.encrypted)
+    expect(retry.ownerCapability).toBe(first.ownerCapability)
+    expect(retry.ownerCapabilityHash).toBe(first.ownerCapabilityHash)
+    expect(retry.ownerCapability).toMatch(/^[0-9a-f]{64}$/)
+    expect(retry.ownerCapabilityHash).toMatch(/^[0-9a-f]{64}$/)
     expect(encrypt).toHaveBeenCalledTimes(1)
   })
 
@@ -36,6 +40,7 @@ describe('create retry encryption', () => {
 
     expect(changed).not.toBe(first)
     expect(changed.secret).toBe('changed')
+    expect(changed.ownerCapability).not.toBe(first.ownerCapability)
     expect(encrypt).toHaveBeenCalledTimes(2)
   })
 })
