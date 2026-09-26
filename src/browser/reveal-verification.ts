@@ -176,7 +176,7 @@ function requestRevealProofPopup(id: SecretId, authorization: string): Promise<s
       }
 
       if (candidate.type === 'onceveil-reveal-verified' && proof !== undefined) {
-        finish(() => resolve(proof))
+        finish(() => resolve(proof as string))
         return
       }
 
@@ -333,7 +333,7 @@ function requestEmbeddedRevealProof(
       }
 
       if (candidate.type === 'onceveil-reveal-verified' && proof !== undefined) {
-        finish(() => resolve(proof))
+        finish(() => resolve(proof as string))
         return
       }
 
