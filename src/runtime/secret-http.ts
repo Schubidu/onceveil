@@ -131,6 +131,10 @@ export async function createSecretResponse(
     if (result.kind === 'replayed') {
       return json({ id: result.id }, 200)
     }
+
+    if (result.kind === 'replay_conflict') {
+      return json({ error: 'replay_conflict' }, 409)
+    }
   }
 
   return json({ error: 'id_allocation_failed' }, 503)
