@@ -161,7 +161,6 @@ function SecretReveal({ id }: { id: SecretId }) {
             className="copy-secret"
             type="button"
             onClick={() => void copyPlaintext()}
-            aria-label="Copy revealed secret to clipboard"
           >
             <code>{plaintext}</code>
             <span>{copied ? 'Copied' : 'Copy'}</span>
