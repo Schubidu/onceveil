@@ -3,10 +3,9 @@ import { env } from 'cloudflare:workers'
 import { D1SecretRepository, type D1DatabaseLike } from '../adapters/d1-secret-repository'
 import type { SecretRepository } from '../core/secret'
 
-type RuntimeEnvironment = 'production' | 'preview'
+export type RuntimeEnvironment = 'production' | 'preview'
 
 interface OnceveilEnv {
-  APP_ENV?: RuntimeEnvironment
   DB?: D1DatabaseLike
 }
 
@@ -44,9 +43,11 @@ export function getSecretRepository(): SecretRepository {
   return new D1SecretRepository(database)
 }
 
-export async function assertSecretDatabaseEnvironment(): Promise<void> {
-  const { APP_ENV: expected, DB: database } = runtimeEnv()
-  if (!database || !expected) {
+export async function assertSecretDatabaseEnvironment(
+  expected: RuntimeEnvironment,
+): Promise<void> {
+  const { DB: database } = runtimeEnv()
+  if (!database) {
     throw new SecretDatabaseUnavailableError()
   }
 
