@@ -12,9 +12,12 @@ import {
   discardRevealVerificationFragment,
   requestRevealProof,
   revealVerificationId,
+  type RevealVerificationMessage,
+  type RevealVerificationWindowMessage,
 } from '../browser/reveal-verification'
 import { REVEAL_PROTECTION_ACTION } from '../core/reveal-protection'
 import { isValidSecretId, type SecretId } from '../core/secret'
+import { pairedCloudflareVerificationOrigin } from '../platform/cloudflare-verification-origin'
 
 const TURNSTILE_SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
 
@@ -258,14 +261,35 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
     let active = true
     let started = false
     let script: HTMLScriptElement | undefined
-    const broadcast = new BroadcastChannel(`onceveil-reveal-${verificationId}`)
+    const parentOrigin =
+      window.parent !== window
+        ? pairedCloudflareVerificationOrigin(window.location.origin)
+        : undefined
+    const broadcast = parentOrigin
+      ? undefined
+      : new BroadcastChannel(`onceveil-reveal-${verificationId}`)
+
+    function send(message: RevealVerificationMessage) {
+      if (parentOrigin) {
+        window.parent.postMessage(
+          {
+            ...message,
+            verificationId,
+          } satisfies RevealVerificationWindowMessage,
+          parentOrigin,
+        )
+        return
+      }
+
+      broadcast?.postMessage(message)
+    }
 
     function failVerification(message: string) {
       if (!active) {
         return
       }
 
-      broadcast.postMessage({ type: 'onceveil-reveal-proof-error' })
+      send({ type: 'onceveil-reveal-proof-error' })
       setError(message)
     }
 
@@ -285,19 +309,21 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
           | undefined
 
         if (!active || !response.ok || body?.verified !== true) {
-          failVerification('Verification failed. Close this window and try again.')
+          failVerification('Verification failed. Try again.')
           return
         }
 
-        broadcast.postMessage({ type: 'onceveil-reveal-verified' })
+        send({ type: 'onceveil-reveal-verified' })
         setStatus('Verified. Returning to the secret…')
-        window.close()
+        if (!parentOrigin) {
+          window.close()
+        }
       } catch {
-        failVerification('Verification failed. Close this window and try again.')
+        failVerification('Verification failed. Try again.')
       }
     }
 
-    async function start() {
+    async function startVerification() {
       try {
         const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
           headers: { 'X-Onceveil-Proof-Config': '1' },
@@ -343,29 +369,51 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
       }
     }
 
-    broadcast.onmessage = (event: MessageEvent<unknown>) => {
-      const message = event.data
+    function handleMessage(message: unknown) {
       if (typeof message !== 'object' || message === null || !('type' in message)) {
         return
       }
 
-      if ((message as { type?: unknown }).type === 'onceveil-reveal-prepared' && !started) {
+      const candidate = message as Partial<RevealVerificationMessage>
+      if (candidate.type === 'onceveil-reveal-prepared' && !started) {
         started = true
-        void start()
+        void startVerification()
         return
       }
 
-      if ((message as { type?: unknown }).type === 'onceveil-reveal-proof-error') {
-        setError('Verification could not be prepared. Close this window and try again.')
+      if (candidate.type === 'onceveil-reveal-proof-error') {
+        setError('Verification could not be prepared. Try again.')
       }
     }
 
-    broadcast.postMessage({ type: 'onceveil-reveal-verification-ready' })
+    function onWindowMessage(event: MessageEvent<unknown>) {
+      if (!parentOrigin || event.origin !== parentOrigin || event.source !== window.parent) {
+        return
+      }
+
+      const candidate = event.data as Partial<RevealVerificationWindowMessage> | null
+      if (candidate?.verificationId !== verificationId) {
+        return
+      }
+
+      handleMessage(candidate)
+    }
+
+    if (parentOrigin) {
+      window.addEventListener('message', onWindowMessage)
+    } else if (broadcast) {
+      broadcast.onmessage = (event: MessageEvent<unknown>) => {
+        handleMessage(event.data)
+      }
+    }
+
+    send({ type: 'onceveil-reveal-verification-ready' })
 
     return () => {
       active = false
       script?.remove()
-      broadcast.close()
+      window.removeEventListener('message', onWindowMessage)
+      broadcast?.close()
     }
   }, [id, verificationId])
 
