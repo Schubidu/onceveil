@@ -13,10 +13,7 @@ const BASE_DIRECTIVES = [
   "worker-src 'none'",
 ]
 
-function contentSecurityPolicy(
-  policy: SecretSurfacePolicy,
-  frameAncestor?: string,
-): string {
+function contentSecurityPolicy(policy: SecretSurfacePolicy, frameAncestor?: string): string {
   const turnstile = policy === 'turnstile'
   return [
     ...BASE_DIRECTIVES,
