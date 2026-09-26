@@ -1,7 +1,4 @@
-import {
-  type RevealChallengeVerifier,
-  type RevealProofRepository,
-} from '../core/reveal-protection'
+import type { RevealChallengeVerifier, RevealProofRepository } from '../core/reveal-protection'
 import type { SecretId, SecretRepository } from '../core/secret'
 import { revealSecretResponse } from './secret-http'
 import { withSecretSecurityHeaders } from './security-headers'
@@ -127,7 +124,6 @@ export async function consumeRevealProofResponse(
 
   return undefined
 }
-
 
 export async function protectedRevealResponse(
   request: Request,
