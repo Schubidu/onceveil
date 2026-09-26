@@ -17,6 +17,10 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
             )
           }
 
+          console.error('secret reveal failed', {
+            name: error instanceof Error ? error.name : 'UnknownError',
+            message: error instanceof Error ? error.message : 'unknown error',
+          })
           return withSecretSecurityHeaders(
             Response.json({ error: 'internal_error' }, { status: 500 }),
           )
