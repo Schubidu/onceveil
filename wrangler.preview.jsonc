@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "onceveil",
+  "main": "@tanstack/react-start/server-entry",
+  "compatibility_date": "2026-09-25",
+  "compatibility_flags": ["nodejs_compat"],
+  "preview_urls": true,
+  "vars": {
+    "APP_ENV": "preview"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "onceveil-preview",
+      "database_id": "a8f3fce5-8226-40f1-804a-96677743f541",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
