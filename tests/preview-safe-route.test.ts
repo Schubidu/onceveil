@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 import { Route as OwnerRoute } from '../src/routes/o.$id'
 import { Route as ShareRoute } from '../src/routes/s.$id'
+import { isSecretSurface } from '../src/runtime/security-headers'
 
 describe('preview-safe share landing route', () => {
   it('locks the plaintext field while a create request is in flight', async () => {
@@ -71,8 +72,11 @@ describe('preview-safe share landing route', () => {
     expect(handlers).not.toHaveProperty('GET')
     expect(handlers.HEAD).toBeTypeOf('function')
 
-    const serverSource = await readFile(path.resolve('src/server.ts'), 'utf8')
-    expect(serverSource).toContain("pathname.startsWith('/o/')")
+    expect(
+      isSecretSurface(
+        new Request('https://onceveil.test/o/0123456789abcdef0123456789abcdef'),
+      ),
+    ).toBe(true)
   })
 
   it('reveals only from the explicit browser action', async () => {
