@@ -10,6 +10,31 @@ interface OwnerStatus {
   expiresAtMs: number
 }
 
+async function requestOwnerStatus(
+  id: string,
+  method: 'GET' | 'DELETE',
+  owner: OwnerCapability,
+): Promise<OwnerStatus> {
+  const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/owner`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${owner}`,
+    },
+  })
+
+  const body = (await response.json().catch(() => undefined)) as Partial<OwnerStatus> | undefined
+  if (
+    !response.ok ||
+    typeof body?.state !== 'string' ||
+    !['AVAILABLE', 'CONSUMED', 'EXPIRED', 'REVOKED'].includes(body.state) ||
+    typeof body.expiresAtMs !== 'number'
+  ) {
+    throw new Error('owner_operation_failed')
+  }
+
+  return body as OwnerStatus
+}
+
 export const Route = createFileRoute('/o/$id')({
   server: {
     handlers: {
@@ -27,30 +52,6 @@ function OwnerSecret() {
   const [error, setError] = useState<string>()
   const [revoking, setRevoking] = useState(false)
 
-  async function request(method: 'GET' | 'DELETE', owner: OwnerCapability) {
-    const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/owner`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${owner}`,
-      },
-    })
-
-    const body = (await response.json().catch(() => undefined)) as
-      | Partial<OwnerStatus>
-      | undefined
-
-    if (
-      !response.ok ||
-      typeof body?.state !== 'string' ||
-      !['AVAILABLE', 'CONSUMED', 'EXPIRED', 'REVOKED'].includes(body.state) ||
-      typeof body.expiresAtMs !== 'number'
-    ) {
-      throw new Error('owner_operation_failed')
-    }
-
-    return body as OwnerStatus
-  }
-
   useEffect(() => {
     if (!isValidSecretId(id)) {
       setError('This owner link is invalid.')
@@ -66,7 +67,7 @@ function OwnerSecret() {
     }
 
     capability.current = owner
-    void request('GET', owner)
+    void requestOwnerStatus(id, 'GET', owner)
       .then(setStatus)
       .catch(() => setError('Secret status could not be loaded.'))
       .finally(() => setReady(true))
@@ -81,7 +82,7 @@ function OwnerSecret() {
     setRevoking(true)
     setError(undefined)
     try {
-      setStatus(await request('DELETE', owner))
+      setStatus(await requestOwnerStatus(id, 'DELETE', owner))
     } catch {
       setError('The secret could not be revoked.')
     } finally {
