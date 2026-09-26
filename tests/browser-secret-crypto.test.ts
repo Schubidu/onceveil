@@ -28,12 +28,7 @@ describe('browser secret crypto', () => {
   it('keeps key material out of the server-visible payload', async () => {
     const encrypted = await encryptSecret('server must only see ciphertext')
 
-    expect(Object.keys(encrypted.payload).sort()).toEqual([
-      'ciphertext',
-      'id',
-      'nonce',
-      'version',
-    ])
+    expect(Object.keys(encrypted.payload).sort()).toEqual(['ciphertext', 'id', 'nonce', 'version'])
     expect('fragment' in encrypted.payload).toBe(false)
     expect('key' in encrypted.payload).toBe(false)
   })
