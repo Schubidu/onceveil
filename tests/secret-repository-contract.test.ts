@@ -18,16 +18,21 @@ import {
 
 class AsyncAtomicInMemorySecretRepository implements SecretRepository {
   private readonly records = new Map<SecretId, SecretRecord>()
-  private readonly replayIds = new Map<string, SecretId>()
+  private readonly replays = new Map<string, { id: SecretId; ttlMs: number }>()
   private readonly queues = new Map<string, Promise<void>>()
 
   async create(record: PreparedSecretRecord, replayKey: string): Promise<CreateResult> {
     return this.withLock(`create:${replayKey}`, async () => {
       await Promise.resolve()
 
-      const replayId = this.replayIds.get(replayKey)
-      if (replayId) {
-        return { kind: 'replayed', id: replayId }
+      const replay = this.replays.get(replayKey)
+      if (replay) {
+        const ttlMs = record.expiresAtMs - record.createdAtMs
+        if (!Number.isSafeInteger(ttlMs) || replay.ttlMs !== ttlMs) {
+          return { kind: 'replay_conflict' }
+        }
+
+        return { kind: 'replayed', id: replay.id }
       }
 
       if (this.records.has(record.id)) {
@@ -35,7 +40,10 @@ class AsyncAtomicInMemorySecretRepository implements SecretRepository {
       }
 
       this.records.set(record.id, record)
-      this.replayIds.set(replayKey, record.id)
+      this.replays.set(replayKey, {
+        id: record.id,
+        ttlMs: record.expiresAtMs - record.createdAtMs,
+      })
       return { kind: 'created', id: record.id }
     })
   }
@@ -164,8 +172,8 @@ describe('SecretRepository atomic transition contract', () => {
     expect(results.filter((result) => result.kind === 'created')).toHaveLength(1)
     expect(results.filter((result) => result.kind === 'replayed')).toHaveLength(2)
     for (const result of results) {
-      expect(result.kind).not.toBe('duplicate_id')
-      if (result.kind !== 'duplicate_id') {
+      expect(result.kind === 'created' || result.kind === 'replayed').toBe(true)
+      if (result.kind === 'created' || result.kind === 'replayed') {
         expect(result.id).toBe(secret.id)
       }
     }
@@ -183,6 +191,29 @@ describe('SecretRepository atomic transition contract', () => {
     expect(await repository.create(replay, 'same-payload')).toEqual({
       kind: 'replayed',
       id: original.id,
+    })
+  })
+
+  it('rejects replaying the same payload key with a different TTL', async () => {
+    const repository = new AsyncAtomicInMemorySecretRepository()
+    const original = record()
+    const changedTtl = prepareSecretRecord(
+      generateSecretId(),
+      original.ciphertext,
+      original.createdAtMs,
+      800,
+    )
+
+    if (!changedTtl.ok) {
+      throw new Error(`failed to prepare replay conflict: ${changedTtl.reason}`)
+    }
+
+    expect(await repository.create(original, 'same-payload')).toEqual({
+      kind: 'created',
+      id: original.id,
+    })
+    expect(await repository.create(changedTtl.record, 'same-payload')).toEqual({
+      kind: 'replay_conflict',
     })
   })
 
