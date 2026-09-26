@@ -6,6 +6,42 @@ import {
   InvalidShareCapabilityError,
   takeShareFragment,
 } from '../browser/secret-crypto'
+import {
+  publishRevealVerificationMessage,
+  requestRevealProof,
+  revealVerificationChannel,
+} from '../browser/reveal-verification'
+import { REVEAL_PROTECTION_ACTION } from '../core/reveal-protection'
+import { isValidSecretId, type SecretId } from '../core/secret'
+
+const TURNSTILE_SCRIPT_URL =
+  'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+
+interface TurnstileApi {
+  render(
+    container: HTMLElement,
+    options: {
+      sitekey: string
+      action: string
+      cData: string
+      callback(token: string): void
+      'error-callback'(): void
+      'expired-callback'(): void
+    },
+  ): string
+}
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi
+  }
+}
+
+interface TurnstileConfig {
+  provider: 'turnstile'
+  siteKey: string
+  action: typeof REVEAL_PROTECTION_ACTION
+}
 
 export const Route = createFileRoute('/s/$id')({
   server: {
@@ -18,6 +54,28 @@ export const Route = createFileRoute('/s/$id')({
 
 function SecretLanding() {
   const { id } = Route.useParams()
+  const [verificationChannel, setVerificationChannel] = useState<string | null>()
+
+  useEffect(() => {
+    setVerificationChannel(revealVerificationChannel(window.location.search) ?? null)
+  }, [])
+
+  if (verificationChannel === undefined) {
+    return null
+  }
+
+  if (!isValidSecretId(id)) {
+    return <SecretError message="This secret link is invalid." />
+  }
+
+  return verificationChannel ? (
+    <TurnstileVerification id={id} channel={verificationChannel} />
+  ) : (
+    <SecretReveal id={id} />
+  )
+}
+
+function SecretReveal({ id }: { id: SecretId }) {
   const fragment = useRef<string | undefined>(undefined)
   const [capabilityReady, setCapabilityReady] = useState(false)
   const [revealing, setRevealing] = useState(false)
@@ -38,11 +96,14 @@ function SecretLanding() {
     setError(undefined)
 
     try {
+      const proof = await requestRevealProof(id)
       const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'X-Onceveil-Reveal': '1',
         },
+        body: JSON.stringify({ proof }),
       })
 
       if (!response.ok) {
@@ -58,7 +119,7 @@ function SecretLanding() {
       setError(
         cause instanceof InvalidShareCapabilityError
           ? 'The share capability is invalid or the encrypted payload was modified.'
-          : 'Reveal failed.',
+          : 'Verification or reveal failed.',
       )
     } finally {
       setRevealing(false)
@@ -76,15 +137,15 @@ function SecretLanding() {
         ) : (
           <>
             <p className="status">
-              Opening this page does not reveal or consume the secret. Reveal is an explicit
-              one-time action.
+              Opening this page does not reveal or consume the secret. Reveal requires a separate
+              verification step and an explicit one-time action.
             </p>
             <button
               type="button"
               onClick={reveal}
               disabled={!capabilityReady || !fragment.current || revealing}
             >
-              {revealing ? 'Revealing…' : 'Reveal secret'}
+              {revealing ? 'Verifying…' : 'Verify & reveal secret'}
             </button>
           </>
         )}
@@ -100,6 +161,138 @@ function SecretLanding() {
             {error}
           </p>
         ) : null}
+      </section>
+    </main>
+  )
+}
+
+function TurnstileVerification({ id, channel }: { id: SecretId; channel: string }) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [status, setStatus] = useState('Preparing verification…')
+  const [error, setError] = useState<string>()
+
+  useEffect(() => {
+    let active = true
+    let script: HTMLScriptElement | undefined
+
+    async function issueProof(token: string) {
+      try {
+        const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Onceveil-Proof-Request': '1',
+          },
+          body: JSON.stringify({ token }),
+        })
+
+        const body = (await response.json().catch(() => undefined)) as
+          | Record<string, unknown>
+          | undefined
+        const proof = typeof body?.proof === 'string' ? body.proof : undefined
+
+        if (!active || !response.ok || !proof) {
+          throw new Error('Verification proof could not be issued')
+        }
+
+        publishRevealVerificationMessage(channel, {
+          type: 'onceveil-reveal-proof',
+          proof,
+        })
+        setStatus('Verified. Returning to the secret…')
+        window.close()
+      } catch {
+        if (!active) {
+          return
+        }
+
+        publishRevealVerificationMessage(channel, {
+          type: 'onceveil-reveal-proof-error',
+        })
+        setError('Verification failed. Close this window and try again.')
+      }
+    }
+
+    async function start() {
+      try {
+        const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
+          headers: { 'X-Onceveil-Proof-Config': '1' },
+        })
+        const config = (await response.json().catch(() => undefined)) as
+          | Partial<TurnstileConfig>
+          | undefined
+
+        if (
+          !active ||
+          !response.ok ||
+          config?.provider !== 'turnstile' ||
+          typeof config.siteKey !== 'string' ||
+          config.action !== REVEAL_PROTECTION_ACTION
+        ) {
+          throw new Error('Reveal protection is unavailable')
+        }
+
+        script = document.createElement('script')
+        script.src = TURNSTILE_SCRIPT_URL
+        script.async = true
+        script.defer = true
+        script.onload = () => {
+          if (!active || !containerRef.current || !window.turnstile) {
+            setError('Verification failed to initialize.')
+            return
+          }
+
+          setStatus('Complete the verification to continue.')
+          window.turnstile.render(containerRef.current, {
+            sitekey: config.siteKey as string,
+            action: REVEAL_PROTECTION_ACTION,
+            cData: id,
+            callback: (token) => void issueProof(token),
+            'error-callback': () => setError('Verification failed. Try again.'),
+            'expired-callback': () => setError('Verification expired. Try again.'),
+          })
+        }
+        script.onerror = () => setError('Verification failed to load.')
+        document.head.append(script)
+      } catch {
+        if (active) {
+          setError('Verification is unavailable.')
+        }
+      }
+    }
+
+    void start()
+
+    return () => {
+      active = false
+      script?.remove()
+    }
+  }, [channel, id])
+
+  return (
+    <main className="shell">
+      <section className="card" aria-labelledby="verify-title">
+        <p className="eyebrow">Reveal verification</p>
+        <h1 id="verify-title">Onceveil</h1>
+        <p className="status">{status}</p>
+        <div ref={containerRef} />
+        {error ? (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </section>
+    </main>
+  )
+}
+
+function SecretError({ message }: { message: string }) {
+  return (
+    <main className="shell">
+      <section className="card">
+        <p className="error" role="alert">
+          {message}
+        </p>
       </section>
     </main>
   )
