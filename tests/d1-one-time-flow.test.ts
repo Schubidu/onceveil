@@ -585,6 +585,17 @@ describe('D1 one-time HTTP flow', () => {
     expect(replay.status).toBe(403)
   })
 
+  it('allows only one concurrent consume of the same reveal proof', async () => {
+    const proof = await proofRepository.issue(PUBLIC_ID, 1_000)
+
+    const results = await Promise.all(
+      Array.from({ length: 8 }, () => proofRepository.consume(PUBLIC_ID, proof.value, 1_001)),
+    )
+
+    expect(results.filter(Boolean)).toHaveLength(1)
+    expect(results.filter((result) => !result)).toHaveLength(7)
+  })
+
   it('does not consume the secret when a proof is expired, replayed, or bound elsewhere', async () => {
     const encrypted = await encryptSecret('proof failures leave available')
     await createSecretResponse(
