@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   decryptSecret,
   InvalidShareCapabilityError,
+  revealAuthorizationFromFragment,
   takeShareFragment,
 } from '../browser/secret-crypto'
 import {
@@ -101,7 +102,7 @@ function SecretReveal({ id }: { id: SecretId }) {
     setError(undefined)
 
     try {
-      const proof = await requestRevealProof(id)
+      const proof = await requestRevealProof(id, revealAuthorizationFromFragment(fragment.current))
       const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
         method: 'POST',
         headers: {
