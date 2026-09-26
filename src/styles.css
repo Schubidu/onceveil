@@ -73,6 +73,7 @@ button {
 
 textarea {
   width: 100%;
+  min-height: clamp(14rem, 32dvh, 22rem);
   resize: vertical;
   border: 1px solid #30363d;
   border-radius: 0.75rem;
