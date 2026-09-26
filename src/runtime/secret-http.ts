@@ -3,11 +3,7 @@ import {
   encodeEncryptedSecretPayload,
   isEncryptedSecretPayload,
 } from '../core/share-capability'
-import {
-  isValidSecretId,
-  prepareSecretRecord,
-  type SecretRepository,
-} from '../core/secret'
+import { isValidSecretId, prepareSecretRecord, type SecretRepository } from '../core/secret'
 import { withSecretSecurityHeaders } from './security-headers'
 
 interface CreateRequestBody {
