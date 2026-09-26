@@ -91,9 +91,7 @@ export function encodeEncryptedSecretPayload(payload: EncryptedSecretPayload): U
   return new TextEncoder().encode(JSON.stringify(canonical))
 }
 
-export async function encryptedPayloadReplayKey(
-  payload: EncryptedSecretPayload,
-): Promise<string> {
+export async function encryptedPayloadReplayKey(payload: EncryptedSecretPayload): Promise<string> {
   const encoded = encodeEncryptedSecretPayload(payload)
   const bytes = new Uint8Array(encoded.byteLength)
   bytes.set(encoded)
