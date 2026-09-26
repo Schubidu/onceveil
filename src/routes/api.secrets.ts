@@ -14,8 +14,14 @@ export const Route = createFileRoute('/api/secrets')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const hostname = new URL(request.url).hostname
+        const isPreview =
+          hostname.endsWith('.ots-preview.schult.dev') ||
+          hostname.endsWith('-onceveil.schult.workers.dev')
+        const expectedEnvironment = isPreview ? 'preview' : 'production'
+
         try {
-          await assertSecretDatabaseEnvironment()
+          await assertSecretDatabaseEnvironment(expectedEnvironment)
           return await createSecretResponse(request, getSecretRepository())
         } catch (error) {
           if (error instanceof SecretDatabaseUnavailableError) {
@@ -25,11 +31,6 @@ export const Route = createFileRoute('/api/secrets')({
           }
 
           if (error instanceof SecretDatabaseEnvironmentError) {
-            const hostname = new URL(request.url).hostname
-            const isPreview =
-              hostname.endsWith('.ots-preview.schult.dev') ||
-              hostname.endsWith('-onceveil.schult.workers.dev')
-
             return withSecretSecurityHeaders(
               Response.json(
                 isPreview
@@ -50,11 +51,6 @@ export const Route = createFileRoute('/api/secrets')({
           })
 
           if (error instanceof D1CreateError) {
-            const hostname = new URL(request.url).hostname
-            const isPreview =
-              hostname.endsWith('.ots-preview.schult.dev') ||
-              hostname.endsWith('-onceveil.schult.workers.dev')
-
             if (isPreview) {
               return withSecretSecurityHeaders(
                 Response.json(
