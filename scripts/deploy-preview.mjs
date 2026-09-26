@@ -39,10 +39,17 @@ function runPreview() {
 }
 
 function previewUrls(output) {
-  return [
+  const stableUrls = [
     ...(Array.isArray(output?.preview?.urls) ? output.preview.urls : []),
-    ...(Array.isArray(output?.deployment?.urls) ? output.deployment.urls : []),
     ...(Array.isArray(output?.preview_urls) ? output.preview_urls : []),
+  ].filter((value) => typeof value === 'string' && value.length > 0)
+
+  if (stableUrls.length > 0) {
+    return stableUrls
+  }
+
+  return [
+    ...(Array.isArray(output?.deployment?.urls) ? output.deployment.urls : []),
     ...(Array.isArray(output?.deployment_urls) ? output.deployment_urls : []),
   ].filter((value) => typeof value === 'string' && value.length > 0)
 }

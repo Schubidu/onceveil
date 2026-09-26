@@ -21,7 +21,7 @@
     "db:migrate:production": "wrangler d1 migrations apply onceveil-production --remote",
     "db:migrate:preview": "wrangler d1 migrations apply onceveil-preview --remote --config wrangler.preview-migrations.jsonc",
     "deploy:production": "npm run db:migrate:production && npm run db:mark:production && npm run db:verify:production && wrangler deploy",
-    "deploy:preview": "npm run db:migrate:preview && npm run db:mark:preview && npm run db:verify:preview && node scripts/deploy-preview.mjs",
+    "deploy:preview": "npm run build && npm run check:preview-config && npm run db:migrate:preview && npm run db:mark:preview && npm run db:verify:preview && node scripts/deploy-preview.mjs",
     "db:verify:production": "node scripts/d1-environment.mjs verify production onceveil-production",
     "db:verify:preview": "node scripts/d1-environment.mjs verify preview onceveil-preview wrangler.preview-migrations.jsonc",
     "db:mark:production": "node scripts/d1-environment.mjs mark production onceveil-production",
