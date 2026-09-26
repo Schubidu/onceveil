@@ -7,6 +7,7 @@ import {
   takeShareFragment,
 } from '../browser/secret-crypto'
 import {
+  discardRevealVerificationFragment,
   publishRevealVerificationMessage,
   requestRevealProof,
   revealVerificationChannel,
@@ -56,7 +57,12 @@ function SecretLanding() {
   const [verificationChannel, setVerificationChannel] = useState<string | null>()
 
   useEffect(() => {
-    setVerificationChannel(revealVerificationChannel(window.location.search) ?? null)
+    const channel = revealVerificationChannel(window.location.search)
+    if (channel) {
+      discardRevealVerificationFragment(window.location, window.history)
+    }
+
+    setVerificationChannel(channel ?? null)
   }, [])
 
   if (verificationChannel === undefined) {

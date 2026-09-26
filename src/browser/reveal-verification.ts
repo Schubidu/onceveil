@@ -11,6 +11,17 @@ export type RevealVerificationMessage =
   | { type: 'onceveil-reveal-proof'; proof: string }
   | { type: 'onceveil-reveal-proof-error' }
 
+export interface RevealVerificationLocation {
+  hash: string
+  pathname: string
+  search: string
+}
+
+export interface RevealVerificationHistory {
+  state: unknown
+  replaceState(data: unknown, unused: string, url?: string | URL | null): void
+}
+
 function randomChannel(): string {
   const bytes = new Uint8Array(CHANNEL_BYTES)
   crypto.getRandomValues(bytes)
@@ -26,6 +37,17 @@ export function revealVerificationUrl(id: SecretId, channel: string, origin: str
   url.searchParams.set('verify', 'turnstile')
   url.searchParams.set('channel', channel)
   return url.toString()
+}
+
+export function discardRevealVerificationFragment(
+  location: RevealVerificationLocation,
+  history: RevealVerificationHistory,
+): void {
+  if (!location.hash) {
+    return
+  }
+
+  history.replaceState(history.state, '', `${location.pathname}${location.search}`)
 }
 
 export function revealVerificationChannel(search: string): string | undefined {

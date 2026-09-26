@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  discardRevealVerificationFragment,
   REVEAL_VERIFICATION_WINDOW_FEATURES,
   revealVerificationChannel,
   revealVerificationUrl,
@@ -18,6 +19,30 @@ describe('reveal verification browser isolation', () => {
     expect(url.searchParams.get('verify')).toBe('turnstile')
     expect(url.searchParams.get('channel')).toBe(CHANNEL)
     expect(url.hash).toBe('')
+  })
+
+  it('discards any fragment before the verification context can load third-party code', () => {
+    const replacements: Array<{ state: unknown; url: string | URL | null | undefined }> = []
+    const location = {
+      hash: '#v1.must-not-reach-turnstile',
+      pathname: `/s/${SECRET_ID}`,
+      search: `?verify=turnstile&channel=${CHANNEL}`,
+    }
+    const history = {
+      state: { verification: true },
+      replaceState(state: unknown, _unused: string, url?: string | URL | null) {
+        replacements.push({ state, url })
+      },
+    }
+
+    discardRevealVerificationFragment(location, history)
+
+    expect(replacements).toEqual([
+      {
+        state: history.state,
+        url: `/s/${SECRET_ID}?verify=turnstile&channel=${CHANNEL}`,
+      },
+    ])
   })
 
   it('requires an isolated opener-less browsing context', () => {
