@@ -1,5 +1,6 @@
 import {
   effectiveState,
+  isValidSecretId,
   type ConsumeResult,
   type CreateResult,
   type PreparedSecretRecord,
@@ -149,13 +150,15 @@ function unavailableState(row: StatusRow, nowMs: number): Exclude<SecretState, '
 export class D1SecretRepository implements SecretRepository {
   constructor(private readonly db: D1DatabaseLike) {}
 
-  async create(record: PreparedSecretRecord): Promise<CreateResult> {
+  async create(record: PreparedSecretRecord, replayKey: string): Promise<CreateResult> {
+    const session = this.db.withSession('first-primary')
     let statement: D1PreparedStatementLike
+
     try {
-      statement = this.db.prepare(
+      statement = session.prepare(
         `INSERT OR IGNORE INTO secrets
-          (id, ciphertext, created_at_ms, expires_at_ms, state)
-         VALUES (?, ?, ?, ?, 'AVAILABLE')`,
+          (id, ciphertext, created_at_ms, expires_at_ms, state, replay_key)
+         VALUES (?, ?, ?, ?, 'AVAILABLE', ?)`,
       )
     } catch (error) {
       throw new D1CreateError('prepare', errorDetail(error))
@@ -167,6 +170,7 @@ export class D1SecretRepository implements SecretRepository {
         toArrayBuffer(record.ciphertext),
         record.createdAtMs,
         record.expiresAtMs,
+        replayKey,
       )
     } catch (error) {
       throw new D1CreateError('bind', errorDetail(error))
@@ -183,7 +187,25 @@ export class D1SecretRepository implements SecretRepository {
       throw new D1CreateError('result', 'D1 returned success=false')
     }
 
-    return result.meta?.changes === 1 ? { kind: 'created' } : { kind: 'duplicate' }
+    if (result.meta?.changes === 1) {
+      return { kind: 'created', id: record.id }
+    }
+
+    let replay: { id: string } | null
+    try {
+      replay = await session
+        .prepare('SELECT id FROM secrets WHERE replay_key = ? LIMIT 1')
+        .bind(replayKey)
+        .first<{ id: string }>()
+    } catch (error) {
+      throw new D1CreateError('run', errorDetail(error))
+    }
+
+    if (replay && isValidSecretId(replay.id)) {
+      return { kind: 'replayed', id: replay.id }
+    }
+
+    return { kind: 'duplicate_id' }
   }
 
   async consume(id: SecretId, nowMs: number): Promise<ConsumeResult | { kind: 'not_found' }> {

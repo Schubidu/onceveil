@@ -95,7 +95,7 @@ export async function checkSecretDatabaseReadiness(
 
     await database
       .prepare(
-        'SELECT id, ciphertext, created_at_ms, expires_at_ms, state, consumed_at_ms, revoked_at_ms, consume_token FROM secrets LIMIT 0',
+        'SELECT id, ciphertext, created_at_ms, expires_at_ms, state, consumed_at_ms, revoked_at_ms, consume_token, replay_key FROM secrets LIMIT 0',
       )
       .first()
 

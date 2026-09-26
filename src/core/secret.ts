@@ -61,7 +61,10 @@ export type CreateSecretValidation =
       reason: 'INVALID_ID' | 'INVALID_POLICY' | 'INVALID_TTL' | 'PAYLOAD_TOO_LARGE'
     }
 
-export type CreateResult = { kind: 'created' } | { kind: 'duplicate' }
+export type CreateResult =
+  | { kind: 'created'; id: SecretId }
+  | { kind: 'replayed'; id: SecretId }
+  | { kind: 'duplicate_id' }
 
 export type ConsumeResult =
   | { kind: 'revealed'; ciphertext: Uint8Array; status: SecretStatus }
@@ -88,9 +91,10 @@ export type RevokeDecision =
 export interface SecretRepository {
   /**
    * Atomically insert a new secret. Existing identifiers are never overwritten,
-   * including terminal records.
+   * including terminal records. Replaying the same canonical encrypted payload
+   * returns the original public identifier instead of creating another row.
    */
-  create(record: PreparedSecretRecord): Promise<CreateResult>
+  create(record: PreparedSecretRecord, replayKey: string): Promise<CreateResult>
 
   /**
    * Atomically evaluate expiry and transition AVAILABLE -> CONSUMED.

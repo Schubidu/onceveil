@@ -128,7 +128,9 @@ describe('D1 one-time HTTP flow', () => {
   beforeEach(async () => {
     d1 = new SQLiteD1Database()
     const migration = await readFile(path.resolve('migrations/0001_secrets.sql'), 'utf8')
+    const replayMigration = await readFile(path.resolve('migrations/0003_secret_replay_key.sql'), 'utf8')
     d1.database.exec(migration)
+    d1.database.exec(replayMigration)
     repository = new D1SecretRepository(d1)
   })
 
@@ -242,6 +244,44 @@ describe('D1 one-time HTTP flow', () => {
     const stored = d1.database.prepare('SELECT id FROM secrets LIMIT 1').get() as { id: string }
     expect(stored.id).toBe(PUBLIC_ID)
     expect(stored.id).not.toBe(encrypted.payload.contextId)
+  })
+
+  it('returns the original public identifier when the same encrypted create is replayed', async () => {
+    const encrypted = await encryptSecret('retry safe')
+    const body = JSON.stringify({ payload: encrypted.payload })
+    const secondId = 'e'.repeat(32) as SecretId
+    const ids = [PUBLIC_ID, secondId]
+    let nextId = 0
+    const allocate = () => ids[nextId++] ?? secondId
+
+    const first = await createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      }),
+      repository,
+      1_000,
+      allocate,
+    )
+    const replay = await createSecretResponse(
+      new Request('https://onceveil.test/api/secrets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      }),
+      repository,
+      1_001,
+      allocate,
+    )
+
+    expect(first.status).toBe(201)
+    await expect(first.json()).resolves.toEqual({ id: PUBLIC_ID })
+    expect(replay.status).toBe(200)
+    await expect(replay.json()).resolves.toEqual({ id: PUBLIC_ID })
+
+    const rows = d1.database.prepare('SELECT id FROM secrets').all() as Array<{ id: string }>
+    expect(rows).toEqual([{ id: PUBLIC_ID }])
   })
 
   it('rejects null TTL instead of treating it as the default', async () => {
