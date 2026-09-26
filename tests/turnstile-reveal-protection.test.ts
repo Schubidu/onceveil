@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import { TurnstileRevealChallengeVerifier } from '../src/adapters/turnstile-reveal-protection'
 import { REVEAL_PROTECTION_ACTION } from '../src/core/reveal-protection'
@@ -12,15 +12,19 @@ function response(body: unknown, status = 200): Response {
 
 describe('Turnstile reveal challenge verifier', () => {
   it('accepts only the expected action, hostname and secret-bound cData', async () => {
-    const fetchImpl = vi.fn(async () =>
-      response({
+    let capturedInit: RequestInit | undefined
+    let calls = 0
+    const fetchImpl = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      calls += 1
+      capturedInit = init
+      return response({
         success: true,
         action: REVEAL_PROTECTION_ACTION,
         hostname: 'ots.schult.dev',
         cdata: SECRET_ID,
-      }),
-    )
-    const verifier = new TurnstileRevealChallengeVerifier('secret-key', fetchImpl as typeof fetch)
+      })
+    }) as typeof fetch
+    const verifier = new TurnstileRevealChallengeVerifier('secret-key', fetchImpl)
 
     await expect(
       verifier.verify({
@@ -31,11 +35,10 @@ describe('Turnstile reveal challenge verifier', () => {
       }),
     ).resolves.toEqual({ kind: 'verified' })
 
-    expect(fetchImpl).toHaveBeenCalledTimes(1)
-    const init = fetchImpl.mock.calls[0]?.[1]
-    expect(init?.method).toBe('POST')
-    expect(String(init?.body)).toContain('response=turnstile-token')
-    expect(String(init?.body)).toContain('remoteip=203.0.113.7')
+    expect(calls).toBe(1)
+    expect(capturedInit?.method).toBe('POST')
+    expect(String(capturedInit?.body)).toContain('response=turnstile-token')
+    expect(String(capturedInit?.body)).toContain('remoteip=203.0.113.7')
   })
 
   it.each([
