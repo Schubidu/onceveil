@@ -24,6 +24,12 @@ export interface SecretRecord {
   state: SecretState
 }
 
+declare const preparedSecretRecord: unique symbol
+
+export type PreparedSecretRecord = SecretRecord & {
+  readonly [preparedSecretRecord]: true
+}
+
 export interface SecretStatus {
   id: SecretId
   createdAtMs: number
@@ -72,7 +78,7 @@ export interface SecretRepository {
    * Atomically insert a new secret. Existing identifiers are never overwritten,
    * including terminal records.
    */
-  create(record: SecretRecord): Promise<CreateResult>
+  create(record: PreparedSecretRecord): Promise<CreateResult>
 
   /**
    * Atomically evaluate expiry and transition AVAILABLE -> CONSUMED.
@@ -133,6 +139,37 @@ export function validateCreateSecret(
   }
 
   return { ok: true, ttlMs }
+}
+
+export function prepareSecretRecord(
+  id: SecretId,
+  ciphertext: Uint8Array,
+  createdAtMs: number,
+  requestedTtlMs: number | null | undefined,
+  policy: SecretPolicy = DEFAULT_SECRET_POLICY,
+):
+  | { ok: true; record: PreparedSecretRecord }
+  | Extract<CreateSecretValidation, { ok: false }> {
+  const validation = validateCreateSecret(ciphertext.byteLength, requestedTtlMs, policy)
+  if (!validation.ok) {
+    return validation
+  }
+
+  const expiresAtMs = createdAtMs + validation.ttlMs
+  if (!Number.isSafeInteger(createdAtMs) || !Number.isSafeInteger(expiresAtMs)) {
+    return { ok: false, reason: 'INVALID_TTL' }
+  }
+
+  return {
+    ok: true,
+    record: {
+      id,
+      ciphertext,
+      createdAtMs,
+      expiresAtMs,
+      state: 'AVAILABLE',
+    } as PreparedSecretRecord,
+  }
 }
 
 export function toSecretStatus(record: SecretRecord): SecretStatus {
