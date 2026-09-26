@@ -51,6 +51,12 @@ interface StatusRow {
   state: string
 }
 
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength)
+  copy.set(bytes)
+  return copy.buffer
+}
+
 function randomToken(): string {
   const bytes = new Uint8Array(16)
   crypto.getRandomValues(bytes)
@@ -125,7 +131,7 @@ export class D1SecretRepository implements SecretRepository {
           (id, ciphertext, created_at_ms, expires_at_ms, state)
          VALUES (?, ?, ?, ?, 'AVAILABLE')`,
       )
-      .bind(record.id, record.ciphertext, record.createdAtMs, record.expiresAtMs)
+      .bind(record.id, toArrayBuffer(record.ciphertext), record.createdAtMs, record.expiresAtMs)
       .run()
 
     return result.meta?.changes === 1 ? { kind: 'created' } : { kind: 'duplicate' }
