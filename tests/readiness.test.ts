@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import type {
@@ -151,6 +154,12 @@ describe('runtime readiness', () => {
       status: 'not_ready',
       database: 'migration_required',
     })
+  })
+
+  it('keeps deployment schema verification aligned with runtime readiness', async () => {
+    const source = await readFile(path.resolve('scripts/d1-environment.mjs'), 'utf8')
+
+    expect(source).toContain('owner_key_hash')
   })
 
   it('reports unavailable when the database cannot be queried', async () => {
