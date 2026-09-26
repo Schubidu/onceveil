@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  hashOwnerCapability,
-  type OwnerCapability,
-} from '../src/core/owner-capability'
+import { hashOwnerCapability, type OwnerCapability } from '../src/core/owner-capability'
 import type {
   CreateResult,
   PreparedSecretRecord,
