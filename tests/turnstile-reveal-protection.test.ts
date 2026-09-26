@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   TurnstileRevealChallengeVerifier,
@@ -14,6 +14,9 @@ function response(body: unknown, status = 200): Response {
 }
 
 describe('Turnstile reveal challenge verifier', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
   it('requires both site and secret keys as one configuration boundary', () => {
     expect(turnstileRevealProtectionConfiguration('site-key', 'secret-key')).toEqual({
       siteKey: 'site-key',
@@ -66,6 +69,7 @@ describe('Turnstile reveal challenge verifier', () => {
     { success: true, action: REVEAL_PROTECTION_ACTION, hostname: 'evil.example', cdata: SECRET_ID },
     { success: true, action: REVEAL_PROTECTION_ACTION, hostname: 'ots.schult.dev', cdata: 'other' },
   ])('rejects mismatched verification context %#', async (siteverify) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const verifier = new TurnstileRevealChallengeVerifier('secret-key', (async () =>
       response(siteverify)) as typeof fetch)
 
@@ -76,6 +80,19 @@ describe('Turnstile reveal challenge verifier', () => {
         hostname: 'ots.schult.dev',
       }),
     ).resolves.toEqual({ kind: 'invalid' })
+
+    expect(warn).toHaveBeenCalledWith(
+      'Turnstile Siteverify rejected reveal verification',
+      expect.objectContaining({
+        success: siteverify.success === true,
+        hostnameMatches: expect.any(Boolean),
+        actionMatches: expect.any(Boolean),
+        cdataMatches: expect.any(Boolean),
+        errorCodes: [],
+      }),
+    )
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('turnstile-token')
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('secret-key')
   })
 
   it('fails closed when Siteverify is unavailable', async () => {
