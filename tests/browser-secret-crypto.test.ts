@@ -86,6 +86,25 @@ describe('browser secret crypto', () => {
     )
   })
 
+  it.each([
+    null,
+    {},
+    { version: SHARE_PROTOCOL_VERSION },
+    { version: SHARE_PROTOCOL_VERSION, id: 123, nonce: 'x', ciphertext: 'y' },
+    {
+      version: SHARE_PROTOCOL_VERSION,
+      id: 'not-a-secret-id',
+      nonce: 'x',
+      ciphertext: 'y',
+    },
+  ])('rejects malformed server payloads consistently', async (payload) => {
+    const encrypted = await encryptSecret('malformed payload')
+
+    await expect(decryptSecret(payload, encrypted.fragment)).rejects.toBeInstanceOf(
+      InvalidShareCapabilityError,
+    )
+  })
+
   it('rejects unsupported payload or fragment versions', async () => {
     const encrypted = await encryptSecret('versioned')
 
