@@ -13,4 +13,3 @@ export interface EncryptedSecretPayload {
 export function shareAssociatedData(id: SecretId): string {
   return `${SHARE_AAD_PREFIX}:${SHARE_PROTOCOL_VERSION}:${id}`
 }
-
