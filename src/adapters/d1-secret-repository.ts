@@ -38,7 +38,7 @@ export interface D1DatabaseLike extends D1SessionLike {
 
 interface SecretRow {
   id: string
-  ciphertext: ArrayLike<number>
+  ciphertext: unknown
   created_at_ms: number
   expires_at_ms: number
   state: string
@@ -57,10 +57,36 @@ function randomToken(): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-function toRecord(row: SecretRow): SecretRecord {
+function toCiphertextBytes(value: unknown): Uint8Array | undefined {
+  if (value instanceof ArrayBuffer) {
+    return new Uint8Array(value)
+  }
+
+  if (ArrayBuffer.isView(value)) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength).slice()
+  }
+
+  if (
+    Array.isArray(value) &&
+    value.every(
+      (byte) => Number.isInteger(byte) && typeof byte === 'number' && byte >= 0 && byte <= 255,
+    )
+  ) {
+    return Uint8Array.from(value)
+  }
+
+  return undefined
+}
+
+function toRecord(row: SecretRow): SecretRecord | undefined {
+  const ciphertext = toCiphertextBytes(row.ciphertext)
+  if (!ciphertext) {
+    return undefined
+  }
+
   return {
     id: row.id as SecretId,
-    ciphertext: Uint8Array.from(row.ciphertext),
+    ciphertext,
     createdAtMs: row.created_at_ms,
     expiresAtMs: row.expires_at_ms,
     state: row.state as SecretState,
@@ -149,7 +175,7 @@ export class D1SecretRepository implements SecretRepository {
       const record = toRecord(winner)
       const status = toStatus(winner, nowMs)
 
-      if (status.state !== 'CONSUMED') {
+      if (!record || status.state !== 'CONSUMED') {
         return { kind: 'unavailable', state: 'EXPIRED' }
       }
 
