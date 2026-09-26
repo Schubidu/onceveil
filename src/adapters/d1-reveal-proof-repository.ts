@@ -12,6 +12,7 @@ const VERIFICATION_BYTES = 16
 const PROOF_ATTEMPTS = 3
 const PROOF_PATTERN = /^[A-Za-z0-9_-]{43}$/
 const VERIFICATION_PATTERN = /^[0-9a-f]{32}$/
+const AUTHORIZATION_PATTERN = /^[0-9a-f]{64}$/
 
 function encodeBase64Url(bytes: Uint8Array): string {
   let binary = ''
@@ -51,8 +52,12 @@ export class RevealProofStorageError extends Error {
 export class D1RevealProofRepository implements RevealProofRepository {
   constructor(private readonly db: D1DatabaseLike) {}
 
-  async prepare(secretId: SecretId, nowMs: number): Promise<RevealProof> {
-    if (!Number.isSafeInteger(nowMs)) {
+  async prepare(
+    secretId: SecretId,
+    authorization: string,
+    nowMs: number,
+  ): Promise<RevealProof | undefined> {
+    if (!AUTHORIZATION_PATTERN.test(authorization) || !Number.isSafeInteger(nowMs)) {
       throw new RevealProofStorageError()
     }
 
@@ -62,6 +67,27 @@ export class D1RevealProofRepository implements RevealProofRepository {
     }
 
     const session = this.db.withSession('first-primary')
+
+    try {
+      const authorized = await session
+        .prepare(
+          `SELECT id
+           FROM secrets
+           WHERE id = ?
+             AND replay_key = ?
+             AND state = 'AVAILABLE'
+             AND expires_at_ms > ?
+           LIMIT 1`,
+        )
+        .bind(secretId, authorization, nowMs)
+        .first<{ id: string }>()
+
+      if (!authorized) {
+        return undefined
+      }
+    } catch {
+      throw new RevealProofStorageError()
+    }
 
     let cleanup: D1ResultLike
     try {
