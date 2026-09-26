@@ -8,17 +8,17 @@ The share page that holds the URL fragment key never loads Turnstile or any othe
 
 When the recipient chooses **Verify & reveal secret**:
 
-1. the share page opens a fragment-free verification window with `noopener` and `noreferrer`;
-2. only that isolated window loads Cloudflare Turnstile;
-3. Turnstile returns a token to the isolated window;
-4. the server validates that token with Siteverify;
-5. the server checks the expected action, the exact request hostname, and secret-bound `cData`;
-6. successful validation creates a 60-second opaque reveal proof;
-7. only the SHA-256 hash of that proof is stored in D1;
-8. the proof is sent back to the original page through a random same-origin `BroadcastChannel`;
-9. reveal atomically consumes the proof before attempting the existing strict one-time secret consume.
+1. the share page asks the server to prepare a one-time reveal proof;
+2. the server returns that proof only to the share page and stores only its SHA-256 hash together with a separate verification identifier;
+3. the share page opens a fragment-free verification window with `noopener` and `noreferrer`, passing only the verification identifier;
+4. only that isolated window loads Cloudflare Turnstile;
+5. Turnstile returns a token to the isolated window;
+6. the server validates that token with Siteverify and checks the expected action, exact request hostname, and secret-bound `cData`;
+7. successful validation marks the matching prepared proof as verified without returning the bearer proof to the verification window;
+8. the verification window sends only success/failure state through the same-origin `BroadcastChannel`;
+9. reveal atomically consumes the verified proof before attempting the existing strict one-time secret consume.
 
-A proof is bound to one secret, expires after 60 seconds, and can be consumed once.
+A pending verification expires after five minutes. Once verified, its proof is bound to one secret, expires after 60 seconds, and can be consumed once.
 
 If Turnstile, its configuration, D1 proof storage, or proof validation is unavailable, reveal fails closed and the secret remains `AVAILABLE`.
 
@@ -46,7 +46,7 @@ Both values are mandatory at runtime. Missing values do not disable protection; 
 
 ## Siteverify validation
 
-The server validates every Turnstile token through Cloudflare Siteverify before issuing a reveal proof.
+The server validates every Turnstile token through Cloudflare Siteverify before activating a prepared reveal proof.
 
 The validation requires:
 
@@ -61,7 +61,7 @@ The client token is never accepted as a reveal proof directly.
 
 Turnstile tokens are single-use and expire independently according to Cloudflare's Turnstile contract.
 
-Onceveil adds its own one-time server proof after successful Siteverify validation. This keeps provider-specific tokens out of the actual secret-consume boundary and gives future providers (for example ALTCHA) the same internal proof contract.
+Onceveil prepares its own one-time server proof before the third-party verification context is opened, but that proof cannot be consumed until successful Siteverify validation activates it. The verification page never receives the bearer proof. This keeps provider-specific tokens and third-party scripts out of the actual secret-consume capability and gives future providers (for example ALTCHA) the same internal proof contract.
 
 A proof can be burned by a successful proof consume followed by a later infrastructure failure before the secret consume. In that case the secret stays available and the recipient must verify again. Onceveil prefers this fail-closed behavior over reusing a proof.
 
