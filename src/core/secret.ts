@@ -125,11 +125,7 @@ export interface SecretRepository {
    * Implementations may atomically record AVAILABLE -> EXPIRED when the deadline
    * has passed. A wrong capability is indistinguishable from an unknown id.
    */
-  getStatus(
-    id: SecretId,
-    ownerKeyHash: string,
-    nowMs: number,
-  ): Promise<SecretStatus | undefined>
+  getStatus(id: SecretId, ownerKeyHash: string, nowMs: number): Promise<SecretStatus | undefined>
 }
 
 export function validateCreateSecret(
