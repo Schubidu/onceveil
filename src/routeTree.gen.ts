@@ -13,7 +13,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as ReadyRouteImport } from './routes/ready'
 import { Route as ApiSecretsRouteImport } from './routes/api.secrets'
+import { Route as OIdRouteImport } from './routes/o.$id'
 import { Route as SIdRouteImport } from './routes/s.$id'
+import { Route as ApiSecretsIdOwnerRouteImport } from './routes/api.secrets.$id.owner'
 import { Route as ApiSecretsIdRevealRouteImport } from './routes/api.secrets.$id.reveal'
 
 const IndexRoute = IndexRouteImport.update({
@@ -36,10 +38,20 @@ const ApiSecretsRoute = ApiSecretsRouteImport.update({
   path: '/api/secrets',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OIdRoute = OIdRouteImport.update({
+  id: '/o/$id',
+  path: '/o/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SIdRoute = SIdRouteImport.update({
   id: '/s/$id',
   path: '/s/$id',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSecretsIdOwnerRoute = ApiSecretsIdOwnerRouteImport.update({
+  id: '/$id/owner',
+  path: '/$id/owner',
+  getParentRoute: () => ApiSecretsRoute,
 } as any)
 const ApiSecretsIdRevealRoute = ApiSecretsIdRevealRouteImport.update({
   id: '/$id/reveal',
@@ -52,7 +64,9 @@ export interface FileRoutesByFullPath {
   '/health': typeof HealthRoute
   '/ready': typeof ReadyRoute
   '/api/secrets': typeof ApiSecretsRouteWithChildren
+  '/o/$id': typeof OIdRoute
   '/s/$id': typeof SIdRoute
+  '/api/secrets/$id/owner': typeof ApiSecretsIdOwnerRoute
   '/api/secrets/$id/reveal': typeof ApiSecretsIdRevealRoute
 }
 export interface FileRoutesByTo {
@@ -60,7 +74,9 @@ export interface FileRoutesByTo {
   '/health': typeof HealthRoute
   '/ready': typeof ReadyRoute
   '/api/secrets': typeof ApiSecretsRouteWithChildren
+  '/o/$id': typeof OIdRoute
   '/s/$id': typeof SIdRoute
+  '/api/secrets/$id/owner': typeof ApiSecretsIdOwnerRoute
   '/api/secrets/$id/reveal': typeof ApiSecretsIdRevealRoute
 }
 export interface FileRoutesById {
@@ -69,7 +85,9 @@ export interface FileRoutesById {
   '/health': typeof HealthRoute
   '/ready': typeof ReadyRoute
   '/api/secrets': typeof ApiSecretsRouteWithChildren
+  '/o/$id': typeof OIdRoute
   '/s/$id': typeof SIdRoute
+  '/api/secrets/$id/owner': typeof ApiSecretsIdOwnerRoute
   '/api/secrets/$id/reveal': typeof ApiSecretsIdRevealRoute
 }
 export interface FileRouteTypes {
@@ -79,7 +97,9 @@ export interface FileRouteTypes {
     | '/health'
     | '/ready'
     | '/api/secrets'
+    | '/o/$id'
     | '/s/$id'
+    | '/api/secrets/$id/owner'
     | '/api/secrets/$id/reveal'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -87,7 +107,9 @@ export interface FileRouteTypes {
     | '/health'
     | '/ready'
     | '/api/secrets'
+    | '/o/$id'
     | '/s/$id'
+    | '/api/secrets/$id/owner'
     | '/api/secrets/$id/reveal'
   id:
     | '__root__'
@@ -95,7 +117,9 @@ export interface FileRouteTypes {
     | '/health'
     | '/ready'
     | '/api/secrets'
+    | '/o/$id'
     | '/s/$id'
+    | '/api/secrets/$id/owner'
     | '/api/secrets/$id/reveal'
   fileRoutesById: FileRoutesById
 }
@@ -104,6 +128,7 @@ export interface RootRouteChildren {
   HealthRoute: typeof HealthRoute
   ReadyRoute: typeof ReadyRoute
   ApiSecretsRoute: typeof ApiSecretsRouteWithChildren
+  OIdRoute: typeof OIdRoute
   SIdRoute: typeof SIdRoute
 }
 
@@ -137,12 +162,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSecretsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/o/$id': {
+      id: '/o/$id'
+      path: '/o/$id'
+      fullPath: '/o/$id'
+      preLoaderRoute: typeof OIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/s/$id': {
       id: '/s/$id'
       path: '/s/$id'
       fullPath: '/s/$id'
       preLoaderRoute: typeof SIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/secrets/$id/owner': {
+      id: '/api/secrets/$id/owner'
+      path: '/$id/owner'
+      fullPath: '/api/secrets/$id/owner'
+      preLoaderRoute: typeof ApiSecretsIdOwnerRouteImport
+      parentRoute: typeof ApiSecretsRoute
     }
     '/api/secrets/$id/reveal': {
       id: '/api/secrets/$id/reveal'
@@ -155,10 +194,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface ApiSecretsRouteChildren {
+  ApiSecretsIdOwnerRoute: typeof ApiSecretsIdOwnerRoute
   ApiSecretsIdRevealRoute: typeof ApiSecretsIdRevealRoute
 }
 
 const ApiSecretsRouteChildren: ApiSecretsRouteChildren = {
+  ApiSecretsIdOwnerRoute: ApiSecretsIdOwnerRoute,
   ApiSecretsIdRevealRoute: ApiSecretsIdRevealRoute,
 }
 
@@ -171,6 +212,7 @@ const rootRouteChildren: RootRouteChildren = {
   HealthRoute: HealthRoute,
   ReadyRoute: ReadyRoute,
   ApiSecretsRoute: ApiSecretsRouteWithChildren,
+  OIdRoute: OIdRoute,
   SIdRoute: SIdRoute,
 }
 export const routeTree = rootRouteImport
