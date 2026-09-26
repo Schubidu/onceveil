@@ -4,6 +4,7 @@ import {
   DEFAULT_SECRET_POLICY,
   consumeSecret,
   effectiveState,
+  generateSecretId,
   prepareSecretRecord,
   revokeSecret,
   type SecretId,
@@ -68,6 +69,20 @@ describe('secret lifecycle', () => {
     expect(effectiveState(available({ state }), 2_000)).toBe(state)
   })
 
+  it('fails closed for an unknown persisted lifecycle state', () => {
+    const malformed = available({ state: 'UNKNOWN' as SecretState })
+
+    expect(effectiveState(malformed, 500)).toBe('EXPIRED')
+    expect(consumeSecret(malformed, 500).result).toEqual({
+      kind: 'unavailable',
+      state: 'EXPIRED',
+    })
+    expect(revokeSecret(malformed, 500).result).toEqual({
+      kind: 'unavailable',
+      state: 'EXPIRED',
+    })
+  })
+
   it.each(terminalStates)('never returns ciphertext for %s secrets', (state) => {
     const decision = consumeSecret(available({ state }), 500)
     expect(decision.result).toEqual({ kind: 'unavailable', state })
@@ -106,14 +121,18 @@ describe('secret lifecycle', () => {
 })
 
 describe('secret creation policy', () => {
+  it('generates a 128-bit secret identifier inside the creation boundary', () => {
+    const generated = generateSecretId()
+
+    expect(generated).toMatch(/^[0-9a-f]{32}$/)
+  })
   it('prepares an AVAILABLE record with validated payload and derived expiry', () => {
-    const result = prepareSecretRecord(id, new Uint8Array([1, 2, 3]), 100, 500)
+    const result = prepareSecretRecord(new Uint8Array([1, 2, 3]), 100, 500)
 
     expect(result.ok).toBe(true)
 
     if (result.ok) {
       expect(result.record).toMatchObject({
-        id,
         createdAtMs: 100,
         expiresAtMs: 600,
         state: 'AVAILABLE',
@@ -123,7 +142,6 @@ describe('secret creation policy', () => {
 
   it('refuses to prepare records that exceed the payload limit', () => {
     const result = prepareSecretRecord(
-      id,
       new Uint8Array(DEFAULT_SECRET_POLICY.maxPayloadBytes + 1),
       100,
       undefined,
