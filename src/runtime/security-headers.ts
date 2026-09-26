@@ -6,7 +6,6 @@ const BASE_DIRECTIVES = [
   "default-src 'self'",
   "base-uri 'none'",
   "object-src 'none'",
-  "frame-ancestors 'none'",
   "form-action 'self'",
   "img-src 'self' data:",
   "font-src 'self'",
@@ -14,10 +13,11 @@ const BASE_DIRECTIVES = [
   "worker-src 'none'",
 ]
 
-function contentSecurityPolicy(policy: SecretSurfacePolicy): string {
+function contentSecurityPolicy(policy: SecretSurfacePolicy, frameAncestor?: string): string {
   const turnstile = policy === 'turnstile'
   return [
     ...BASE_DIRECTIVES,
+    turnstile && frameAncestor ? `frame-ancestors ${frameAncestor}` : "frame-ancestors 'none'",
     turnstile
       ? "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com"
       : "script-src 'self' 'unsafe-inline'",
@@ -26,25 +26,35 @@ function contentSecurityPolicy(policy: SecretSurfacePolicy): string {
   ].join('; ')
 }
 
-export function secretSecurityHeaders(policy: SecretSurfacePolicy = 'isolated') {
-  return {
+export function secretSecurityHeaders(
+  policy: SecretSurfacePolicy = 'isolated',
+  frameAncestor?: string,
+): Record<string, string> {
+  const headers: Record<string, string> = {
     'Cache-Control': 'no-store',
-    'Content-Security-Policy': contentSecurityPolicy(policy),
+    'Content-Security-Policy': contentSecurityPolicy(policy, frameAncestor),
     'Cross-Origin-Opener-Policy': 'same-origin',
-    'Cross-Origin-Resource-Policy': 'same-origin',
+    'Cross-Origin-Resource-Policy':
+      policy === 'turnstile' && frameAncestor ? 'cross-origin' : 'same-origin',
     'Permissions-Policy': 'camera=(), geolocation=(), microphone=(), payment=()',
     'Referrer-Policy': 'no-referrer',
     'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
-  } as const
+  }
+
+  if (!(policy === 'turnstile' && frameAncestor)) {
+    headers['X-Frame-Options'] = 'DENY'
+  }
+
+  return headers
 }
 
 export function withSecretSecurityHeaders(
   response: Response,
   policy: SecretSurfacePolicy = 'isolated',
+  frameAncestor?: string,
 ): Response {
   const headers = new Headers(response.headers)
-  for (const [name, value] of Object.entries(secretSecurityHeaders(policy))) {
+  for (const [name, value] of Object.entries(secretSecurityHeaders(policy, frameAncestor))) {
     headers.set(name, value)
   }
 

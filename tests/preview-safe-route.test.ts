@@ -77,6 +77,23 @@ describe('preview-safe share landing route', () => {
     ).toBe(true)
   })
 
+  it('keeps embedded verification on a separate origin with strict message checks', async () => {
+    const browserSource = await readFile(path.resolve('src/browser/reveal-verification.ts'), 'utf8')
+    const routeSource = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
+
+    expect(browserSource).toContain('pairedCloudflareVerificationOrigin(window.location.origin)')
+    expect(browserSource).toContain("window.addEventListener('message', onMessage)")
+    expect(browserSource).toContain('event.origin !== verificationOrigin')
+    expect(browserSource).toContain('event.source !== iframe.contentWindow')
+    expect(browserSource).toContain(
+      "iframe.sandbox.add('allow-scripts', 'allow-same-origin', 'allow-forms', 'allow-popups')",
+    )
+    expect(browserSource).not.toContain('allow-top-navigation')
+    expect(routeSource).toContain('event.origin !== parentOrigin')
+    expect(routeSource).toContain('event.source !== window.parent')
+    expect(browserSource).not.toContain('authorization, verificationId, verificationOrigin')
+  })
+
   it('reveals only from the explicit browser action', async () => {
     const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
 

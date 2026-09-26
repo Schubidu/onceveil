@@ -8,17 +8,18 @@ The share page that holds the URL fragment key never loads Turnstile or any othe
 
 When the recipient chooses **Verify & reveal secret**:
 
-1. the share page synchronously opens a fragment-free verification window with `noopener` and `noreferrer`, passing only a random public verification identifier;
-2. the isolated window signals that it is ready but does not load Turnstile yet;
-3. the share page asks the server to prepare a one-time reveal proof, presenting both the fragment-only reveal authorization and that verification identifier;
-4. the server prepares a proof only when the authorization matches the stored replay key of the still-`AVAILABLE` secret, returns the bearer proof only to the share page, and stores only its SHA-256 hash;
-5. the share page signals that preparation succeeded;
-6. only then does the isolated window load Cloudflare Turnstile;
-7. Turnstile returns a token to the isolated window;
-8. the server validates that token with Siteverify and checks the expected action, exact request hostname, and secret-bound `cData`;
-9. successful validation marks the matching prepared proof as verified without returning the bearer proof to the verification window;
-10. the verification window sends only success/failure state through the same-origin `BroadcastChannel`;
-11. reveal atomically consumes the verified proof before attempting the existing strict one-time secret consume.
+1. the share page creates a fragment-free verification iframe on the paired Cloudflare origin for the same deployment (custom domain ↔ `workers.dev`), passing only a random public verification identifier;
+2. browser same-origin policy prevents the verification iframe from accessing the parent document, its fragment-held AES key, plaintext, reveal authorization, or bearer proof;
+3. parent and iframe accept `postMessage` traffic only from the exact paired origin/window and matching random verification identifier;
+4. after the iframe signals readiness, the share page asks the server to prepare a one-time reveal proof, presenting the fragment-only reveal authorization and verification identifier;
+5. the server returns the bearer proof only to the share page and stores only its SHA-256 hash;
+6. the share page sends only a `prepared` signal to the iframe; it never sends the authorization or bearer proof;
+7. only then does the iframe load Cloudflare Turnstile and submit the resulting token to the verification endpoint on its own origin;
+8. Siteverify checks the expected action, exact verification hostname, and secret-bound `cData`;
+9. successful validation marks the matching prepared proof as verified and the iframe sends only success/failure state back to the parent;
+10. reveal atomically consumes the verified proof before attempting the existing strict one-time secret consume.
+
+If the paired embedded origin or `<dialog>` is unavailable, the existing opener-less popup flow remains as an explicit fallback.
 
 A pending verification expires after five minutes. At most three active pending proofs are allowed per secret, including under concurrent preparation. Once verified, its proof is bound to one secret, expires after 60 seconds, and can be consumed once.
 
@@ -43,7 +44,7 @@ Recommended hostname entries:
 
 Cloudflare authorizes subdomains of a configured hostname, so the Preview entry also covers branch Preview hostnames below `ots-preview.schult.dev`.
 
-If the `workers.dev` URLs are used for interactive reveal testing, configure the corresponding Workers hostname as well.
+Embedded verification uses the paired `workers.dev` hostname. Configure `schult.workers.dev` for the widget so the production Worker and branch Preview hostnames under that account domain are accepted. Server-side proof binding, action, hostname, and `cData` validation still gate reveal.
 
 The public `TURNSTILE_SITE_KEY` is committed in `wrangler.jsonc` for both Production (`vars`) and Preview (`previews.vars`) so generated Preview configuration keeps the correct site key.
 
