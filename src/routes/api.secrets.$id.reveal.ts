@@ -2,8 +2,8 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { isValidSecretId } from '../core/secret'
 import {
-  consumeRevealProofResponse,
   issueRevealProofResponse,
+  protectedRevealResponse,
 } from '../runtime/reveal-protection-http'
 import {
   getRevealChallengeVerifier,
@@ -11,7 +11,6 @@ import {
   getTurnstileSiteKey,
   RevealProtectionUnavailableError,
 } from '../runtime/reveal-protection'
-import { revealSecretResponse } from '../runtime/secret-http'
 import {
   assertSecretDatabaseEnvironment,
   getSecretRepository,
@@ -83,16 +82,12 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
             return jsonError('reveal_intent_required', 400)
           }
 
-          const proofFailure = await consumeRevealProofResponse(
+          return await protectedRevealResponse(
             request,
             params.id,
             getRevealProofRepository(),
+            getSecretRepository(),
           )
-          if (proofFailure) {
-            return proofFailure
-          }
-
-          return await revealSecretResponse(params.id, getSecretRepository())
         } catch (error) {
           if (
             error instanceof SecretDatabaseUnavailableError ||
