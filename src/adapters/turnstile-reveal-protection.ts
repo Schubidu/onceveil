@@ -72,22 +72,22 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
         signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
       })
     } catch {
-      return { kind: 'unavailable' }
+      return { kind: 'unavailable', diagnostic: 'siteverify_fetch_failed' }
     }
 
     if (!response.ok) {
-      return { kind: 'unavailable' }
+      return { kind: 'unavailable', diagnostic: 'siteverify_http_error' }
     }
 
     let result: unknown
     try {
       result = await response.json()
     } catch {
-      return { kind: 'unavailable' }
+      return { kind: 'unavailable', diagnostic: 'siteverify_invalid_response' }
     }
 
     if (typeof result !== 'object' || result === null) {
-      return { kind: 'unavailable' }
+      return { kind: 'unavailable', diagnostic: 'siteverify_invalid_response' }
     }
 
     const siteverify = result as SiteverifyResponse
