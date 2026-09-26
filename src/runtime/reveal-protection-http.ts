@@ -80,11 +80,12 @@ export async function prepareRevealProofResponse(
 ): Promise<Response> {
   const bodyResult = await readProtectionBody(request)
   const authorization = bodyResult.kind === 'ok' ? bodyResult.body.authorization : undefined
-  if (typeof authorization !== 'string') {
+  const verificationId = bodyResult.kind === 'ok' ? bodyResult.body.verificationId : undefined
+  if (typeof authorization !== 'string' || typeof verificationId !== 'string') {
     return json({ error: 'reveal_protection_required' }, 403)
   }
 
-  const proof = await proofs.prepare(secretId, authorization, nowMs)
+  const proof = await proofs.prepare(secretId, authorization, verificationId, nowMs)
   if (!proof) {
     return json({ error: 'reveal_protection_required' }, 403)
   }
