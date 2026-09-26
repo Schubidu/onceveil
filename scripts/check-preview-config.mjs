@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 const expected = {
   binding: 'DB',
   databaseId: 'a8f3fce5-8226-40f1-804a-96677743f541',
+  turnstileSiteKey: '0x4AAAAAAFEfxfEZ8ZH4YiZn',
 }
 
 const raw = await readFile('dist/server/wrangler.json', 'utf8')
@@ -24,4 +25,9 @@ if (database.database_id !== expected.databaseId) {
   )
 }
 
+if (config?.previews?.vars?.TURNSTILE_SITE_KEY !== expected.turnstileSiteKey) {
+  throw new Error('Generated Wrangler config is missing the Preview TURNSTILE_SITE_KEY')
+}
+
 console.log(`Generated Preview D1 binding ${expected.binding} -> ${expected.databaseId}`)
+console.log('Generated Preview TURNSTILE_SITE_KEY is configured')

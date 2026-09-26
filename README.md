@@ -52,11 +52,11 @@ One-time Cloudflare dashboard setup:
 4. Set the build command to `npm run build`.
 5. Set the production deploy command to `npm run deploy:production`.
 6. If Cloudflare shows **Set up Worker Previews**, complete that one-time irreversible switch first. Then enable Preview Builds and use `npm run deploy:preview` as the Preview command.
-7. Keep Production and Preview variables, secrets, and bindings configured separately in Cloudflare.
+7. Keep Production and Preview secrets and bindings configured separately in Cloudflare. The public Turnstile site key is committed in `wrangler.jsonc` for both scopes; the private Turnstile secret remains dashboard-managed.
 
 Cloudflare posts the Preview build status and Preview URL back to the pull request; subsequent pushes update the branch Preview without touching Production.
 
-The repository contains only non-sensitive Worker structure in `wrangler.jsonc`. **Do not put Cloudflare API tokens, account credentials, Turnstile secrets, application secrets, or other secret values in GitHub Secrets/Variables, workflow files, `wrangler.jsonc`, or committed environment files.** Sensitive runtime configuration belongs in Cloudflare.
+The repository may contain non-sensitive Worker configuration such as the public Turnstile site key in `wrangler.jsonc`. **Do not put Cloudflare API tokens, account credentials, Turnstile secrets, application secrets, or other secret values in GitHub Secrets/Variables, workflow files, `wrangler.jsonc`, or committed environment files.** Sensitive runtime configuration belongs in Cloudflare.
 
 The Worker code expects a D1 binding named `DB` for the one-time secret flow. Production and Previews must use different physical databases. See [docs/cloudflare-d1.md](docs/cloudflare-d1.md). Reveal also requires Turnstile runtime configuration; see [docs/turnstile.md](docs/turnstile.md).
 

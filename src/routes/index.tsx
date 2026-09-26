@@ -16,6 +16,7 @@ export const Route = createFileRoute('/')({
 function Home() {
   const [secret, setSecret] = useState('')
   const [shareUrl, setShareUrl] = useState<string>()
+  const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string>()
   const [creating, setCreating] = useState(false)
   const [pendingCreate, setPendingCreate] = useState<PendingEncryptedCreate>()
@@ -28,6 +29,7 @@ function Home() {
     setCreating(true)
     setError(undefined)
     setShareUrl(undefined)
+    setCopied(false)
 
     try {
       const pending = await encryptedShareForCreate(secret, pendingCreate)
@@ -71,6 +73,21 @@ function Home() {
     }
   }
 
+  async function copyShareUrl() {
+    if (!shareUrl) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setError(undefined)
+    } catch {
+      setCopied(false)
+      setError('The one-time link could not be copied.')
+    }
+  }
+
   return (
     <main className="shell">
       <section className="card" aria-labelledby="onceveil-title">
@@ -103,7 +120,15 @@ function Home() {
         {shareUrl ? (
           <div className="result" aria-live="polite">
             <strong>Share this link once:</strong>
-            <code>{shareUrl}</code>
+            <button
+              className="copy-link"
+              type="button"
+              onClick={copyShareUrl}
+              aria-label="Copy one-time link to clipboard"
+            >
+              <code>{shareUrl}</code>
+              <span>{copied ? 'Copied' : 'Copy'}</span>
+            </button>
           </div>
         ) : null}
 

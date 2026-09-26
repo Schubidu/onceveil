@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   TurnstileRevealChallengeVerifier,
@@ -14,6 +14,9 @@ function response(body: unknown, status = 200): Response {
 }
 
 describe('Turnstile reveal challenge verifier', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
   it('requires both site and secret keys as one configuration boundary', () => {
     expect(turnstileRevealProtectionConfiguration('site-key', 'secret-key')).toEqual({
       siteKey: 'site-key',
@@ -23,6 +26,32 @@ describe('Turnstile reveal challenge verifier', () => {
     expect(turnstileRevealProtectionConfiguration('site-key', undefined)).toBeUndefined()
     expect(turnstileRevealProtectionConfiguration('   ', 'secret-key')).toBeUndefined()
     expect(turnstileRevealProtectionConfiguration('site-key', '   ')).toBeUndefined()
+  })
+
+  it('invokes fetch without binding the verifier as receiver', async () => {
+    let receiver: unknown = 'not-called'
+    const fetchImpl = function (this: unknown) {
+      receiver = this
+      return Promise.resolve(
+        response({
+          success: true,
+          action: REVEAL_PROTECTION_ACTION,
+          hostname: 'ots.schult.dev',
+          cdata: SECRET_ID,
+        }),
+      )
+    } as typeof fetch
+    const verifier = new TurnstileRevealChallengeVerifier('secret-key', fetchImpl)
+
+    await expect(
+      verifier.verify({
+        token: 'turnstile-token',
+        secretId: SECRET_ID,
+        hostname: 'ots.schult.dev',
+      }),
+    ).resolves.toEqual({ kind: 'verified' })
+
+    expect(receiver).toBeUndefined()
   })
 
   it('accepts only the expected action, hostname and secret-bound cData', async () => {
@@ -51,8 +80,12 @@ describe('Turnstile reveal challenge verifier', () => {
 
     expect(calls).toBe(1)
     expect(capturedInit?.method).toBe('POST')
-    expect(String(capturedInit?.body)).toContain('response=turnstile-token')
-    expect(String(capturedInit?.body)).toContain('remoteip=203.0.113.7')
+    expect(capturedInit?.signal).toBeInstanceOf(AbortSignal)
+    expect(capturedInit?.body).toBeInstanceOf(FormData)
+    const body = capturedInit?.body as FormData
+    expect(body.get('response')).toBe('turnstile-token')
+    expect(body.get('remoteip')).toBe('203.0.113.7')
+    expect(body.get('secret')).toBe('secret-key')
   })
 
   it.each([
@@ -66,6 +99,7 @@ describe('Turnstile reveal challenge verifier', () => {
     { success: true, action: REVEAL_PROTECTION_ACTION, hostname: 'evil.example', cdata: SECRET_ID },
     { success: true, action: REVEAL_PROTECTION_ACTION, hostname: 'ots.schult.dev', cdata: 'other' },
   ])('rejects mismatched verification context %#', async (siteverify) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const verifier = new TurnstileRevealChallengeVerifier('secret-key', (async () =>
       response(siteverify)) as typeof fetch)
 
@@ -76,11 +110,25 @@ describe('Turnstile reveal challenge verifier', () => {
         hostname: 'ots.schult.dev',
       }),
     ).resolves.toEqual({ kind: 'invalid' })
+
+    expect(warn).toHaveBeenCalledWith(
+      'Turnstile Siteverify rejected reveal verification',
+      expect.objectContaining({
+        success: siteverify.success === true,
+        hostnameMatches: expect.any(Boolean),
+        actionMatches: expect.any(Boolean),
+        cdataMatches: expect.any(Boolean),
+        errorCodes: [],
+      }),
+    )
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('turnstile-token')
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('secret-key')
   })
 
-  it('fails closed when Siteverify is unavailable', async () => {
+  it('fails closed and classifies a lost Siteverify connection', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const verifier = new TurnstileRevealChallengeVerifier('secret-key', (async () => {
-      throw new Error('network down')
+      throw new Error('Network connection lost')
     }) as typeof fetch)
 
     await expect(
@@ -90,6 +138,9 @@ describe('Turnstile reveal challenge verifier', () => {
         hostname: 'ots.schult.dev',
       }),
     ).resolves.toEqual({ kind: 'unavailable' })
+
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('turnstile-token')
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('secret-key')
   })
 
   it('fails closed on a null Siteverify response', async () => {

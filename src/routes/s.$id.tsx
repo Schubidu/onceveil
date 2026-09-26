@@ -210,7 +210,8 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
           | undefined
 
         if (!active || !response.ok || body?.verified !== true) {
-          throw new Error('Verification could not be completed')
+          failVerification('Verification failed. Close this window and try again.')
+          return
         }
 
         broadcast.postMessage({ type: 'onceveil-reveal-verified' })

@@ -35,6 +35,7 @@ interface SiteverifyResponse {
   hostname?: unknown
   action?: unknown
   cdata?: unknown
+  'error-codes'?: unknown
 }
 
 export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier {
@@ -54,27 +55,42 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
       return { kind: 'invalid' }
     }
 
-    const body = new URLSearchParams({
-      secret: this.secretKey,
-      response: token,
-    })
+    const body = new FormData()
+    body.set('secret', this.secretKey)
+    body.set('response', token)
     if (context.remoteIp) {
       body.set('remoteip', context.remoteIp)
     }
 
     let response: Response
     try {
-      response = await this.fetchImpl(SITEVERIFY_URL, {
+      const fetchImpl = this.fetchImpl
+      response = await fetchImpl(SITEVERIFY_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body,
         signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
       })
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : ''
+      const diagnostic = /network connection lost/i.test(message)
+        ? 'siteverify_network_lost'
+        : /1042|same.zone|another worker/i.test(message)
+          ? 'siteverify_worker_routing'
+          : /cannot access|host.*not.*allowed|requested a host/i.test(message)
+            ? 'siteverify_host_blocked'
+            : 'siteverify_fetch_failed'
+
+      console.warn('Turnstile Siteverify fetch failed', {
+        name: error instanceof Error ? error.name : 'UnknownError',
+        diagnostic,
+      })
       return { kind: 'unavailable' }
     }
 
     if (!response.ok) {
+      console.warn('Turnstile Siteverify returned non-success HTTP status', {
+        status: response.status,
+      })
       return { kind: 'unavailable' }
     }
 
@@ -82,21 +98,44 @@ export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier
     try {
       result = await response.json()
     } catch {
+      console.warn('Turnstile Siteverify returned invalid JSON')
       return { kind: 'unavailable' }
     }
 
     if (typeof result !== 'object' || result === null) {
+      console.warn('Turnstile Siteverify returned an invalid response')
       return { kind: 'unavailable' }
     }
 
     const siteverify = result as SiteverifyResponse
-    if (
-      siteverify.success !== true ||
-      siteverify.action !== REVEAL_PROTECTION_ACTION ||
-      typeof siteverify.hostname !== 'string' ||
-      siteverify.hostname.toLowerCase() !== expectedHostname ||
-      siteverify.cdata !== context.secretId
-    ) {
+    const actionMatches = siteverify.action === REVEAL_PROTECTION_ACTION
+    const hostnameMatches =
+      typeof siteverify.hostname === 'string' &&
+      siteverify.hostname.toLowerCase() === expectedHostname
+    const cdataMatches = siteverify.cdata === context.secretId
+
+    if (siteverify.success !== true || !actionMatches || !hostnameMatches || !cdataMatches) {
+      const errorCodes = Array.isArray(siteverify['error-codes'])
+        ? siteverify['error-codes']
+            .filter((code): code is string => typeof code === 'string')
+            .slice(0, 10)
+        : []
+      const diagnostic =
+        siteverify.success !== true
+          ? 'siteverify_rejected'
+          : !hostnameMatches
+            ? 'hostname_mismatch'
+            : !actionMatches
+              ? 'action_mismatch'
+              : 'cdata_mismatch'
+
+      console.warn('Turnstile Siteverify rejected reveal verification', {
+        success: siteverify.success === true,
+        errorCodes,
+        hostnameMatches,
+        actionMatches,
+        cdataMatches,
+      })
       return { kind: 'invalid' }
     }
 
