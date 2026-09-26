@@ -18,7 +18,7 @@ export const Route = createFileRoute('/s/$id')({
 
 function SecretLanding() {
   const { id } = Route.useParams()
-  const fragment = useRef<string>()
+  const fragment = useRef<string | undefined>(undefined)
   const [capabilityReady, setCapabilityReady] = useState(false)
   const [revealing, setRevealing] = useState(false)
   const [plaintext, setPlaintext] = useState<string>()
