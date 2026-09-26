@@ -20,12 +20,6 @@
         "database_name": "onceveil-preview",
         "database_id": "a8f3fce5-8226-40f1-804a-96677743f541"
       }
-    ],
-    "vars": {
-      "APP_ENV": "preview"
-    }
-  },
-  "vars": {
-    "APP_ENV": "production"
+    ]
   }
 }
