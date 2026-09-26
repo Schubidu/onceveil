@@ -28,7 +28,6 @@ function randomProof(): string {
   return encodeBase64Url(bytes)
 }
 
-
 async function proofHash(proof: string): Promise<string> {
   const digest = new Uint8Array(
     await crypto.subtle.digest('SHA-256', new TextEncoder().encode(proof)),
