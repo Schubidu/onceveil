@@ -6,7 +6,6 @@ import {
   effectiveState,
   generateSecretId,
   prepareSecretRecord,
-  generateSecretId,
   revokeSecret,
   type SecretId,
   type SecretRecord,
@@ -127,6 +126,7 @@ describe('secret creation policy', () => {
 
     expect(generated).toMatch(/^[0-9a-f]{32}$/)
   })
+
   it('prepares an AVAILABLE record with validated payload and derived expiry', () => {
     const generatedId = generateSecretId()
     const result = prepareSecretRecord(generatedId, new Uint8Array([1, 2, 3]), 100, 500)
