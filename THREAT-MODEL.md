@@ -1,13 +1,13 @@
 # Onceveil threat model
 
-This document defines the security guarantees and explicit non-guarantees for Onceveil before persistence, browser crypto, recipient authentication, or MCP are implemented.
+This document defines the security guarantees and explicit non-guarantees for the current Onceveil foundations. Persistence adapters, recipient authentication, reveal protection, and MCP integration remain separate implementation slices.
 
 ## Security invariants
 
 1. **Passive requests do not consume or reveal secrets.** GET, HEAD, link previews, crawlers, prefetchers, and similar passive requests must never transition a secret to `CONSUMED` or receive ciphertext. A passive status read may record `AVAILABLE → EXPIRED` after the deadline.
 2. **Strict one-time retrieval.** The first successful atomic consume operation transitions `AVAILABLE → CONSUMED` and is the only operation allowed to receive ciphertext.
 3. **Consumption is final.** If the winning client or network fails after the server commits `CONSUMED`, the secret is lost. Onceveil does not use a lease/acknowledgement protocol.
-4. **The service does not receive plaintext or encryption keys.** Later browser crypto must encrypt before upload and decrypt only after retrieval.
+4. **The service does not receive plaintext or encryption keys.** Browser crypto encrypts before upload and decrypts only after retrieval.
 5. **Configured reveal protection fails closed.** A missing, invalid, or unavailable protection provider must not silently degrade to unprotected reveal.
 6. **MCP does not carry secret material.** Later MCP tools may orchestrate secure browser handoff, status, and revocation, but not plaintext, decryption keys, ciphertext bodies intended for the recipient, or complete anonymous share URLs.
 
@@ -52,9 +52,9 @@ A recipient-authenticated mode may be added later, but it is outside the current
 
 ## Identifier requirements
 
-Secret identifiers must be unpredictable and non-enumerable. The validated creation boundary generates them internally with Web Crypto using 128 bits of cryptographic randomness; callers cannot supply arbitrary identifiers.
+Secret identifiers must be unpredictable and non-enumerable. The browser creation path generates the identifier before encryption with Web Crypto using 128 bits of cryptographic randomness so the same identifier can be authenticated as AAD and later persisted. The persistence preparation boundary reuses that identifier and validates its canonical 32-character lowercase hexadecimal representation.
 
-Sequential identifiers, timestamps, counters, database row IDs, caller-supplied IDs, and non-cryptographic randomness are not acceptable.
+Sequential identifiers, timestamps, counters, database row IDs, malformed identifiers, and non-cryptographic randomness are not acceptable.
 
 Creation is insert-only. A duplicate identifier must be rejected atomically and must never replace an existing `AVAILABLE` or terminal record.
 
