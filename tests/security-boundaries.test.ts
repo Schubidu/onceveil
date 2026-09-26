@@ -49,10 +49,15 @@ describe('sensitive browser security policy', () => {
     expect(secretSurfacePolicy(malformed)).toBe('isolated')
     expect(secretSurfacePolicy(verification)).toBe('turnstile')
 
-    const csp = secretSecurityHeaders('turnstile')['Content-Security-Policy']
+    const frameAncestor = 'https://feat-issue-20.ots-preview.schult.dev'
+    const headers = secretSecurityHeaders('turnstile', frameAncestor)
+    const csp = headers['Content-Security-Policy']
     expect(csp).toContain('script-src')
     expect(csp).toContain('https://challenges.cloudflare.com')
     expect(csp).toContain('frame-src https://challenges.cloudflare.com')
+    expect(csp).toContain(`frame-ancestors ${frameAncestor}`)
+    expect(headers['Cross-Origin-Resource-Policy']).toBe('cross-origin')
+    expect(headers['X-Frame-Options']).toBeUndefined()
   })
 })
 
