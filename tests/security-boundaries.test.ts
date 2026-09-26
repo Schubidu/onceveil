@@ -88,6 +88,7 @@ describe('safe runtime logging', () => {
       token: canary,
       url: `https://example.test/#${canary}`,
       stage: 'run',
+      actual: `query-error:${canary}`,
     })
     logRuntimeWarning('verification rejected', {
       token: canary,
@@ -100,6 +101,8 @@ describe('safe runtime logging', () => {
     expect(serialized).not.toContain('authorization')
     expect(serialized).not.toContain('ciphertext')
     expect(serialized).not.toContain('token')
+    expect(serialized).not.toContain('query-error')
+    expect(serialized).not.toContain('actual')
     expect(serialized).toContain('stage')
     expect(serialized).toContain('403')
   })
