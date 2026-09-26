@@ -16,7 +16,7 @@ MCP support is planned with secure browser handoff so secret material does not e
 
 ## Current status
 
-The application bootstrap and Cloudflare Worker runtime are being established first. Secret creation, encryption, storage, reveal protection, and MCP are intentionally not implemented yet.
+The application and Cloudflare runtime baseline are in place, together with the strict one-time lifecycle and browser-side encrypted share-capability foundations. Persistence, reveal HTTP flows, reveal protection, and MCP are intentionally not implemented yet.
 
 ## Development
 
@@ -81,7 +81,7 @@ During `0.x`, public contracts may still change. A published release tag must ne
 
 ## Security
 
-See [SECURITY.md](SECURITY.md). The detailed threat model is introduced in issue #2 before any secret lifecycle is implemented.
+See [SECURITY.md](SECURITY.md) and [THREAT-MODEL.md](THREAT-MODEL.md) for the current lifecycle and browser-crypto guarantees.
 
 ## License
 
