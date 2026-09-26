@@ -1,9 +1,6 @@
 import { env } from 'cloudflare:workers'
 
-import {
-  D1SecretRepository,
-  type D1DatabaseLike,
-} from '../adapters/d1-secret-repository'
+import { D1SecretRepository, type D1DatabaseLike } from '../adapters/d1-secret-repository'
 import type { SecretRepository } from '../core/secret'
 
 export class SecretDatabaseUnavailableError extends Error {
