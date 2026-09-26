@@ -7,6 +7,7 @@ import {
   revealVerificationUrl,
 } from '../src/browser/reveal-verification'
 import type { SecretId } from '../src/core/secret'
+import { pairedCloudflareVerificationOrigin } from '../src/platform/cloudflare-verification-origin'
 
 const SECRET_ID = '0123456789abcdef0123456789abcdef' as SecretId
 const VERIFICATION_ID = 'fedcba9876543210fedcba9876543210'
@@ -44,6 +45,30 @@ describe('reveal verification browser isolation', () => {
         url: `/s/${SECRET_ID}?verify=turnstile&verification=${VERIFICATION_ID}`,
       },
     ])
+  })
+
+  it('pairs custom and workers.dev origins for embedded verification', () => {
+    expect(pairedCloudflareVerificationOrigin('https://ots.schult.dev')).toBe(
+      'https://onceveil.schult.workers.dev',
+    )
+    expect(pairedCloudflareVerificationOrigin('https://onceveil.schult.workers.dev')).toBe(
+      'https://ots.schult.dev',
+    )
+    expect(
+      pairedCloudflareVerificationOrigin(
+        'https://feat-issue-20-embedded-reveal-verification.ots-preview.schult.dev',
+      ),
+    ).toBe(
+      'https://feat-issue-20-embedded-reveal-verification-onceveil.schult.workers.dev',
+    )
+    expect(
+      pairedCloudflareVerificationOrigin(
+        'https://feat-issue-20-embedded-reveal-verification-onceveil.schult.workers.dev',
+      ),
+    ).toBe(
+      'https://feat-issue-20-embedded-reveal-verification.ots-preview.schult.dev',
+    )
+    expect(pairedCloudflareVerificationOrigin('https://example.test')).toBeUndefined()
   })
 
   it('requires an isolated opener-less browsing context', () => {
