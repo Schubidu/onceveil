@@ -52,6 +52,16 @@ AES-GCM authenticates the ciphertext and associated data `onceveil:v1:<contextId
 
 A recipient-authenticated mode may be added later, but it is outside the current scope.
 
+## Owner management capability
+
+Secret creation generates a separate 256-bit random owner capability in the browser. It is independent from the recipient share fragment, encryption key, reveal authorization, and public secret identifier. Only the SHA-256 hash of the owner capability is sent during creation and stored in D1; the raw capability is returned to the creator only as part of the fragment-only owner link `/o/:id#v1.<capability>`.
+
+The owner page copies the fragment into page memory and immediately removes it from the visible URL/history entry before making any management request. Owner requests send the capability only in the standard `Authorization: Bearer` header. Application logging must never record this header or the raw capability.
+
+Status and revoke are authorized at the repository boundary by the stored owner hash. A wrong owner capability is indistinguishable from an unknown public identifier. Owner status exposes only lifecycle state and expiry; it never returns ciphertext, plaintext, encryption keys, recipient share material, or the owner capability itself.
+
+Revocation is an atomic `AVAILABLE → REVOKED` transition. `CONSUMED`, `EXPIRED`, and `REVOKED` remain terminal. A successful revoke therefore prevents every future ciphertext retrieval. Secrets created before the owner-capability schema migration have no recoverable owner capability and cannot be managed retroactively.
+
 ## Identifier requirements
 
 Public reveal identifiers must be unpredictable, non-enumerable, and allocated by the server. The creation boundary uses Web Crypto to generate 128 bits of randomness and persists only the server-issued identifier as the D1 row key. Callers cannot choose the public reveal identifier.
