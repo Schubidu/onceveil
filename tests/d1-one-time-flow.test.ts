@@ -132,6 +132,7 @@ describe('D1 one-time HTTP flow', () => {
   let d1: SQLiteD1Database
   let repository: D1SecretRepository
   let proofRepository: D1RevealProofRepository
+  let verificationSequence: number
 
   beforeEach(async () => {
     d1 = new SQLiteD1Database()
@@ -151,6 +152,7 @@ describe('D1 one-time HTTP flow', () => {
     d1.database.exec(proofHandoffMigration)
     repository = new D1SecretRepository(d1)
     proofRepository = new D1RevealProofRepository(d1)
+    verificationSequence = 0
   })
 
   afterEach(() => {
@@ -168,8 +170,18 @@ describe('D1 one-time HTTP flow', () => {
     return row.replay_key
   }
 
+  function nextVerificationId(): string {
+    verificationSequence += 1
+    return verificationSequence.toString(16).padStart(32, '0')
+  }
+
   async function prepareProof(id: SecretId, nowMs: number) {
-    const proof = await proofRepository.prepare(id, revealAuthorization(id), nowMs)
+    const proof = await proofRepository.prepare(
+      id,
+      revealAuthorization(id),
+      nextVerificationId(),
+      nowMs,
+    )
     if (!proof) {
       throw new Error('proof preparation failed')
     }
@@ -572,7 +584,10 @@ describe('D1 one-time HTTP flow', () => {
       new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ authorization: '0'.repeat(64) }),
+        body: JSON.stringify({
+          authorization: '0'.repeat(64),
+          verificationId: nextVerificationId(),
+        }),
       }),
       PUBLIC_ID,
       proofRepository,
@@ -585,11 +600,15 @@ describe('D1 one-time HTTP flow', () => {
     }
     expect(count.count).toBe(0)
 
+    const verificationId = nextVerificationId()
     const prepared = await prepareRevealProofResponse(
       new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ authorization: revealAuthorization(PUBLIC_ID) }),
+        body: JSON.stringify({
+          authorization: revealAuthorization(PUBLIC_ID),
+          verificationId,
+        }),
       }),
       PUBLIC_ID,
       proofRepository,
@@ -597,7 +616,7 @@ describe('D1 one-time HTTP flow', () => {
     )
     expect(prepared.status).toBe(201)
     await expect(prepared.json()).resolves.toMatchObject({
-      verificationId: expect.stringMatching(/^[0-9a-f]{32}$/),
+      verificationId,
       proof: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
     })
   })
