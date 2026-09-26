@@ -51,14 +51,21 @@ Apply migrations independently to Production and Preview before exercising the c
 Production:
 
 ```sh
-npx wrangler d1 migrations apply DB --remote
+npm run db:migrate:production
 ```
 
 Preview uses the separate top-level migration configuration in `wrangler.preview-migrations.jsonc`:
 
 ```sh
-npx wrangler d1 migrations apply PREVIEW_DB --remote --config wrangler.preview-migrations.jsonc
+npm run db:migrate:preview
 ```
+
+Cloudflare Workers Builds is configured to run these migrations automatically as part of deployment:
+
+- Production deploy command: `npm run deploy:production`
+- Preview command: `npm run deploy:preview`
+
+The scripts keep deployment behavior versioned in the repository rather than only in the Cloudflare dashboard.
 
 This mirrors Cloudflare's Preview-resource guidance: the runtime Preview binding stays under `previews.d1_databases`, while migration tooling gets a dedicated top-level D1 binding pointed at the same Preview database.
 
