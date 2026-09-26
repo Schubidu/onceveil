@@ -147,9 +147,14 @@ describe('D1 one-time HTTP flow', () => {
       path.resolve('migrations/0005_reveal_proof_verification.sql'),
       'utf8',
     )
+    const legacyShareMigration = await readFile(
+      path.resolve('migrations/0006_expire_legacy_share_links.sql'),
+      'utf8',
+    )
     d1.database.exec(replayMigration)
     d1.database.exec(proofMigration)
     d1.database.exec(proofHandoffMigration)
+    d1.database.exec(legacyShareMigration)
     repository = new D1SecretRepository(d1)
     proofRepository = new D1RevealProofRepository(d1)
     verificationSequence = 0
@@ -634,6 +639,61 @@ describe('D1 one-time HTTP flow', () => {
       verificationId,
       proof: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
     })
+  })
+
+  it('bounds active pending proofs per secret', async () => {
+    await storeTestSecret('bounded pending proofs')
+    const authorization = revealAuthorization(PUBLIC_ID)
+
+    const prepared = await Promise.all(
+      Array.from({ length: 8 }, (_, index) =>
+        proofRepository.prepare(
+          PUBLIC_ID,
+          authorization,
+          (index + 1).toString(16).padStart(32, '0'),
+          1_000,
+        ),
+      ),
+    )
+
+    expect(prepared.filter((proof) => proof !== undefined)).toHaveLength(3)
+    const rows = d1.database
+      .prepare(
+        `SELECT COUNT(*) AS count
+         FROM reveal_proofs
+         WHERE secret_id = ?
+           AND verified_at_ms IS NULL
+           AND consumed_at_ms IS NULL
+           AND expires_at_ms > ?`,
+      )
+      .get(PUBLIC_ID, 1_000) as { count: number }
+    expect(rows.count).toBe(3)
+  })
+
+  it('explicitly expires pre-v2 secrets during the security migration', async () => {
+    const database = new DatabaseSync(':memory:')
+    try {
+      database.exec(await readFile(path.resolve('migrations/0001_secrets.sql'), 'utf8'))
+      database
+        .prepare(
+          `INSERT INTO secrets
+            (id, ciphertext, created_at_ms, expires_at_ms, state)
+           VALUES (?, ?, ?, ?, 'AVAILABLE')`,
+        )
+        .run(PUBLIC_ID, new Uint8Array([1]), 1_000, 2_000)
+
+      database.exec(await readFile(path.resolve('migrations/0003_secret_replay_key.sql'), 'utf8'))
+      database.exec(
+        await readFile(path.resolve('migrations/0006_expire_legacy_share_links.sql'), 'utf8'),
+      )
+
+      const row = database.prepare('SELECT state, replay_key FROM secrets WHERE id = ?').get(
+        PUBLIC_ID,
+      ) as { state: string; replay_key: string | null }
+      expect(row).toEqual({ state: 'EXPIRED', replay_key: null })
+    } finally {
+      database.close()
+    }
   })
 
   it('requires a valid one-time proof before the protected reveal can consume', async () => {
