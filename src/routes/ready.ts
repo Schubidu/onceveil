@@ -1,10 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import {
-  checkSecretDatabaseReadiness,
-  runtimeEnvironmentForRequest,
-  type SecretDatabaseReadiness,
-} from '../runtime/readiness'
+import { checkSecretDatabaseReadiness, runtimeEnvironmentForRequest } from '../runtime/readiness'
 import { getSecretDatabase, SecretDatabaseUnavailableError } from '../runtime/secret-repository'
 
 export const Route = createFileRoute('/ready')({
@@ -14,10 +10,7 @@ export const Route = createFileRoute('/ready')({
         const expectedEnvironment = runtimeEnvironmentForRequest(request)
         if (!expectedEnvironment) {
           return Response.json(
-            {
-              status: 'not_ready',
-              database: 'environment_unknown',
-            } satisfies SecretDatabaseReadiness,
+            { status: 'not_ready' },
             {
               status: 503,
               headers: { 'Cache-Control': 'no-store' },
@@ -25,20 +18,23 @@ export const Route = createFileRoute('/ready')({
           )
         }
 
-        let readiness: SecretDatabaseReadiness
+        let ready = false
 
         try {
-          readiness = await checkSecretDatabaseReadiness(getSecretDatabase(), expectedEnvironment)
+          const readiness = await checkSecretDatabaseReadiness(
+            getSecretDatabase(),
+            expectedEnvironment,
+          )
+          ready = readiness.status === 'ready'
         } catch (error) {
           if (!(error instanceof SecretDatabaseUnavailableError)) {
             throw error
           }
 
-          readiness = { status: 'not_ready', database: 'unavailable' }
         }
 
-        return Response.json(readiness, {
-          status: readiness.status === 'ready' ? 200 : 503,
+        return Response.json({ status: ready ? 'ready' : 'not_ready' }, {
+          status: ready ? 200 : 503,
           headers: {
             'Cache-Control': 'no-store',
           },
