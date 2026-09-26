@@ -687,9 +687,9 @@ describe('D1 one-time HTTP flow', () => {
         await readFile(path.resolve('migrations/0006_expire_legacy_share_links.sql'), 'utf8'),
       )
 
-      const row = database.prepare('SELECT state, replay_key FROM secrets WHERE id = ?').get(
-        PUBLIC_ID,
-      ) as { state: string; replay_key: string | null }
+      const row = database
+        .prepare('SELECT state, replay_key FROM secrets WHERE id = ?')
+        .get(PUBLIC_ID) as { state: string; replay_key: string | null }
       expect(row).toEqual({ state: 'EXPIRED', replay_key: null })
     } finally {
       database.close()
