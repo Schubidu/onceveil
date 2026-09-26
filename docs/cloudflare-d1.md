@@ -51,13 +51,13 @@ Apply migrations independently to Production and Preview before exercising the c
 Production:
 
 ```sh
-npm run db:migrate:production
+npm run db:migrate:production\n# deployment also runs: npm run db:verify:production
 ```
 
 Preview uses the separate top-level migration configuration in `wrangler.preview-migrations.jsonc`:
 
 ```sh
-npm run db:migrate:preview
+npm run db:migrate:preview\n# deployment also runs: npm run db:verify:preview
 ```
 
 Cloudflare Workers Builds is configured to run these migrations automatically as part of deployment:
