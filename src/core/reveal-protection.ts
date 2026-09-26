@@ -12,22 +12,10 @@ export interface RevealChallengeContext {
   remoteIp?: string
 }
 
-export type RevealChallengeDiagnostic =
-  | 'siteverify_rejected'
-  | 'siteverify_fetch_failed'
-  | 'siteverify_network_lost'
-  | 'siteverify_worker_routing'
-  | 'siteverify_host_blocked'
-  | 'siteverify_http_error'
-  | 'siteverify_invalid_response'
-  | 'hostname_mismatch'
-  | 'action_mismatch'
-  | 'cdata_mismatch'
-
 export type RevealChallengeResult =
   | { kind: 'verified' }
-  | { kind: 'invalid'; diagnostic?: RevealChallengeDiagnostic }
-  | { kind: 'unavailable'; diagnostic?: RevealChallengeDiagnostic }
+  | { kind: 'invalid' }
+  | { kind: 'unavailable' }
 
 export interface RevealChallengeVerifier {
   verify(context: RevealChallengeContext): Promise<RevealChallengeResult>
