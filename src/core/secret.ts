@@ -103,9 +103,10 @@ export interface SecretRepository {
 export function validateCreateSecret(
   payloadBytes: number,
   requestedTtlMs: number | null | undefined,
-  policy: SecretPolicy = DEFAULT_SECRET_POLICY,
+  policy: SecretPolicy | null | undefined = DEFAULT_SECRET_POLICY,
 ): CreateSecretValidation {
   if (
+    policy == null ||
     !Number.isSafeInteger(policy.defaultTtlMs) ||
     !Number.isSafeInteger(policy.maxTtlMs) ||
     !Number.isSafeInteger(policy.maxPayloadBytes) ||
@@ -146,7 +147,7 @@ export function prepareSecretRecord(
   ciphertext: Uint8Array,
   createdAtMs: number,
   requestedTtlMs: number | null | undefined,
-  policy: SecretPolicy = DEFAULT_SECRET_POLICY,
+  policy: SecretPolicy | null | undefined = DEFAULT_SECRET_POLICY,
 ): { ok: true; record: PreparedSecretRecord } | Extract<CreateSecretValidation, { ok: false }> {
   const validation = validateCreateSecret(ciphertext.byteLength, requestedTtlMs, policy)
   if (!validation.ok) {
@@ -180,11 +181,21 @@ export function toSecretStatus(record: SecretRecord): SecretStatus {
 }
 
 export function effectiveState(record: SecretRecord, nowMs: number): SecretState {
-  if (record.state === 'AVAILABLE' && nowMs >= record.expiresAtMs) {
+  if (record.state !== 'AVAILABLE') {
+    return record.state
+  }
+
+  if (
+    !Number.isSafeInteger(nowMs) ||
+    !Number.isSafeInteger(record.createdAtMs) ||
+    !Number.isSafeInteger(record.expiresAtMs) ||
+    record.expiresAtMs <= record.createdAtMs ||
+    nowMs >= record.expiresAtMs
+  ) {
     return 'EXPIRED'
   }
 
-  return record.state
+  return 'AVAILABLE'
 }
 
 export function consumeSecret(record: SecretRecord, nowMs: number): ConsumeDecision {
