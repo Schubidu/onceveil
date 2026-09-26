@@ -37,12 +37,15 @@ export interface SecretStatus {
   state: SecretState
 }
 
-export interface SecretIdGenerator {
-  /**
-   * Generate an unpredictable, non-enumerable identifier with at least
-   * SECRET_ID_MIN_ENTROPY_BITS of cryptographic entropy.
-   */
-  generate(): SecretId
+export function generateSecretId(): SecretId {
+  const bytes = new Uint8Array(SECRET_ID_MIN_ENTROPY_BITS / 8)
+  crypto.getRandomValues(bytes)
+
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('') as SecretId
+}
+
+function isSecretState(value: unknown): value is SecretState {
+  return value === 'AVAILABLE' || value === 'CONSUMED' || value === 'EXPIRED' || value === 'REVOKED'
 }
 
 export type CreateSecretValidation =
@@ -143,7 +146,6 @@ export function validateCreateSecret(
 }
 
 export function prepareSecretRecord(
-  id: SecretId,
   ciphertext: Uint8Array,
   createdAtMs: number,
   requestedTtlMs: number | null | undefined,
@@ -162,7 +164,7 @@ export function prepareSecretRecord(
   return {
     ok: true,
     record: {
-      id,
+      id: generateSecretId(),
       ciphertext,
       createdAtMs,
       expiresAtMs,
@@ -181,6 +183,10 @@ export function toSecretStatus(record: SecretRecord): SecretStatus {
 }
 
 export function effectiveState(record: SecretRecord, nowMs: number): SecretState {
+  if (!isSecretState(record.state)) {
+    return 'EXPIRED'
+  }
+
   if (record.state !== 'AVAILABLE') {
     return record.state
   }
