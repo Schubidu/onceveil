@@ -25,7 +25,6 @@ describe('Turnstile reveal challenge verifier', () => {
     expect(turnstileRevealProtectionConfiguration('site-key', '   ')).toBeUndefined()
   })
 
-
   it('accepts only the expected action, hostname and secret-bound cData', async () => {
     let capturedInit: RequestInit | undefined
     let calls = 0
