@@ -19,11 +19,3 @@ export interface OnceveilRequestContext {
   expectedDatabaseEnvironment?: RuntimeEnvironment
   revealProtection: RevealProtectionRuntime
 }
-
-declare module '@tanstack/router-core' {
-  interface Register {
-    server: {
-      requestContext: OnceveilRequestContext
-    }
-  }
-}
