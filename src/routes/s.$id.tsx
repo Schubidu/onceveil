@@ -252,6 +252,7 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
     let active = true
     let started = false
     let script: HTMLScriptElement | undefined
+    let altchaWidget: HTMLElement | undefined
     const broadcast = new BroadcastChannel(`onceveil-reveal-${verificationId}`)
 
     function failVerification(message: string) {
@@ -307,6 +308,47 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
         if (config?.provider === 'none') {
           setStatus('No interactive verification is required. Returning to the secret…')
           await completeVerification()
+          return
+        }
+
+        if (config?.provider === 'altcha') {
+          await import('altcha')
+          if (!active || !containerRef.current) {
+            return
+          }
+
+          const widget = document.createElement('altcha-widget')
+          const challengeUrl = new URL(
+            `/api/secrets/${encodeURIComponent(id)}/reveal`,
+            window.location.origin,
+          )
+          challengeUrl.searchParams.set('altcha', '1')
+          challengeUrl.searchParams.set('verification', verificationId)
+
+          const verified = (event: Event) => {
+            const payload = (event as CustomEvent<{ payload?: unknown }>).detail?.payload
+            if (typeof payload !== 'string') {
+              failVerification('Verification failed. Close this window and try again.')
+              return
+            }
+
+            void completeVerification(payload)
+          }
+          const stateChanged = (event: Event) => {
+            const state = (event as CustomEvent<{ state?: unknown }>).detail?.state
+            if (state === 'error' || state === 'expired') {
+              failVerification('Verification failed. Close this window and try again.')
+            }
+          }
+
+          widget.setAttribute('challenge', challengeUrl.toString())
+          widget.setAttribute('auto', 'onload')
+          widget.setAttribute('type', 'checkbox')
+          widget.addEventListener('verified', verified)
+          widget.addEventListener('statechange', stateChanged)
+          containerRef.current.replaceChildren(widget)
+          altchaWidget = widget
+          setStatus('Computing proof-of-work verification…')
           return
         }
 
@@ -367,6 +409,7 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
     return () => {
       active = false
       script?.remove()
+      altchaWidget?.remove()
       broadcast.close()
     }
   }, [id, verificationId])
