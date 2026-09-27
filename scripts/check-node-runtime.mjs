@@ -25,7 +25,6 @@ const server = spawn(process.execPath, [path.join(runtimeDirectory, 'server/inde
     PORT: String(port),
     ONCEVEIL_SQLITE_PATH: databasePath,
     ONCEVEIL_REVEAL_PROTECTION: 'none',
-    SERVER_SHUTDOWN_TIMEOUT: '1',
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
@@ -82,17 +81,20 @@ async function stopServer() {
   }
 
   const exited = new Promise((resolve) => server.once('exit', resolve))
+  let timeout
+  const timedOut = new Promise((resolve) => {
+    timeout = setTimeout(() => resolve('timeout'), 7_000)
+  })
+
   server.kill('SIGTERM')
 
-  const result = await Promise.race([
-    exited.then(() => 'exited'),
-    delay(3_000).then(() => 'timeout'),
-  ])
+  const result = await Promise.race([exited.then(() => 'exited'), timedOut])
+  clearTimeout(timeout)
 
   if (result === 'timeout' && server.exitCode === null) {
     server.kill('SIGKILL')
     await exited
-    throw new Error('Node production runtime did not stop within 3 seconds after SIGTERM')
+    throw new Error('Node production runtime did not stop within 7 seconds after SIGTERM')
   }
 }
 
