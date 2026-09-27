@@ -18,6 +18,6 @@ export default createServerEntry({
     const frameAncestor = policy === 'turnstile' ? "'self'" : undefined
     const frameSource =
       policy === 'isolated' && url.pathname.startsWith('/s/') ? "'self'" : undefined
-    return withSecretSecurityHeaders(response, policy, frameAncestor, frameSource)
+    return withSecretSecurityHeaders(response, policy, frameAncestor, frameSource, url.origin)
   },
 })
