@@ -4,6 +4,7 @@ const expected = {
   binding: 'DB',
   databaseId: 'a8f3fce5-8226-40f1-804a-96677743f541',
   turnstileSiteKey: '0x4AAAAAAFEfxfEZ8ZH4YiZn',
+  environment: 'preview',
 }
 
 const raw = await readFile('dist/server/wrangler.json', 'utf8')
@@ -29,6 +30,10 @@ if (config?.previews?.vars?.TURNSTILE_SITE_KEY !== expected.turnstileSiteKey) {
   throw new Error('Generated Wrangler config is missing the Preview TURNSTILE_SITE_KEY')
 }
 
+if (config?.previews?.vars?.ONCEVEIL_ENVIRONMENT !== expected.environment) {
+  throw new Error('Generated Wrangler config is missing the Preview ONCEVEIL_ENVIRONMENT')
+}
+
 const previewObservability = config?.previews?.observability
 if (
   previewObservability?.enabled !== true ||
@@ -43,4 +48,5 @@ if (
 
 console.log(`Generated Preview D1 binding ${expected.binding} -> ${expected.databaseId}`)
 console.log('Generated Preview TURNSTILE_SITE_KEY is configured')
+console.log('Generated Preview runtime environment is configured')
 console.log('Generated Preview observability is privacy-conscious')
