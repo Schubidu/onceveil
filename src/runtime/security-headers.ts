@@ -13,7 +13,11 @@ const BASE_DIRECTIVES = [
   "worker-src 'none'",
 ]
 
-function contentSecurityPolicy(policy: SecretSurfacePolicy, frameAncestor?: string): string {
+function contentSecurityPolicy(
+  policy: SecretSurfacePolicy,
+  frameAncestor?: string,
+  frameSource?: string,
+): string {
   const turnstile = policy === 'turnstile'
   return [
     ...BASE_DIRECTIVES,
@@ -22,17 +26,22 @@ function contentSecurityPolicy(policy: SecretSurfacePolicy, frameAncestor?: stri
       ? "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com"
       : "script-src 'self' 'unsafe-inline'",
     turnstile ? "connect-src 'self' https://challenges.cloudflare.com" : "connect-src 'self'",
-    turnstile ? 'frame-src https://challenges.cloudflare.com' : "frame-src 'none'",
+    turnstile
+      ? 'frame-src https://challenges.cloudflare.com'
+      : frameSource
+        ? `frame-src ${frameSource}`
+        : "frame-src 'none'",
   ].join('; ')
 }
 
 export function secretSecurityHeaders(
   policy: SecretSurfacePolicy = 'isolated',
   frameAncestor?: string,
+  frameSource?: string,
 ): Record<string, string> {
   const headers: Record<string, string> = {
     'Cache-Control': 'no-store',
-    'Content-Security-Policy': contentSecurityPolicy(policy, frameAncestor),
+    'Content-Security-Policy': contentSecurityPolicy(policy, frameAncestor, frameSource),
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Resource-Policy':
       policy === 'turnstile' && frameAncestor ? 'cross-origin' : 'same-origin',
@@ -52,9 +61,12 @@ export function withSecretSecurityHeaders(
   response: Response,
   policy: SecretSurfacePolicy = 'isolated',
   frameAncestor?: string,
+  frameSource?: string,
 ): Response {
   const headers = new Headers(response.headers)
-  for (const [name, value] of Object.entries(secretSecurityHeaders(policy, frameAncestor))) {
+  for (const [name, value] of Object.entries(
+    secretSecurityHeaders(policy, frameAncestor, frameSource),
+  )) {
     headers.set(name, value)
   }
 
