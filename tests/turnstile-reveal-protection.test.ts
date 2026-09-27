@@ -8,6 +8,7 @@ import { REVEAL_PROTECTION_ACTION } from '../src/core/reveal-protection'
 import type { SecretId } from '../src/core/secret'
 
 const SECRET_ID = '0123456789abcdef0123456789abcdef' as SecretId
+const VERIFICATION_ID = 'a'.repeat(32)
 
 function response(body: unknown, status = 200): Response {
   return Response.json(body, { status })
@@ -47,6 +48,7 @@ describe('Turnstile reveal challenge verifier', () => {
       verifier.verify({
         token: 'turnstile-token',
         secretId: SECRET_ID,
+        verificationId: VERIFICATION_ID,
         hostname: 'ots.schult.dev',
       }),
     ).resolves.toEqual({ kind: 'verified' })
@@ -73,6 +75,7 @@ describe('Turnstile reveal challenge verifier', () => {
       verifier.verify({
         token: 'turnstile-token',
         secretId: SECRET_ID,
+        verificationId: VERIFICATION_ID,
         hostname: 'ots.schult.dev',
         remoteIp: '203.0.113.7',
       }),
@@ -107,6 +110,7 @@ describe('Turnstile reveal challenge verifier', () => {
       verifier.verify({
         token: 'turnstile-token',
         secretId: SECRET_ID,
+        verificationId: VERIFICATION_ID,
         hostname: 'ots.schult.dev',
       }),
     ).resolves.toEqual({ kind: 'invalid' })
@@ -135,6 +139,7 @@ describe('Turnstile reveal challenge verifier', () => {
       verifier.verify({
         token: 'turnstile-token',
         secretId: SECRET_ID,
+        verificationId: VERIFICATION_ID,
         hostname: 'ots.schult.dev',
       }),
     ).resolves.toEqual({ kind: 'unavailable' })
@@ -151,6 +156,7 @@ describe('Turnstile reveal challenge verifier', () => {
       verifier.verify({
         token: 'turnstile-token',
         secretId: SECRET_ID,
+        verificationId: VERIFICATION_ID,
         hostname: 'ots.schult.dev',
       }),
     ).resolves.toEqual({ kind: 'unavailable' })
@@ -164,6 +170,7 @@ describe('Turnstile reveal challenge verifier', () => {
       verifier.verify({
         token: 'turnstile-token',
         secretId: SECRET_ID,
+        verificationId: VERIFICATION_ID,
         hostname: 'ots.schult.dev',
       }),
     ).resolves.toEqual({ kind: 'unavailable' })
