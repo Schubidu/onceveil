@@ -8,15 +8,15 @@ The share page that holds the URL fragment key never loads Turnstile or any othe
 
 When the recipient chooses **Verify & reveal secret**:
 
-1. the share page creates a fragment-free verification iframe on the same Onceveil origin with a random public verification identifier;
-2. the iframe is sandboxed without `allow-same-origin`, so the browser assigns it an opaque origin even though its URL uses the same Onceveil host;
-3. the sandboxed iframe cannot access the parent document, fragment-held AES key, plaintext, reveal authorization, cookies, or same-origin storage;
-4. the parent accepts iframe messages only from the exact iframe window, the opaque `null` origin, and the matching random verification identifier;
-5. after the iframe signals readiness, the parent prepares the one-time reveal proof and fetches the public Turnstile configuration; both server calls happen in the key-holding parent;
-6. the iframe receives only the public site key/action, loads Turnstile, and returns only the provider token or a safe error code;
-7. the parent submits that provider token to the verification endpoint; the iframe never receives the fragment-only reveal authorization or bearer proof;
-8. Siteverify checks the expected action, request hostname, and secret-bound `cData`;
-9. successful validation marks the matching prepared proof as verified, after which the parent consumes that proof and performs the existing one-time secret reveal.
+1. the share page creates a fragment-free verification iframe on the paired Onceveil `workers.dev` origin with a random public verification identifier;
+2. the iframe remains sandboxed, but `allow-same-origin` is safe because the verifier is genuinely cross-origin from the key-holding parent; browser same-origin policy therefore keeps it away from the parent DOM, fragment-held AES key, plaintext, reveal authorization, cookies, and storage;
+3. the parent accepts iframe messages only from the exact iframe window, the exact paired verifier origin, and the matching random verification identifier;
+4. after the iframe signals readiness, the parent prepares the one-time reveal proof and keeps both the fragment-only reveal authorization and bearer proof exclusively in the parent;
+5. the parent sends only a prepared-state message to the verifier;
+6. the verifier fetches the public Turnstile configuration from its own origin, loads Turnstile, and submits the provider token to its own verification endpoint;
+7. Siteverify checks the expected action, the verifier request hostname, and secret-bound `cData`;
+8. successful validation marks the matching prepared proof as verified and the verifier reports only success/failure state to the parent;
+9. the parent consumes its bearer proof and performs the existing one-time secret reveal.
 
 If `<dialog>` or embedded verification is unavailable, the existing opener-less popup flow remains as an explicit fallback.
 
@@ -40,10 +40,9 @@ Recommended hostname entries:
 
 - `ots.schult.dev`
 - `ots-preview.schult.dev`
+- `schult.workers.dev`
 
-Cloudflare authorizes subdomains of a configured hostname, so the Preview entry also covers branch Preview hostnames below `ots-preview.schult.dev`.
-
-Embedded verification stays on the same Onceveil hostname as the share page, so no additional `workers.dev` Turnstile hostname is required.
+Cloudflare authorizes subdomains of a configured hostname, so the Preview entry covers branch Preview hostnames below `ots-preview.schult.dev`, while `schult.workers.dev` covers the production and Preview verifier hostnames.
 
 The public `TURNSTILE_SITE_KEY` is committed in `wrangler.jsonc` for both Production (`vars`) and Preview (`previews.vars`) so generated Preview configuration keeps the correct site key.
 
