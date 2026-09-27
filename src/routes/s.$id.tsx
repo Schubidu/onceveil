@@ -262,9 +262,7 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
     let started = false
     let script: HTMLScriptElement | undefined
     const embedded = window.parent !== window
-    const parentOrigin = embedded
-      ? new URLSearchParams(window.location.search).get('parent')
-      : null
+    const parentOrigin = embedded ? new URLSearchParams(window.location.search).get('parent') : null
     const broadcast = embedded
       ? undefined
       : new BroadcastChannel(`onceveil-reveal-${verificationId}`)
@@ -384,12 +382,7 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
     function handleEmbeddedMessage(event: MessageEvent<unknown>) {
       if (
         !parentOrigin ||
-        !isExpectedVerificationMessage(
-          event,
-          window.parent,
-          parentOrigin,
-          verificationId,
-        )
+        !isExpectedVerificationMessage(event, window.parent, parentOrigin, verificationId)
       ) {
         return
       }
