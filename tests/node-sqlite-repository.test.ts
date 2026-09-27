@@ -53,8 +53,42 @@ describe('Node SQLite reveal-proof persistence', () => {
         throw new Error('proof was not prepared')
       }
 
-      expect(await proofs.consume(secret.id, proof.value, 400)).toBe(true)
-      expect(await proofs.consume(secret.id, proof.value, 400)).toBe(false)
+      const results = await Promise.all(
+        Array.from({ length: 8 }, () => proofs.consume(secret.id, proof.value, 400)),
+      )
+      expect(results.filter(Boolean)).toHaveLength(1)
+      expect(results.filter((result) => !result)).toHaveLength(7)
+    } finally {
+      db.close()
+    }
+  })
+})
+
+
+describe('Node SQLite adapter safety', () => {
+  it('rejects statements prepared by a different database instance before starting the batch', async () => {
+    const first = database()
+    const second = database()
+
+    try {
+      const foreign = second
+        .prepare("UPDATE secrets SET state = 'EXPIRED' WHERE id = ?")
+        .bind('f'.repeat(32))
+
+      await expect(first.batch([foreign])).rejects.toThrow(/foreign prepared statement/)
+    } finally {
+      first.close()
+      second.close()
+    }
+  })
+
+  it('rejects CTE statements instead of guessing whether they read or mutate', async () => {
+    const db = database()
+
+    try {
+      await expect(
+        db.prepare("WITH target AS (SELECT 1) UPDATE secrets SET state = 'EXPIRED'").run(),
+      ).rejects.toThrow(/Unsupported Node SQLite prepared statement: WITH/)
     } finally {
       db.close()
     }
