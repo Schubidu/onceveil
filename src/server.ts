@@ -22,7 +22,7 @@ export default createServerEntry({
     const policy = secretSurfacePolicy(request)
     const originConfig = getRevealVerificationOriginConfig()
     const expectedParentOrigin =
-      policy === 'turnstile' ? parentOriginForVerification(url.origin, originConfig) : undefined
+      policy === 'verification' ? parentOriginForVerification(url.origin, originConfig) : undefined
     const requestedParentOrigin = url.searchParams.get('parent') ?? undefined
     const frameAncestor =
       expectedParentOrigin && requestedParentOrigin === expectedParentOrigin
