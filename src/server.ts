@@ -1,6 +1,10 @@
 import handler, { createServerEntry } from '@tanstack/react-start/server-entry'
 
 import {
+  parentOriginForVerification,
+  verificationOriginForParent,
+} from './platform/cloudflare-verification-origin'
+import {
   isSecretSurface,
   secretSurfacePolicy,
   withSecretSecurityHeaders,
@@ -15,9 +19,17 @@ export default createServerEntry({
 
     const url = new URL(request.url)
     const policy = secretSurfacePolicy(request)
-    const frameAncestor = policy === 'turnstile' ? "'self'" : undefined
+    const expectedParentOrigin =
+      policy === 'turnstile' ? parentOriginForVerification(url.origin) : undefined
+    const requestedParentOrigin = url.searchParams.get('parent') ?? undefined
+    const frameAncestor =
+      expectedParentOrigin && requestedParentOrigin === expectedParentOrigin
+        ? expectedParentOrigin
+        : undefined
     const frameSource =
-      policy === 'isolated' && url.pathname.startsWith('/s/') ? "'self'" : undefined
+      policy === 'isolated' && url.pathname.startsWith('/s/')
+        ? verificationOriginForParent(url.origin)
+        : undefined
     return withSecretSecurityHeaders(response, policy, frameAncestor, frameSource, url.origin)
   },
 })
