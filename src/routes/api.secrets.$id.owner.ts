@@ -52,7 +52,7 @@ export const Route = createFileRoute('/api/secrets/$id/owner')({
           ownerStatusResponse(request, params.id, getSecretRepository()),
         ),
       DELETE: async ({ params, request }) =>
-        withOwnerRepository(request, () =>
+        withOwnerRepository(() =>
           ownerRevokeResponse(request, params.id, getSecretRepository()),
         ),
     },
