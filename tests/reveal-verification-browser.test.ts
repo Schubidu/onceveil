@@ -16,7 +16,7 @@ describe('reveal verification browser isolation', () => {
     const url = new URL(revealVerificationUrl(SECRET_ID, VERIFICATION_ID, 'https://ots.schult.dev'))
 
     expect(url.pathname).toBe(`/s/${SECRET_ID}`)
-    expect(url.searchParams.get('verify')).toBe('turnstile')
+    expect(url.searchParams.get('verify')).toBe('1')
     expect(url.searchParams.get('verification')).toBe(VERIFICATION_ID)
     expect(url.searchParams.has('proof')).toBe(false)
     expect(url.hash).toBe('')
@@ -27,7 +27,7 @@ describe('reveal verification browser isolation', () => {
     const location = {
       hash: '#v1.must-not-reach-turnstile',
       pathname: `/s/${SECRET_ID}`,
-      search: `?verify=turnstile&verification=${VERIFICATION_ID}`,
+      search: `?verify=1&verification=${VERIFICATION_ID}`,
     }
     const history = {
       state: { verification: true },
@@ -41,7 +41,7 @@ describe('reveal verification browser isolation', () => {
     expect(replacements).toEqual([
       {
         state: history.state,
-        url: `/s/${SECRET_ID}?verify=turnstile&verification=${VERIFICATION_ID}`,
+        url: `/s/${SECRET_ID}?verify=1&verification=${VERIFICATION_ID}`,
       },
     ])
   })
@@ -52,10 +52,10 @@ describe('reveal verification browser isolation', () => {
   })
 
   it('recognizes only valid verification identifiers', () => {
-    expect(revealVerificationId(`?verify=turnstile&verification=${VERIFICATION_ID}`)).toBe(
+    expect(revealVerificationId(`?verify=1&verification=${VERIFICATION_ID}`)).toBe(
       VERIFICATION_ID,
     )
-    expect(revealVerificationId('?verify=turnstile&verification=bad')).toBeUndefined()
+    expect(revealVerificationId('?verify=1&verification=bad')).toBeUndefined()
     expect(revealVerificationId(`?verification=${VERIFICATION_ID}`)).toBeUndefined()
   })
 })
