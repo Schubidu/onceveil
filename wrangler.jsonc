@@ -6,6 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "preview_urls": true,
   "vars": {
+    "ONCEVEIL_ENVIRONMENT": "production",
     "TURNSTILE_SITE_KEY": "0x4AAAAAAFEfxfEZ8ZH4YiZn"
   },
   "d1_databases": [
@@ -26,6 +27,7 @@
       }
     },
     "vars": {
+      "ONCEVEIL_ENVIRONMENT": "preview",
       "TURNSTILE_SITE_KEY": "0x4AAAAAAFEfxfEZ8ZH4YiZn"
     },
     "d1_databases": [
