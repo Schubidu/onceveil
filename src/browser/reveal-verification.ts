@@ -53,7 +53,7 @@ interface RevealBrowserConfig {
   verificationOrigin?: string
 }
 
-async function getConfiguredVerificationOrigin(id: SecretId): Promise<string | undefined> {
+export async function loadRevealVerificationOrigin(id: SecretId): Promise<string | undefined> {
   try {
     const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
       headers: { 'X-Onceveil-Proof-Config': '1' },
@@ -421,17 +421,20 @@ function requestEmbeddedRevealProof(
   })
 }
 
-export async function requestRevealProof(id: SecretId, authorization: string): Promise<string> {
+export function requestRevealProof(
+  id: SecretId,
+  authorization: string,
+  verificationOrigin?: string,
+): Promise<string> {
   if (!REVEAL_AUTHORIZATION_PATTERN.test(authorization)) {
-    throw new Error('Invalid reveal authorization')
+    return Promise.reject(new Error('Invalid reveal authorization'))
   }
 
   const supportsDialog =
     typeof HTMLDialogElement !== 'undefined' &&
     typeof document.createElement('dialog').showModal === 'function'
-  const verificationOrigin = supportsDialog ? await getConfiguredVerificationOrigin(id) : undefined
 
-  return verificationOrigin
+  return supportsDialog && verificationOrigin
     ? requestEmbeddedRevealProof(id, authorization, verificationOrigin)
     : requestRevealProofPopup(id, authorization)
 }
