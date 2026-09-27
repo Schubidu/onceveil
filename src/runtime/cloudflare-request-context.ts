@@ -17,7 +17,7 @@ export function createRequestContext(request: Request): OnceveilRequestContext {
 
   return {
     secretDatabase: runtime.DB,
-    expectedDatabaseEnvironment: runtimeEnvironmentForRequest(request),
+    databaseEnvironment: runtimeEnvironmentForRequest(request) ?? 'unavailable',
     revealProtection:
       siteKey && secretKey
         ? {
