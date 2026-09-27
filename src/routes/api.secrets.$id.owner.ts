@@ -48,13 +48,9 @@ export const Route = createFileRoute('/api/secrets/$id/owner')({
   server: {
     handlers: {
       GET: async ({ params, request }) =>
-        withOwnerRepository(() =>
-          ownerStatusResponse(request, params.id, getSecretRepository()),
-        ),
+        withOwnerRepository(() => ownerStatusResponse(request, params.id, getSecretRepository())),
       DELETE: async ({ params, request }) =>
-        withOwnerRepository(() =>
-          ownerRevokeResponse(request, params.id, getSecretRepository()),
-        ),
+        withOwnerRepository(() => ownerRevokeResponse(request, params.id, getSecretRepository())),
     },
   },
 })
