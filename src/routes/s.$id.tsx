@@ -11,6 +11,7 @@ import {
 import {
   discardRevealVerificationFragment,
   isExpectedVerificationMessage,
+  loadRevealVerificationOrigin,
   requestRevealProof,
   revealVerificationId,
   type RevealVerificationMessage,
@@ -92,6 +93,7 @@ function SecretReveal({ id }: { id: SecretId }) {
   const [plaintext, setPlaintext] = useState<string>()
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string>()
+  const [verificationOrigin, setVerificationOrigin] = useState<string>()
 
   useEffect(() => {
     fragment.current = takeShareFragment(window.location, window.history)
@@ -123,6 +125,19 @@ function SecretReveal({ id }: { id: SecretId }) {
     }
   }, [])
 
+  useEffect(() => {
+    let active = true
+    void loadRevealVerificationOrigin(id).then((origin) => {
+      if (active) {
+        setVerificationOrigin(origin)
+      }
+    })
+
+    return () => {
+      active = false
+    }
+  }, [id])
+
   async function reveal() {
     const currentFragment = fragment.current
     if (!currentFragment || revealing || plaintext !== undefined) {
@@ -134,7 +149,11 @@ function SecretReveal({ id }: { id: SecretId }) {
     setError(undefined)
 
     try {
-      const proof = await requestRevealProof(id, revealAuthorizationFromFragment(currentFragment))
+      const proof = await requestRevealProof(
+        id,
+        revealAuthorizationFromFragment(currentFragment),
+        verificationOrigin,
+      )
       if (generation.current !== currentGeneration) {
         return
       }
