@@ -107,6 +107,20 @@ describe('runtime readiness', () => {
     })
   })
 
+  it('supports self-hosted readiness without a deployment environment marker', async () => {
+    await expect(
+      checkSecretDatabaseReadiness(
+        fakeDatabase({
+          secretsTable: true,
+          revealProofsTable: true,
+        }),
+      ),
+    ).resolves.toEqual({
+      status: 'ready',
+      database: 'ok',
+    })
+  })
+
   it('reports migration_required when required tables are missing', async () => {
     await expect(
       checkSecretDatabaseReadiness(
