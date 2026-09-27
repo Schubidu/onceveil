@@ -102,7 +102,7 @@ describe('preview-safe share landing route', () => {
     expect(browserSource).toContain('Open verification in a new window instead.')
     expect(browserSource).toContain('iframe.hidden = true')
     expect(routeSource).toContain("'error-callback': (errorCode)")
-    expect(routeSource).toContain("errorCode?: string")
+    expect(routeSource).toContain('errorCode?: string')
   })
 
   it('reveals only from the explicit browser action', async () => {
