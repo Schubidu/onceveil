@@ -33,9 +33,7 @@ function turnstileConfiguration(
   return protection
 }
 
-export function getRevealProtectionProvider(
-  context: OnceveilRequestContext,
-): 'turnstile' | 'none' {
+export function getRevealProtectionProvider(context: OnceveilRequestContext): 'turnstile' | 'none' {
   return configuredProtection(context).provider
 }
 
