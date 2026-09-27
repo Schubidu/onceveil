@@ -1,0 +1,14 @@
+services:
+  onceveil:
+    build:
+      context: .
+    environment:
+      ONCEVEIL_REVEAL_PROTECTION: ${ONCEVEIL_REVEAL_PROTECTION:?Set ONCEVEIL_REVEAL_PROTECTION=none for trusted-network deployments}
+    ports:
+      - "${ONCEVEIL_BIND_ADDRESS:-127.0.0.1}:${ONCEVEIL_PORT:-3000}:3000"
+    volumes:
+      - onceveil-data:/data
+    restart: unless-stopped
+
+volumes:
+  onceveil-data:
