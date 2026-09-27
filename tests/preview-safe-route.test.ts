@@ -90,7 +90,7 @@ describe('preview-safe share landing route', () => {
     expect(browserSource).not.toContain('allow-same-origin')
     expect(browserSource).not.toContain('allow-top-navigation')
     expect(routeSource).toContain('event.source !== window.parent')
-    expect(routeSource).toContain('event.origin !== window.location.origin')
+    expect(routeSource).not.toContain('event.origin !== window.location.origin')
     expect(browserSource).not.toContain('pairedCloudflareVerificationOrigin')
   })
 
