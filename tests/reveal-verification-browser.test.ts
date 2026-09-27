@@ -117,9 +117,7 @@ describe('reveal verification browser isolation', () => {
   })
 
   it('recognizes only valid verification identifiers', () => {
-    expect(revealVerificationId(`?verify=1&verification=${VERIFICATION_ID}`)).toBe(
-      VERIFICATION_ID,
-    )
+    expect(revealVerificationId(`?verify=1&verification=${VERIFICATION_ID}`)).toBe(VERIFICATION_ID)
     expect(revealVerificationId('?verify=1&verification=bad')).toBeUndefined()
     expect(revealVerificationId(`?verification=${VERIFICATION_ID}`)).toBeUndefined()
   })
