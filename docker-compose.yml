@@ -3,7 +3,8 @@ services:
     build:
       context: .
     environment:
-      ONCEVEIL_REVEAL_PROTECTION: ${ONCEVEIL_REVEAL_PROTECTION:?Set ONCEVEIL_REVEAL_PROTECTION=none for trusted-network deployments}
+      ONCEVEIL_REVEAL_PROTECTION: ${ONCEVEIL_REVEAL_PROTECTION:-altcha}
+      ONCEVEIL_ALTCHA_SECRET: ${ONCEVEIL_ALTCHA_SECRET:-}
     ports:
       - "${ONCEVEIL_BIND_ADDRESS:-127.0.0.1}:${ONCEVEIL_PORT:-3000}:3000"
     volumes:
