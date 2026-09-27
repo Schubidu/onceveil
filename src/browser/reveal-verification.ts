@@ -155,9 +155,7 @@ async function verifyRevealToken(
     },
     body: JSON.stringify({ token, verificationId }),
   })
-  const body = (await response.json().catch(() => undefined)) as
-    | Record<string, unknown>
-    | undefined
+  const body = (await response.json().catch(() => undefined)) as Record<string, unknown> | undefined
 
   if (!response.ok || body?.verified !== true) {
     throw new Error('Reveal verification failed')
@@ -394,7 +392,9 @@ function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promis
             })
           })
           .catch(() => {
-            failEmbedded('Embedded verification could not be prepared. Open verification in a new window instead.')
+            failEmbedded(
+              'Embedded verification could not be prepared. Open verification in a new window instead.',
+            )
           })
         return
       }
