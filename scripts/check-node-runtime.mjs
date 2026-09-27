@@ -46,13 +46,19 @@ function fetchLocal(pathname) {
   })
 }
 
+function hasExited() {
+  return server.exitCode !== null || server.signalCode !== null
+}
+
 async function waitUntilReady() {
   const deadline = Date.now() + 15_000
   let lastError
 
   while (Date.now() < deadline) {
-    if (server.exitCode !== null) {
-      throw new Error(`Node server exited before readiness (code ${server.exitCode})\n${logs}`)
+    if (hasExited()) {
+      throw new Error(
+        `Node server exited before readiness (code ${server.exitCode}, signal ${server.signalCode})\n${logs}`,
+      )
     }
 
     try {
@@ -76,7 +82,7 @@ async function waitUntilReady() {
 }
 
 async function stopServer() {
-  if (server.exitCode !== null) {
+  if (hasExited()) {
     return
   }
 
@@ -91,7 +97,7 @@ async function stopServer() {
   const result = await Promise.race([exited.then(() => 'exited'), timedOut])
   clearTimeout(timeout)
 
-  if (result === 'timeout' && server.exitCode === null) {
+  if (result === 'timeout' && !hasExited()) {
     server.kill('SIGKILL')
     await exited
     throw new Error('Node production runtime did not stop within 7 seconds after SIGTERM')
