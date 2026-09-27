@@ -36,22 +36,15 @@ describe('sensitive browser security policy', () => {
     expect(csp).not.toContain('challenges.cloudflare.com')
   })
 
-  it('allows the share page to frame only its own origin', () => {
-    const headers = secretSecurityHeaders('isolated', undefined, "'self'")
+  it('allows the share page to frame only its paired verification origin', () => {
+    const verificationOrigin = 'https://onceveil.schult.workers.dev'
+    const headers = secretSecurityHeaders('isolated', undefined, verificationOrigin)
     const csp = headers['Content-Security-Policy']
 
-    expect(csp).toContain("frame-src 'self'")
+    expect(csp).toContain(`frame-src ${verificationOrigin}`)
     expect(csp).toContain("frame-ancestors 'none'")
     expect(headers['X-Frame-Options']).toBe('DENY')
     expect(headers['Cross-Origin-Resource-Policy']).toBe('same-origin')
-  })
-
-  it('allows the opaque verification iframe to load only public client assets cross-origin', async () => {
-    const assetHeaders = await readFile(path.resolve('public/_headers'), 'utf8')
-
-    expect(assetHeaders).toContain('/assets/*')
-    expect(assetHeaders).toContain('Access-Control-Allow-Origin: *')
-    expect(assetHeaders).toContain('Cross-Origin-Resource-Policy: cross-origin')
   })
 
   it('allows Turnstile only in a valid fragment-free verification context', () => {
@@ -67,17 +60,20 @@ describe('sensitive browser security policy', () => {
     expect(secretSurfacePolicy(malformed)).toBe('isolated')
     expect(secretSurfacePolicy(verification)).toBe('turnstile')
 
-    const documentOrigin = 'https://ots-preview.schult.dev'
-    const headers = secretSecurityHeaders('turnstile', "'self'", undefined, documentOrigin)
+    const documentOrigin =
+      'https://feat-issue-20-embedded-reveal-verification-onceveil.schult.workers.dev'
+    const parentOrigin =
+      'https://feat-issue-20-embedded-reveal-verification.ots-preview.schult.dev'
+    const headers = secretSecurityHeaders('turnstile', parentOrigin, undefined, documentOrigin)
     const csp = headers['Content-Security-Policy']
     expect(csp).toContain(`script-src ${documentOrigin}`)
     expect(csp).toContain(`style-src ${documentOrigin}`)
     expect(csp).toContain(`connect-src ${documentOrigin}`)
     expect(csp).toContain('https://challenges.cloudflare.com')
     expect(csp).toContain('frame-src https://challenges.cloudflare.com')
-    expect(csp).toContain("frame-ancestors 'self'")
+    expect(csp).toContain(`frame-ancestors ${parentOrigin}`)
     expect(headers['Cross-Origin-Resource-Policy']).toBe('same-origin')
-    expect(headers['X-Frame-Options']).toBe('SAMEORIGIN')
+    expect(headers).not.toHaveProperty('X-Frame-Options')
   })
 })
 
