@@ -13,6 +13,7 @@ import {
   prepareRevealProofResponse,
   protectedRevealResponse,
   verifyRevealProofResponse,
+  verifyRevealProofWithoutChallengeResponse,
 } from '../src/runtime/reveal-protection-http'
 import {
   createSecretResponse,
@@ -667,6 +668,26 @@ describe('D1 one-time HTTP flow', () => {
       1_005,
     )
     expect(replay.status).toBe(403)
+  })
+
+  it('can verify a prepared proof without an external challenge in explicit none mode', async () => {
+    await storeTestSecret('trusted network proof')
+    const prepared = await prepareProof(PUBLIC_ID, 1_000)
+
+    const verification = await verifyRevealProofWithoutChallengeResponse(
+      new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verificationId: prepared.verificationId }),
+      }),
+      PUBLIC_ID,
+      proofRepository,
+      1_001,
+    )
+
+    expect(verification.status).toBe(200)
+    await expect(proofRepository.consume(PUBLIC_ID, prepared.value, 1_002)).resolves.toBe(true)
+    await expect(proofRepository.consume(PUBLIC_ID, prepared.value, 1_003)).resolves.toBe(false)
   })
 
   it('prunes consumed and expired reveal proofs when issuing a new proof', async () => {
