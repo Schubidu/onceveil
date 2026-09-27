@@ -60,15 +60,18 @@ async function waitUntilHealthy() {
           id,
         ])
         lastStatus = stdout.trim()
-        if (lastStatus === 'healthy') {
-          return id
-        }
-
-        if (lastStatus === 'unhealthy') {
-          throw new Error('container healthcheck reported unhealthy')
-        }
       } catch (error) {
         lastStatus = error instanceof Error ? error.message : String(error)
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        continue
+      }
+
+      if (lastStatus === 'healthy') {
+        return id
+      }
+
+      if (lastStatus === 'unhealthy') {
+        throw new Error('container healthcheck reported unhealthy')
       }
     }
 
