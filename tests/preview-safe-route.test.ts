@@ -94,6 +94,17 @@ describe('preview-safe share landing route', () => {
     expect(browserSource).not.toContain('authorization, verificationId, verificationOrigin')
   })
 
+  it('keeps an explicit fallback available after embedded Turnstile errors', async () => {
+    const browserSource = await readFile(path.resolve('src/browser/reveal-verification.ts'), 'utf8')
+    const routeSource = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
+
+    expect(browserSource).toContain('Embedded verification failed')
+    expect(browserSource).toContain('Open verification in a new window instead.')
+    expect(browserSource).toContain('iframe.hidden = true')
+    expect(routeSource).toContain("'error-callback': (errorCode)")
+    expect(routeSource).toContain("errorCode?: string")
+  })
+
   it('reveals only from the explicit browser action', async () => {
     const source = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
 
