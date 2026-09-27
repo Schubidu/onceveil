@@ -46,6 +46,7 @@ describe('sensitive browser security policy', () => {
     expect(secretSurfacePolicy(normal, 'turnstile')).toBe('isolated')
     expect(secretSurfacePolicy(malformed, 'turnstile')).toBe('isolated')
     expect(secretSurfacePolicy(verification, 'turnstile')).toBe('turnstile')
+    expect(secretSurfacePolicy(verification, 'altcha')).toBe('altcha')
     expect(secretSurfacePolicy(verification, 'none')).toBe('isolated')
     expect(secretSurfacePolicy(verification, 'unavailable')).toBe('isolated')
 
@@ -54,10 +55,15 @@ describe('sensitive browser security policy', () => {
     expect(csp).toContain('https://challenges.cloudflare.com')
     expect(csp).toContain('frame-src https://challenges.cloudflare.com')
 
-    const selfHostedCsp = secretSecurityHeaders(secretSurfacePolicy(verification, 'none'))[
+    const altchaCsp = secretSecurityHeaders('altcha')['Content-Security-Policy']
+    expect(altchaCsp).toContain("worker-src 'self' blob:")
+    expect(altchaCsp).not.toContain('challenges.cloudflare.com')
+
+    const trustedNetworkCsp = secretSecurityHeaders(secretSurfacePolicy(verification, 'none'))[
       'Content-Security-Policy'
     ]
-    expect(selfHostedCsp).not.toContain('challenges.cloudflare.com')
+    expect(trustedNetworkCsp).toContain("worker-src 'none'")
+    expect(trustedNetworkCsp).not.toContain('challenges.cloudflare.com')
   })
 })
 
@@ -71,6 +77,7 @@ describe('safe runtime logging', () => {
     'src/routes/api.secrets.$id.owner.ts',
     'src/routes/api.secrets.$id.reveal.ts',
     'src/adapters/turnstile-reveal-protection.ts',
+    'src/adapters/altcha-reveal-protection.ts',
   ])('%s cannot bypass the safe logging boundary', async (sourcePath) => {
     const source = await readFile(path.resolve(sourcePath), 'utf8')
 
