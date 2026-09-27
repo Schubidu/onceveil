@@ -38,9 +38,7 @@ describe('sensitive browser security policy', () => {
 
   it('allows verification resources only in a valid fragment-free verification context', () => {
     const normal = new Request(`https://onceveil.test/s/${SECRET_ID}`)
-    const malformed = new Request(
-      `https://onceveil.test/s/${SECRET_ID}?verify=1&verification=bad`,
-    )
+    const malformed = new Request(`https://onceveil.test/s/${SECRET_ID}?verify=1&verification=bad`)
     const verification = new Request(
       `https://onceveil.test/s/${SECRET_ID}?verify=1&verification=${'a'.repeat(32)}`,
     )
