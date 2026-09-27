@@ -14,11 +14,12 @@ export default createServerEntry({
       return response
     }
 
+    const url = new URL(request.url)
     const policy = secretSurfacePolicy(request)
-    const frameAncestor =
-      policy === 'turnstile'
-        ? pairedCloudflareVerificationOrigin(new URL(request.url).origin)
-        : undefined
-    return withSecretSecurityHeaders(response, policy, frameAncestor)
+    const pairedOrigin = pairedCloudflareVerificationOrigin(url.origin)
+    const frameAncestor = policy === 'turnstile' ? pairedOrigin : undefined
+    const frameSource =
+      policy === 'isolated' && url.pathname.startsWith('/s/') ? pairedOrigin : undefined
+    return withSecretSecurityHeaders(response, policy, frameAncestor, frameSource)
   },
 })
