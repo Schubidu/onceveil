@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   discardRevealVerificationFragment,
+  isExpectedVerificationMessage,
   REVEAL_VERIFICATION_WINDOW_FEATURES,
   revealVerificationId,
   revealVerificationUrl,
@@ -44,6 +45,27 @@ describe('reveal verification browser isolation', () => {
         url: `/s/${SECRET_ID}?verify=turnstile&verification=${VERIFICATION_ID}`,
       },
     ])
+  })
+
+  it('accepts only the expected window, origin and verification id', () => {
+    const source = {} as MessageEventSource
+    const message = {
+      origin: 'null',
+      source,
+      data: {
+        type: 'onceveil-reveal-verification-ready',
+        verificationId: VERIFICATION_ID,
+      },
+    }
+
+    expect(isExpectedVerificationMessage(message, source, 'null', VERIFICATION_ID)).toBe(true)
+    expect(
+      isExpectedVerificationMessage(message, {} as MessageEventSource, 'null', VERIFICATION_ID),
+    ).toBe(false)
+    expect(
+      isExpectedVerificationMessage(message, source, 'https://ots.schult.dev', VERIFICATION_ID),
+    ).toBe(false)
+    expect(isExpectedVerificationMessage(message, source, 'null', 'a'.repeat(32))).toBe(false)
   })
 
   it('requires an isolated opener-less browsing context', () => {
