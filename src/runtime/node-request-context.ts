@@ -58,6 +58,7 @@ export function createRequestContext(_request: Request): OnceveilRequestContext 
 
   return {
     secretDatabase,
+    databaseEnvironment: 'markerless',
     revealProtection:
       process.env.ONCEVEIL_REVEAL_PROTECTION === 'none'
         ? { provider: 'none' }
