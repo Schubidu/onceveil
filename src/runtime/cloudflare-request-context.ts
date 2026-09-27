@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers'
 
 import type { D1DatabaseLike } from '../adapters/d1-secret-repository'
-import { runtimeEnvironmentForRequest } from './readiness'
+import { requiredRuntimeEnvironmentForRequest } from './readiness'
 import type { OnceveilRequestContext } from './request-context'
 
 interface CloudflareOnceveilEnv {
@@ -17,7 +17,7 @@ export function createRequestContext(request: Request): OnceveilRequestContext {
 
   return {
     secretDatabase: runtime.DB,
-    databaseEnvironment: runtimeEnvironmentForRequest(request) ?? 'unavailable',
+    databaseEnvironment: requiredRuntimeEnvironmentForRequest(request),
     revealProtection:
       siteKey && secretKey
         ? {
