@@ -42,7 +42,7 @@ Individual checks are available as `build`, `build:node`, `check:node-runtime`, 
 
 ## Node.js self-hosted runtime
 
-The standalone Node.js/SQLite runtime is available before Docker packaging is added:
+The standalone Node.js/SQLite runtime is also available without Docker:
 
 ```sh
 npm ci
