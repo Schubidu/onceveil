@@ -11,14 +11,14 @@ import type { SecretId } from '../src/core/secret'
 import {
   parentOriginForVerification,
   verificationOriginForParent,
-} from '../src/platform/cloudflare-verification-origin'
+} from '../src/core/reveal-verification-origin'
 
 const SECRET_ID = '0123456789abcdef0123456789abcdef' as SecretId
 const VERIFICATION_ID = 'fedcba9876543210fedcba9876543210'
 
 describe('reveal verification browser isolation', () => {
   it('builds a fragment-free verification URL containing only the public verification id', () => {
-    const url = new URL(revealVerificationUrl(SECRET_ID, VERIFICATION_ID, 'https://ots.schult.dev'))
+    const url = new URL(revealVerificationUrl(SECRET_ID, VERIFICATION_ID, 'https://app.example.com'))
 
     expect(url.pathname).toBe(`/s/${SECRET_ID}`)
     expect(url.searchParams.get('verify')).toBe('turnstile')
@@ -53,7 +53,7 @@ describe('reveal verification browser isolation', () => {
 
   it('accepts only the expected window, paired origin and verification id', () => {
     const source = {} as MessageEventSource
-    const verificationOrigin = 'https://onceveil.schult.workers.dev'
+    const verificationOrigin = 'https://verify.example.com'
     const message = {
       origin: verificationOrigin,
       source,
@@ -75,28 +75,33 @@ describe('reveal verification browser isolation', () => {
       ),
     ).toBe(false)
     expect(
-      isExpectedVerificationMessage(message, source, 'https://ots.schult.dev', VERIFICATION_ID),
+      isExpectedVerificationMessage(message, source, 'https://app.example.com', VERIFICATION_ID),
     ).toBe(false)
     expect(isExpectedVerificationMessage(message, source, verificationOrigin, 'a'.repeat(32))).toBe(
       false,
     )
   })
 
-  it('maps production and preview origins to a distinct verifier origin', () => {
-    expect(verificationOriginForParent('https://ots.schult.dev')).toBe(
-      'https://onceveil.schult.workers.dev',
+  it('maps configured production and preview origin pairs without deployment-specific domains', () => {
+    const config = {
+      appOrigin: 'https://app.example.com',
+      verificationOrigin: 'https://verify.example.com',
+      previewAppOrigin: 'https://preview.example.com',
+      previewVerificationOrigin: 'https://verify-preview.example.com',
+    }
+
+    expect(verificationOriginForParent('https://app.example.com', config)).toBe(
+      'https://verify.example.com',
     )
-    expect(parentOriginForVerification('https://onceveil.schult.workers.dev')).toBe(
-      'https://ots.schult.dev',
+    expect(parentOriginForVerification('https://verify.example.com', config)).toBe(
+      'https://app.example.com',
     )
 
-    const previewParent =
-      'https://feat-issue-20-embedded-reveal-verification.ots-preview.schult.dev'
-    const previewVerifier =
-      'https://feat-issue-20-embedded-reveal-verification-onceveil.schult.workers.dev'
-    expect(verificationOriginForParent(previewParent)).toBe(previewVerifier)
-    expect(parentOriginForVerification(previewVerifier)).toBe(previewParent)
-    expect(verificationOriginForParent('http://localhost:3000')).toBeUndefined()
+    const previewParent = 'https://feature-x.preview.example.com'
+    const previewVerifier = 'https://feature-x.verify-preview.example.com'
+    expect(verificationOriginForParent(previewParent, config)).toBe(previewVerifier)
+    expect(parentOriginForVerification(previewVerifier, config)).toBe(previewParent)
+    expect(verificationOriginForParent('http://localhost:3000', config)).toBeUndefined()
   })
 
   it('requires an isolated opener-less browsing context', () => {
