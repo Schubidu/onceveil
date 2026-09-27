@@ -375,14 +375,7 @@ function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promis
     }
 
     function onMessage(event: MessageEvent<unknown>) {
-      if (
-        !isExpectedVerificationMessage(
-          event,
-          iframe.contentWindow,
-          'null',
-          verificationId,
-        )
-      ) {
+      if (!isExpectedVerificationMessage(event, iframe.contentWindow, 'null', verificationId)) {
         return
       }
 
