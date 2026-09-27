@@ -7,10 +7,11 @@ on:
       - .github/workflows/generate-node-lockfile.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   lockfile:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,10 +28,15 @@ jobs:
       - name: Generate package lock
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
-      - name: Upload package lock
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: node-package-lock
-          path: package-lock.json
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit package lock to PR branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json is already current"
+            exit 0
+          fi
+
+          sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/package-lock.json?ref=${HEAD_BRANCH}" --jq .sha)"
+          gh api             --method PUT             "repos/${GITHUB_REPOSITORY}/contents/package-lock.json"             -f message='build: update Nitro lockfile'             -f content="$(base64 -w0 package-lock.json)"             -f branch="${HEAD_BRANCH}"             -f sha="${sha}"
