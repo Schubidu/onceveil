@@ -64,15 +64,19 @@ async function stopServer() {
     return
   }
 
+  const exited = new Promise((resolve) => server.once('exit', resolve))
   server.kill('SIGTERM')
-  await Promise.race([
-    new Promise((resolve) => server.once('exit', resolve)),
-    delay(3_000).then(() => {
-      if (server.exitCode === null) {
-        server.kill('SIGKILL')
-      }
-    }),
+
+  const result = await Promise.race([
+    exited.then(() => 'exited'),
+    delay(3_000).then(() => 'timeout'),
   ])
+
+  if (result === 'timeout' && server.exitCode === null) {
+    server.kill('SIGKILL')
+    await exited
+    throw new Error('Node production runtime did not stop within 3 seconds after SIGTERM')
+  }
 }
 
 try {
