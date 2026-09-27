@@ -18,7 +18,7 @@ import {
   SecretDatabaseEnvironmentError,
   SecretDatabaseUnavailableError,
 } from '../runtime/secret-repository'
-import { runtimeEnvironmentForRequest } from '../runtime/readiness'
+import { getRuntimeEnvironment } from '../runtime/environment'
 import { logRuntimeError } from '../runtime/safe-log'
 import { withSecretSecurityHeaders } from '../runtime/security-headers'
 import { getRevealVerificationOriginConfig } from '../runtime/reveal-verification-origin'
@@ -62,7 +62,7 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
         }
       },
       POST: async ({ params, request }) => {
-        const expectedEnvironment = runtimeEnvironmentForRequest(request)
+        const expectedEnvironment = getRuntimeEnvironment()
         if (!expectedEnvironment) {
           return jsonError('service_unavailable', 503)
         }
