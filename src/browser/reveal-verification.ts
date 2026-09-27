@@ -22,6 +22,20 @@ export type RevealVerificationWindowMessage = RevealVerificationMessage & {
   verificationId: string
 }
 
+export function isExpectedVerificationMessage(
+  event: Pick<MessageEvent<unknown>, 'origin' | 'source' | 'data'>,
+  expectedSource: MessageEventSource | null,
+  expectedOrigin: string,
+  verificationId: string,
+): event is MessageEvent<RevealVerificationWindowMessage> {
+  if (event.origin !== expectedOrigin || event.source !== expectedSource) {
+    return false
+  }
+
+  const candidate = event.data as Partial<RevealVerificationWindowMessage> | null
+  return candidate?.verificationId === verificationId
+}
+
 export interface RevealVerificationLocation {
   hash: string
   pathname: string
@@ -54,6 +68,7 @@ export function revealVerificationUrl(
   id: SecretId,
   verificationId: string,
   origin: string,
+  parentOrigin?: string,
 ): string {
   if (!VERIFICATION_ID_PATTERN.test(verificationId)) {
     throw new TypeError('Invalid reveal verification id')
@@ -62,6 +77,9 @@ export function revealVerificationUrl(
   const url = new URL(`/s/${encodeURIComponent(id)}`, origin)
   url.searchParams.set('verify', 'turnstile')
   url.searchParams.set('verification', verificationId)
+  if (parentOrigin) {
+    url.searchParams.set('parent', parentOrigin)
+  }
   return url.toString()
 }
 
@@ -243,7 +261,12 @@ function requestRevealProofPopup(id: SecretId, authorization: string): Promise<s
 
 function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promise<string> {
   const verificationId = randomVerificationId()
-  const verificationUrl = revealVerificationUrl(id, verificationId, window.location.origin)
+  const verificationUrl = revealVerificationUrl(
+    id,
+    verificationId,
+    window.location.origin,
+    window.location.origin,
+  )
   const dialog = document.createElement('dialog')
   const iframe = document.createElement('iframe')
   const fallback = document.createElement('button')
@@ -352,19 +375,18 @@ function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promis
     }
 
     function onMessage(event: MessageEvent<unknown>) {
-      if (event.origin !== 'null' || event.source !== iframe.contentWindow) {
+      if (
+        !isExpectedVerificationMessage(
+          event,
+          iframe.contentWindow,
+          'null',
+          verificationId,
+        )
+      ) {
         return
       }
 
-      const message = event.data
-      if (typeof message !== 'object' || message === null || !('type' in message)) {
-        return
-      }
-
-      const candidate = message as Partial<RevealVerificationWindowMessage>
-      if (candidate.verificationId !== verificationId) {
-        return
-      }
+      const candidate = event.data
 
       if (
         candidate.type === 'onceveil-reveal-verification-ready' &&
