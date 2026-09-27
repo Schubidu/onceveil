@@ -34,7 +34,7 @@ Migration `0006_expire_legacy_share_links.sql` first blocks inserts that omit `r
 
 ## Cloudflare configuration
 
-Create a Turnstile widget for the Onceveil deployment and allow the hostnames on which the verification context actually runs.
+Create a Turnstile widget for the Onceveil deployment and allow every hostname on which verification can run. This includes both the normal app hostname, because the popup fallback verifies there, and the distinct verifier hostname when embedded verification is enabled. The same rule applies to Preview hostnames.
 
 Embedded verification is deployment-configurable rather than tied to any Onceveil-owned hostname. Configure an exact production pair with:
 
