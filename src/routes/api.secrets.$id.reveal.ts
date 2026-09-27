@@ -63,6 +63,7 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
             const challenge = await getAltchaRevealProtection(runtime).createChallenge(
               params.id,
               verificationId,
+              url.hostname,
             )
             return withSecretSecurityHeaders(Response.json(challenge, { status: 200 }))
           }
