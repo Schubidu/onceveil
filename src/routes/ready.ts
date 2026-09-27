@@ -14,7 +14,7 @@ export const Route = createFileRoute('/ready')({
         try {
           const readiness = await checkSecretDatabaseReadiness(
             getSecretDatabase(runtime),
-            runtime.expectedDatabaseEnvironment,
+            runtime.databaseEnvironment === 'markerless' ? undefined : runtime.databaseEnvironment,
           )
           ready = readiness.status === 'ready'
         } catch (error) {
