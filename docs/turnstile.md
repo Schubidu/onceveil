@@ -46,6 +46,8 @@ For per-branch Previews, configure the two Preview custom-domain bases with:
 - `REVEAL_PREVIEW_APP_ORIGIN`
 - `REVEAL_PREVIEW_VERIFICATION_ORIGIN`
 
+Cloudflare Worker Previews can expose the same Preview on multiple custom-domain bases. Configure one Preview-enabled custom domain for the app and a second Preview-enabled custom domain for the verifier; Cloudflare then prepends the same Preview name to both bases. `workers.dev` URLs are not required and are disabled for the Onceveil deployment.
+
 A Preview name is copied from the configured app Preview base to the configured verification Preview base. For example, generic bases `https://preview.example.com` and `https://verify-preview.example.com` map `https://feature-x.preview.example.com` to `https://feature-x.verify-preview.example.com`.
 
 If no distinct verification origin is configured for the current deployment, Onceveil does not guess a hostname and does not enable the embedded path; it uses the existing opener-less popup verification flow instead.
