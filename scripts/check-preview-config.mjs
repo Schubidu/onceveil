@@ -29,5 +29,16 @@ if (config?.previews?.vars?.TURNSTILE_SITE_KEY !== expected.turnstileSiteKey) {
   throw new Error('Generated Wrangler config is missing the Preview TURNSTILE_SITE_KEY')
 }
 
+const previewObservability = config?.previews?.observability
+if (
+  previewObservability?.enabled !== true ||
+  previewObservability?.logs?.enabled !== true ||
+  previewObservability?.logs?.invocation_logs !== false ||
+  previewObservability?.logs?.persist !== true
+) {
+  throw new Error('Generated Preview observability must persist custom logs without invocation logs')
+}
+
 console.log(`Generated Preview D1 binding ${expected.binding} -> ${expected.databaseId}`)
 console.log('Generated Preview TURNSTILE_SITE_KEY is configured')
+console.log('Generated Preview observability is privacy-conscious')
