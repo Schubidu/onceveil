@@ -17,6 +17,14 @@
     }
   ],
   "previews": {
+    "observability": {
+      "enabled": true,
+      "logs": {
+        "enabled": true,
+        "invocation_logs": false,
+        "persist": true
+      }
+    },
     "vars": {
       "TURNSTILE_SITE_KEY": "0x4AAAAAAFEfxfEZ8ZH4YiZn"
     },
