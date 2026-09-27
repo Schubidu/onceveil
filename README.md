@@ -16,7 +16,7 @@ MCP support is planned with secure browser handoff so secret material does not e
 
 ## Current status
 
-The application and Cloudflare runtime baseline, strict one-time lifecycle, browser-side encryption, D1-backed create/reveal flow, fail-closed Turnstile reveal protection, and separate owner status/revocation capabilities are implemented. Production and Preview use separate D1 databases. The portable Node/SQLite runtime and standalone Nitro production build are implemented; Docker/Compose packaging, ALTCHA, and MCP are still pending.
+The application and Cloudflare runtime baseline, strict one-time lifecycle, browser-side encryption, D1-backed create/reveal flow, fail-closed Turnstile reveal protection, and separate owner status/revocation capabilities are implemented. Production and Preview use separate D1 databases. The portable Node/SQLite runtime, standalone Nitro production build, and Docker Compose packaging are implemented; ALTCHA and MCP are still pending.
 
 ## Development
 
@@ -42,7 +42,7 @@ Individual checks are available as `build`, `build:node`, `check:node-runtime`, 
 
 ## Node.js self-hosted runtime
 
-The standalone Node.js/SQLite runtime is available before Docker packaging is added:
+The standalone Node.js/SQLite runtime is also available without Docker:
 
 ```sh
 npm ci
@@ -50,7 +50,7 @@ npm run build:node
 ONCEVEIL_REVEAL_PROTECTION=none npm start
 ```
 
-By default SQLite is stored at `./data/onceveil.sqlite`; set `ONCEVEIL_SQLITE_PATH` to use another path. The `none` reveal-protection mode is intended only for trusted-network/self-hosted use. Public self-hosting remains incomplete until the ALTCHA and Docker deployment slices are finished.
+By default SQLite is stored at `./data/onceveil.sqlite`; set `ONCEVEIL_SQLITE_PATH` to use another path. The `none` reveal-protection mode is intended only for trusted-network/self-hosted use. Docker Compose, persistence, healthcheck, reverse-proxy/TLS expectations, and trusted-network startup are documented in [docs/self-hosting.md](docs/self-hosting.md). Public self-hosting remains incomplete until ALTCHA is implemented.
 
 ## Cloudflare deployment
 
