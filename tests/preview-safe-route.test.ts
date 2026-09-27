@@ -102,7 +102,7 @@ describe('preview-safe share landing route', () => {
 
     expect(browserSource).toContain('Embedded verification failed')
     expect(browserSource).toContain('Open verification in new window')
-    expect(browserSource).toContain('iframe.hidden = true')
+    expect(browserSource).not.toContain('iframe.hidden = true')
     expect(browserSource).toContain('fallback.hidden = true')
     expect(browserSource).toContain('fallback.hidden = false')
     expect(routeSource).toContain("'error-callback': (errorCode)")
