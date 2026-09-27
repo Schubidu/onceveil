@@ -36,7 +36,9 @@ if (
   previewObservability?.logs?.invocation_logs !== false ||
   previewObservability?.logs?.persist !== true
 ) {
-  throw new Error('Generated Preview observability must persist custom logs without invocation logs')
+  throw new Error(
+    'Generated Preview observability must persist custom logs without invocation logs',
+  )
 }
 
 console.log(`Generated Preview D1 binding ${expected.binding} -> ${expected.databaseId}`)
