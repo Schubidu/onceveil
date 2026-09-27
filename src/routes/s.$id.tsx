@@ -435,17 +435,15 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
   }, [id, verificationId])
 
   return (
-    <main className="shell">
-      <section className="card" aria-labelledby="verify-title">
-        <p className="eyebrow">Reveal verification</p>
-        <h1 id="verify-title">Onceveil</h1>
-        <p className="status">{status}</p>
-        <div ref={containerRef} />
+    <main className="verification-shell">
+      <section className="verification-card" aria-label="Reveal verification">
+        <div ref={containerRef} className="turnstile-container" />
         {error ? (
-          <p className="error" role="alert">
+          <p className="error verification-error" role="alert">
             {error}
           </p>
         ) : null}
+        {!error ? <p className="verification-child-status">{status}</p> : null}
       </section>
     </main>
   )
