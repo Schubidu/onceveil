@@ -8,24 +8,16 @@ import {
   SecretDatabaseEnvironmentError,
   SecretDatabaseUnavailableError,
 } from '../runtime/secret-repository'
-import { runtimeEnvironmentForRequest } from '../runtime/readiness'
 import { logRuntimeError } from '../runtime/safe-log'
 import { withSecretSecurityHeaders } from '../runtime/security-headers'
 
 export const Route = createFileRoute('/api/secrets')({
   server: {
     handlers: {
-      POST: async ({ request }) => {
-        const expectedEnvironment = runtimeEnvironmentForRequest(request)
-        if (!expectedEnvironment) {
-          return withSecretSecurityHeaders(
-            Response.json({ error: 'service_unavailable' }, { status: 503 }),
-          )
-        }
-
+      POST: async ({ request, context }) => {
         try {
-          await assertSecretDatabaseEnvironment(expectedEnvironment)
-          return await createSecretResponse(request, getSecretRepository())
+          await assertSecretDatabaseEnvironment(context)
+          return await createSecretResponse(request, getSecretRepository(context))
         } catch (error) {
           if (error instanceof SecretDatabaseUnavailableError) {
             return withSecretSecurityHeaders(
@@ -50,12 +42,6 @@ export const Route = createFileRoute('/api/secrets')({
             error,
             error instanceof D1CreateError ? { stage: error.stage } : {},
           )
-
-          if (error instanceof D1CreateError) {
-            return withSecretSecurityHeaders(
-              Response.json({ error: 'internal_error' }, { status: 500 }),
-            )
-          }
 
           return withSecretSecurityHeaders(
             Response.json({ error: 'internal_error' }, { status: 500 }),
