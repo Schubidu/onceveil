@@ -280,7 +280,6 @@ function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promis
   iframe.src = verificationUrl
   iframe.referrerPolicy = 'no-referrer'
   iframe.sandbox.add('allow-scripts', 'allow-forms', 'allow-popups')
-  iframe.hidden = true
 
   status.className = 'verification-status'
   status.textContent = 'Preparing verification…'
@@ -336,7 +335,6 @@ function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promis
       }
 
       status.textContent = message
-      iframe.hidden = true
       fallback.hidden = false
     }
 
@@ -405,7 +403,6 @@ function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promis
             }
 
             status.textContent = 'Complete verification to reveal the secret.'
-            iframe.hidden = false
             postToVerification({
               type: 'onceveil-reveal-config',
               siteKey: config.siteKey,
