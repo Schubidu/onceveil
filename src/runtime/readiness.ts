@@ -35,31 +35,8 @@ export type SecretDatabaseReadiness =
       database: 'unavailable'
     }
 
-export function runtimeEnvironmentForHostname(hostname: string): RuntimeEnvironment | undefined {
-  const normalized = hostname.toLowerCase()
-
-  const isPreview =
-    normalized === 'ots-preview.schult.dev' ||
-    normalized.endsWith('.ots-preview.schult.dev') ||
-    normalized.endsWith('-onceveil.schult.workers.dev') ||
-    normalized === 'localhost' ||
-    normalized.endsWith('.localhost') ||
-    normalized === '127.0.0.1' ||
-    normalized === '[::1]'
-
-  if (isPreview) {
-    return 'preview'
-  }
-
-  if (normalized === 'ots.schult.dev' || normalized === 'onceveil.schult.workers.dev') {
-    return 'production'
-  }
-
-  return undefined
-}
-
-export function runtimeEnvironmentForRequest(request: Request): RuntimeEnvironment | undefined {
-  return runtimeEnvironmentForHostname(new URL(request.url).hostname)
+export function parseRuntimeEnvironment(value: unknown): RuntimeEnvironment | undefined {
+  return value === 'production' || value === 'preview' ? value : undefined
 }
 
 export async function checkSecretDatabaseReadiness(
