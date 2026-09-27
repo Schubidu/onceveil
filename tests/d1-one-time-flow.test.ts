@@ -43,32 +43,9 @@ describe('D1 one-time HTTP flow', () => {
   let proofRepository: D1RevealProofRepository
   let verificationSequence: number
 
-  beforeEach(async () => {
+  beforeEach(() => {
     d1 = new SQLiteD1TestDatabase()
-    const migration = await readFile(path.resolve('migrations/0001_secrets.sql'), 'utf8')
-    const replayMigration = await readFile(
-      path.resolve('migrations/0003_secret_replay_key.sql'),
-      'utf8',
-    )
-    d1.database.exec(migration)
-    const proofMigration = await readFile(path.resolve('migrations/0004_reveal_proofs.sql'), 'utf8')
-    const proofHandoffMigration = await readFile(
-      path.resolve('migrations/0005_reveal_proof_verification.sql'),
-      'utf8',
-    )
-    const legacyShareMigration = await readFile(
-      path.resolve('migrations/0006_expire_legacy_share_links.sql'),
-      'utf8',
-    )
-    const ownerCapabilityMigration = await readFile(
-      path.resolve('migrations/0007_owner_capability.sql'),
-      'utf8',
-    )
-    d1.database.exec(replayMigration)
-    d1.database.exec(proofMigration)
-    d1.database.exec(proofHandoffMigration)
-    d1.database.exec(legacyShareMigration)
-    d1.database.exec(ownerCapabilityMigration)
+    applySqliteMigrations(d1.database)
     repository = new D1SecretRepository(d1)
     proofRepository = new D1RevealProofRepository(d1)
     verificationSequence = 0
