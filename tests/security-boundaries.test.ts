@@ -36,21 +36,28 @@ describe('sensitive browser security policy', () => {
     expect(csp).not.toContain('challenges.cloudflare.com')
   })
 
-  it('allows verification resources only in a valid fragment-free verification context', () => {
+  it('allows Turnstile resources only for a valid Turnstile verification context', () => {
     const normal = new Request(`https://onceveil.test/s/${SECRET_ID}`)
     const malformed = new Request(`https://onceveil.test/s/${SECRET_ID}?verify=1&verification=bad`)
     const verification = new Request(
       `https://onceveil.test/s/${SECRET_ID}?verify=1&verification=${'a'.repeat(32)}`,
     )
 
-    expect(secretSurfacePolicy(normal)).toBe('isolated')
-    expect(secretSurfacePolicy(malformed)).toBe('isolated')
-    expect(secretSurfacePolicy(verification)).toBe('verification')
+    expect(secretSurfacePolicy(normal, 'turnstile')).toBe('isolated')
+    expect(secretSurfacePolicy(malformed, 'turnstile')).toBe('isolated')
+    expect(secretSurfacePolicy(verification, 'turnstile')).toBe('turnstile')
+    expect(secretSurfacePolicy(verification, 'none')).toBe('isolated')
+    expect(secretSurfacePolicy(verification, 'unavailable')).toBe('isolated')
 
-    const csp = secretSecurityHeaders('verification')['Content-Security-Policy']
+    const csp = secretSecurityHeaders('turnstile')['Content-Security-Policy']
     expect(csp).toContain('script-src')
     expect(csp).toContain('https://challenges.cloudflare.com')
     expect(csp).toContain('frame-src https://challenges.cloudflare.com')
+
+    const selfHostedCsp = secretSecurityHeaders(
+      secretSurfacePolicy(verification, 'none'),
+    )['Content-Security-Policy']
+    expect(selfHostedCsp).not.toContain('challenges.cloudflare.com')
   })
 })
 
