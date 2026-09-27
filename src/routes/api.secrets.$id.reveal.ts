@@ -12,6 +12,7 @@ import {
   verifyRevealProofWithoutChallengeResponse,
 } from '../runtime/reveal-protection-http'
 import {
+  getAltchaRevealProtection,
   getRevealChallengeVerifier,
   getRevealProofRepository,
   getRevealProtectionProvider,
@@ -36,13 +37,32 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
     handlers: {
       GET: async ({ params, request }) => {
         const runtime = createRequestContext(request)
-        if (request.headers.get('X-Onceveil-Proof-Config') !== '1' || !isValidSecretId(params.id)) {
+        if (!isValidSecretId(params.id)) {
           return jsonError('not_found', 404)
         }
 
         try {
           const provider = getRevealProtectionProvider(runtime)
-          if (provider === 'none') {
+          const url = new URL(request.url)
+
+          if (url.searchParams.get('altcha') === '1') {
+            const verificationId = url.searchParams.get('verification')
+            if (provider !== 'altcha' || !verificationId || !/^[0-9a-f]{32}$/.test(verificationId)) {
+              return jsonError('not_found', 404)
+            }
+
+            const challenge = await getAltchaRevealProtection(runtime).createChallenge(
+              params.id,
+              verificationId,
+            )
+            return withSecretSecurityHeaders(Response.json(challenge, { status: 200 }))
+          }
+
+          if (request.headers.get('X-Onceveil-Proof-Config') !== '1') {
+            return jsonError('not_found', 404)
+          }
+
+          if (provider === 'none' || provider === 'altcha') {
             return withSecretSecurityHeaders(Response.json({ provider }, { status: 200 }))
           }
 
@@ -80,14 +100,14 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
           }
 
           if (request.headers.get('X-Onceveil-Proof-Request') === '1') {
-            return provider === 'turnstile'
-              ? await verifyRevealProofResponse(
+            return provider === 'none'
+              ? await verifyRevealProofWithoutChallengeResponse(request, params.id, proofs)
+              : await verifyRevealProofResponse(
                   request,
                   params.id,
                   getRevealChallengeVerifier(runtime),
                   proofs,
                 )
-              : await verifyRevealProofWithoutChallengeResponse(request, params.id, proofs)
           }
 
           if (request.headers.get('X-Onceveil-Reveal') !== '1') {
