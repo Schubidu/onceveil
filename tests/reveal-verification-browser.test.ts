@@ -77,9 +77,9 @@ describe('reveal verification browser isolation', () => {
     expect(
       isExpectedVerificationMessage(message, source, 'https://ots.schult.dev', VERIFICATION_ID),
     ).toBe(false)
-    expect(
-      isExpectedVerificationMessage(message, source, verificationOrigin, 'a'.repeat(32)),
-    ).toBe(false)
+    expect(isExpectedVerificationMessage(message, source, verificationOrigin, 'a'.repeat(32))).toBe(
+      false,
+    )
   })
 
   it('maps production and preview origins to a distinct verifier origin', () => {
@@ -90,7 +90,8 @@ describe('reveal verification browser isolation', () => {
       'https://ots.schult.dev',
     )
 
-    const previewParent = 'https://feat-issue-20-embedded-reveal-verification.ots-preview.schult.dev'
+    const previewParent =
+      'https://feat-issue-20-embedded-reveal-verification.ots-preview.schult.dev'
     const previewVerifier =
       'https://feat-issue-20-embedded-reveal-verification-onceveil.schult.workers.dev'
     expect(verificationOriginForParent(previewParent)).toBe(previewVerifier)
