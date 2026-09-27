@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
+import { createRequestContext } from '#onceveil-runtime-context'
 import { D1CreateError } from '../adapters/d1-secret-repository'
 import { createSecretResponse } from '../runtime/secret-http'
 import {
@@ -14,10 +15,12 @@ import { withSecretSecurityHeaders } from '../runtime/security-headers'
 export const Route = createFileRoute('/api/secrets')({
   server: {
     handlers: {
-      POST: async ({ request, context }) => {
+      POST: async ({ request }) => {
+        const runtime = createRequestContext(request)
+
         try {
-          await assertSecretDatabaseEnvironment(context)
-          return await createSecretResponse(request, getSecretRepository(context))
+          await assertSecretDatabaseEnvironment(runtime)
+          return await createSecretResponse(request, getSecretRepository(runtime))
         } catch (error) {
           if (error instanceof SecretDatabaseUnavailableError) {
             return withSecretSecurityHeaders(
