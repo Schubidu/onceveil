@@ -29,7 +29,7 @@ interface TurnstileApi {
       action: string
       cData: string
       callback(token: string): void
-      'error-callback'(): void
+      'error-callback'(errorCode?: string): void
       'expired-callback'(): void
     },
   ): string
@@ -284,12 +284,12 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
       broadcast?.postMessage(message)
     }
 
-    function failVerification(message: string) {
+    function failVerification(message: string, errorCode?: string) {
       if (!active) {
         return
       }
 
-      send({ type: 'onceveil-reveal-proof-error' })
+      send({ type: 'onceveil-reveal-proof-error', errorCode })
       setError(message)
     }
 
@@ -358,7 +358,8 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
             action: REVEAL_PROTECTION_ACTION,
             cData: id,
             callback: (token) => void completeVerification(token),
-            'error-callback': () => failVerification('Verification failed. Try again.'),
+            'error-callback': (errorCode) =>
+              failVerification('Verification failed. Try again.', errorCode),
             'expired-callback': () => failVerification('Verification expired. Try again.'),
           })
         }
