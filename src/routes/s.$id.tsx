@@ -305,12 +305,12 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
       broadcast?.postMessage(message)
     }
 
-    function failVerification(message: string, errorCode?: string) {
+    function failVerification(message: string) {
       if (!active) {
         return
       }
 
-      send({ type: 'onceveil-reveal-proof-error', errorCode })
+      send({ type: 'onceveil-reveal-proof-error' })
       setError(message)
     }
 
@@ -366,8 +366,7 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
           action: REVEAL_PROTECTION_ACTION,
           cData: id,
           callback: onToken,
-          'error-callback': (errorCode) =>
-            failVerification('Verification failed. Try again.', errorCode),
+          'error-callback': () => failVerification('Verification failed. Try again.'),
           'expired-callback': () => failVerification('Verification expired. Try again.'),
         })
       }
