@@ -47,22 +47,22 @@ describe('sensitive browser security policy', () => {
     expect(headers['Cross-Origin-Resource-Policy']).toBe('same-origin')
   })
 
-  it('allows Turnstile only in a valid fragment-free verification context', () => {
+  it('allows provider verification only in a valid fragment-free verification context', () => {
     const normal = new Request(`https://onceveil.test/s/${SECRET_ID}`)
     const malformed = new Request(
-      `https://onceveil.test/s/${SECRET_ID}?verify=turnstile&verification=bad`,
+      `https://onceveil.test/s/${SECRET_ID}?verify=1&verification=bad`,
     )
     const verification = new Request(
-      `https://onceveil.test/s/${SECRET_ID}?verify=turnstile&verification=${'a'.repeat(32)}`,
+      `https://onceveil.test/s/${SECRET_ID}?verify=1&verification=${'a'.repeat(32)}`,
     )
 
     expect(secretSurfacePolicy(normal)).toBe('isolated')
     expect(secretSurfacePolicy(malformed)).toBe('isolated')
-    expect(secretSurfacePolicy(verification)).toBe('turnstile')
+    expect(secretSurfacePolicy(verification)).toBe('verification')
 
     const documentOrigin = 'https://feature-x.verify-preview.example.com'
     const parentOrigin = 'https://feature-x.preview.example.com'
-    const headers = secretSecurityHeaders('turnstile', parentOrigin, undefined, documentOrigin)
+    const headers = secretSecurityHeaders('verification', parentOrigin, undefined, documentOrigin)
     const csp = headers['Content-Security-Policy']
     expect(csp).toContain(`script-src ${documentOrigin}`)
     expect(csp).toContain(`style-src ${documentOrigin}`)
