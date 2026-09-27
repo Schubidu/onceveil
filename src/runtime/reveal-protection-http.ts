@@ -140,6 +140,29 @@ export async function verifyRevealProofResponse(
   return json({ verified: true }, 200)
 }
 
+export async function verifyRevealProofWithoutChallengeResponse(
+  request: Request,
+  secretId: SecretId,
+  proofs: RevealProofRepository,
+  nowMs = Date.now(),
+): Promise<Response> {
+  const bodyResult = await readProtectionBody(request)
+  if (bodyResult.kind === 'too_large') {
+    return json({ error: 'invalid_verification' }, 400)
+  }
+
+  const verificationId = bodyResult.kind === 'ok' ? bodyResult.body.verificationId : undefined
+  if (typeof verificationId !== 'string') {
+    return json({ error: 'invalid_verification' }, 400)
+  }
+
+  if (!(await proofs.verify(secretId, verificationId, nowMs))) {
+    return json({ error: 'verification_failed' }, 403)
+  }
+
+  return json({ verified: true }, 200)
+}
+
 export async function consumeRevealProofResponse(
   request: Request,
   secretId: SecretId,
