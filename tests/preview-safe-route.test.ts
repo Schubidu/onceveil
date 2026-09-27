@@ -89,7 +89,8 @@ describe('preview-safe share landing route', () => {
       "iframe.sandbox.add('allow-scripts', 'allow-forms', 'allow-popups', 'allow-same-origin')",
     )
     expect(browserSource).not.toContain('allow-top-navigation')
-    expect(browserSource).toContain('verificationOriginForParent(window.location.origin)')
+    expect(browserSource).toContain('getConfiguredVerificationOrigin(id)')
+    expect(browserSource).not.toContain('.workers.dev')
     expect(routeSource).toContain('parentOrigin,')
     expect(routeSource).toContain('window.parent,')
     expect(routeSource).toContain('isExpectedVerificationMessage(')
