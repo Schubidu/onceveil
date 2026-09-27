@@ -295,7 +295,7 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
       setError(message)
     }
 
-    async function completePopupVerification(token: string) {
+    async function completeVerification(token: string) {
       try {
         const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
           method: 'POST',
@@ -317,7 +317,9 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
 
         send({ type: 'onceveil-reveal-verified' })
         setStatus('Verified. Returning to the secret…')
-        window.close()
+        if (!embedded) {
+          window.close()
+        }
       } catch {
         failVerification('Verification failed. Try again.')
       }
@@ -354,7 +356,7 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
       document.head.append(script)
     }
 
-    async function startPopupVerification() {
+    async function startVerification() {
       try {
         const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
           headers: { 'X-Onceveil-Proof-Config': '1' },
@@ -373,7 +375,7 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
           throw new Error('Reveal protection is unavailable')
         }
 
-        renderTurnstile(config.siteKey, (token) => void completePopupVerification(token))
+        renderTurnstile(config.siteKey, (token) => void completeVerification(token))
       } catch {
         failVerification('Verification is unavailable.')
       }
@@ -389,14 +391,8 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
 
       const candidate = event.data
 
-      if (
-        candidate.type === 'onceveil-reveal-config' &&
-        typeof candidate.siteKey === 'string' &&
-        candidate.action === REVEAL_PROTECTION_ACTION
-      ) {
-        renderTurnstile(candidate.siteKey, (token) => {
-          send({ type: 'onceveil-reveal-token', token })
-        })
+      if (candidate.type === 'onceveil-reveal-prepared') {
+        void startVerification()
       }
 
       if (candidate.type === 'onceveil-reveal-proof-error') {
@@ -416,7 +412,7 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
 
         const candidate = message as Partial<RevealVerificationMessage>
         if (candidate.type === 'onceveil-reveal-prepared') {
-          void startPopupVerification()
+          void startVerification()
         }
 
         if (candidate.type === 'onceveil-reveal-proof-error') {
