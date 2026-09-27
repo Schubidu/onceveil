@@ -55,6 +55,11 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
               return jsonError('not_found', 404)
             }
 
+            const proofs = getRevealProofRepository(runtime)
+            if (!(await proofs.isPending(params.id, verificationId, Date.now()))) {
+              return jsonError('not_found', 404)
+            }
+
             const challenge = await getAltchaRevealProtection(runtime).createChallenge(
               params.id,
               verificationId,
