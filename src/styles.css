@@ -182,7 +182,6 @@ button:disabled {
   background: transparent;
 }
 
-.verification-frame[hidden],
 .verification-fallback[hidden] {
   display: none;
 }
