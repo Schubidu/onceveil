@@ -20,7 +20,7 @@ export interface OnceveilRequestContext {
   revealProtection: RevealProtectionRuntime
 }
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/router-core' {
   interface Register {
     server: {
       requestContext: OnceveilRequestContext
