@@ -202,6 +202,34 @@ export class D1RevealProofRepository implements RevealProofRepository {
     throw new RevealProofStorageError()
   }
 
+  async isPending(secretId: SecretId, verificationId: string, nowMs: number): Promise<boolean> {
+    if (!VERIFICATION_PATTERN.test(verificationId) || !Number.isSafeInteger(nowMs)) {
+      return false
+    }
+
+    const session = this.db.withSession('first-primary')
+
+    try {
+      const row = await session
+        .prepare(
+          `SELECT 1 AS present
+           FROM reveal_proofs
+           WHERE verification_id = ?
+             AND secret_id = ?
+             AND verified_at_ms IS NULL
+             AND consumed_at_ms IS NULL
+             AND expires_at_ms > ?
+           LIMIT 1`,
+        )
+        .bind(verificationId, secretId, nowMs)
+        .first<{ present: number }>()
+
+      return row?.present === 1
+    } catch {
+      throw new RevealProofStorageError()
+    }
+  }
+
   async verify(secretId: SecretId, verificationId: string, nowMs: number): Promise<boolean> {
     if (!VERIFICATION_PATTERN.test(verificationId) || !Number.isSafeInteger(nowMs)) {
       return false
