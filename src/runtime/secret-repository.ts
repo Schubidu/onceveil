@@ -24,7 +24,7 @@ export class SecretDatabaseEnvironmentError extends Error {
 }
 
 export function getSecretDatabase(context: OnceveilRequestContext): D1DatabaseLike {
-  if (!context.secretDatabase) {
+  if (context.databaseEnvironment === 'unavailable' || !context.secretDatabase) {
     throw new SecretDatabaseUnavailableError()
   }
 
@@ -38,13 +38,12 @@ export function getSecretRepository(context: OnceveilRequestContext): SecretRepo
 export async function assertSecretDatabaseEnvironment(
   context: OnceveilRequestContext,
 ): Promise<void> {
-  const expected = context.expectedDatabaseEnvironment
-  if (!expected) {
-    getSecretDatabase(context)
+  const database = getSecretDatabase(context)
+  const expected = context.databaseEnvironment
+
+  if (expected === 'markerless') {
     return
   }
-
-  const database = getSecretDatabase(context)
 
   let row: EnvironmentRow | null
   try {
