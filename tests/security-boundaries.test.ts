@@ -36,13 +36,11 @@ describe('sensitive browser security policy', () => {
     expect(csp).not.toContain('challenges.cloudflare.com')
   })
 
-  it('allows the share page to frame only its paired verification origin', () => {
-    const verificationOrigin =
-      'https://feat-issue-20-embedded-reveal-verification-onceveil.schult.workers.dev'
-    const headers = secretSecurityHeaders('isolated', undefined, verificationOrigin)
+  it('allows the share page to frame only its own origin', () => {
+    const headers = secretSecurityHeaders('isolated', undefined, "'self'")
     const csp = headers['Content-Security-Policy']
 
-    expect(csp).toContain(`frame-src ${verificationOrigin}`)
+    expect(csp).toContain("frame-src 'self'")
     expect(csp).toContain("frame-ancestors 'none'")
     expect(headers['X-Frame-Options']).toBe('DENY')
     expect(headers['Cross-Origin-Resource-Policy']).toBe('same-origin')
@@ -61,15 +59,14 @@ describe('sensitive browser security policy', () => {
     expect(secretSurfacePolicy(malformed)).toBe('isolated')
     expect(secretSurfacePolicy(verification)).toBe('turnstile')
 
-    const frameAncestor = 'https://feat-issue-20.ots-preview.schult.dev'
-    const headers = secretSecurityHeaders('turnstile', frameAncestor)
+    const headers = secretSecurityHeaders('turnstile', "'self'")
     const csp = headers['Content-Security-Policy']
     expect(csp).toContain('script-src')
     expect(csp).toContain('https://challenges.cloudflare.com')
     expect(csp).toContain('frame-src https://challenges.cloudflare.com')
-    expect(csp).toContain(`frame-ancestors ${frameAncestor}`)
-    expect(headers['Cross-Origin-Resource-Policy']).toBe('cross-origin')
-    expect(headers['X-Frame-Options']).toBeUndefined()
+    expect(csp).toContain("frame-ancestors 'self'")
+    expect(headers['Cross-Origin-Resource-Policy']).toBe('same-origin')
+    expect(headers['X-Frame-Options']).toBe('SAMEORIGIN')
   })
 })
 
