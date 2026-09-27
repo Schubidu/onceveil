@@ -1,4 +1,4 @@
-export type SecretSurfacePolicy = 'isolated' | 'turnstile'
+export type SecretSurfacePolicy = 'isolated' | 'verification'
 
 const VERIFICATION_ID_PATTERN = /^[0-9a-f]{32}$/
 
@@ -8,8 +8,8 @@ function contentSecurityPolicy(
   frameSource?: string,
   documentOrigin?: string,
 ): string {
-  const turnstile = policy === 'turnstile'
-  const assetSource = turnstile && documentOrigin ? documentOrigin : "'self'"
+  const verification = policy === 'verification'
+  const assetSource = verification && documentOrigin ? documentOrigin : "'self'"
   return [
     "default-src 'none'",
     "base-uri 'none'",
@@ -19,14 +19,14 @@ function contentSecurityPolicy(
     `font-src ${assetSource}`,
     `style-src ${assetSource} 'unsafe-inline'`,
     "worker-src 'none'",
-    turnstile && frameAncestor ? `frame-ancestors ${frameAncestor}` : "frame-ancestors 'none'",
-    turnstile
+    verification && frameAncestor ? `frame-ancestors ${frameAncestor}` : "frame-ancestors 'none'",
+    verification
       ? `script-src ${assetSource} 'unsafe-inline' https://challenges.cloudflare.com`
       : "script-src 'self' 'unsafe-inline'",
-    turnstile
+    verification
       ? `connect-src ${assetSource} https://challenges.cloudflare.com`
       : "connect-src 'self'",
-    turnstile
+    verification
       ? 'frame-src https://challenges.cloudflare.com'
       : frameSource
         ? `frame-src ${frameSource}`
@@ -98,9 +98,9 @@ export function secretSurfacePolicy(request: Request): SecretSurfacePolicy {
   const url = new URL(request.url)
   const verificationId = url.searchParams.get('verification')
   return url.pathname.startsWith('/s/') &&
-    url.searchParams.get('verify') === 'turnstile' &&
+    url.searchParams.get('verify') === '1' &&
     verificationId !== null &&
     VERIFICATION_ID_PATTERN.test(verificationId)
-    ? 'turnstile'
+    ? 'verification'
     : 'isolated'
 }
