@@ -416,10 +416,7 @@ function requestEmbeddedRevealProof(
   })
 }
 
-export async function requestRevealProof(
-  id: SecretId,
-  authorization: string,
-): Promise<string> {
+export async function requestRevealProof(id: SecretId, authorization: string): Promise<string> {
   if (!REVEAL_AUTHORIZATION_PATTERN.test(authorization)) {
     throw new Error('Invalid reveal authorization')
   }
@@ -427,9 +424,7 @@ export async function requestRevealProof(
   const supportsDialog =
     typeof HTMLDialogElement !== 'undefined' &&
     typeof document.createElement('dialog').showModal === 'function'
-  const verificationOrigin = supportsDialog
-    ? await getConfiguredVerificationOrigin(id)
-    : undefined
+  const verificationOrigin = supportsDialog ? await getConfiguredVerificationOrigin(id) : undefined
 
   return verificationOrigin
     ? requestEmbeddedRevealProof(id, authorization, verificationOrigin)
