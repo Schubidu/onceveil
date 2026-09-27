@@ -10,6 +10,7 @@ import {
 } from '../browser/secret-crypto'
 import {
   discardRevealVerificationFragment,
+  isExpectedVerificationMessage,
   requestRevealProof,
   revealVerificationId,
   type RevealVerificationMessage,
@@ -261,18 +262,25 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
     let started = false
     let script: HTMLScriptElement | undefined
     const embedded = window.parent !== window
+    const parentOrigin = embedded
+      ? new URLSearchParams(window.location.search).get('parent')
+      : null
     const broadcast = embedded
       ? undefined
       : new BroadcastChannel(`onceveil-reveal-${verificationId}`)
 
     function send(message: RevealVerificationMessage) {
       if (embedded) {
+        if (!parentOrigin) {
+          return
+        }
+
         window.parent.postMessage(
           {
             ...message,
             verificationId,
           } satisfies RevealVerificationWindowMessage,
-          '*',
+          parentOrigin,
         )
         return
       }
@@ -374,14 +382,19 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
     }
 
     function handleEmbeddedMessage(event: MessageEvent<unknown>) {
-      if (event.source !== window.parent) {
+      if (
+        !parentOrigin ||
+        !isExpectedVerificationMessage(
+          event,
+          window.parent,
+          parentOrigin,
+          verificationId,
+        )
+      ) {
         return
       }
 
-      const candidate = event.data as Partial<RevealVerificationWindowMessage> | null
-      if (candidate?.verificationId !== verificationId) {
-        return
-      }
+      const candidate = event.data
 
       if (
         candidate.type === 'onceveil-reveal-config' &&
