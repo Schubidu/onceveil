@@ -1,0 +1,95 @@
+import { spawn } from 'node:child_process'
+import { mkdtemp, rm } from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
+
+const directory = await mkdtemp(path.join(os.tmpdir(), 'onceveil-node-smoke-'))
+const databasePath = path.join(directory, 'onceveil.sqlite')
+const port = 31_000 + (process.pid % 1_000)
+const origin = `http://127.0.0.1:${port}`
+let logs = ''
+
+const server = spawn(process.execPath, ['.output/server/index.mjs'], {
+  env: {
+    ...process.env,
+    HOST: '127.0.0.1',
+    PORT: String(port),
+    ONCEVEIL_SQLITE_PATH: databasePath,
+    ONCEVEIL_REVEAL_PROTECTION: 'none',
+  },
+  stdio: ['ignore', 'pipe', 'pipe'],
+})
+
+server.stdout.setEncoding('utf8')
+server.stderr.setEncoding('utf8')
+server.stdout.on('data', (chunk) => {
+  logs += chunk
+})
+server.stderr.on('data', (chunk) => {
+  logs += chunk
+})
+
+async function waitUntilReady() {
+  const deadline = Date.now() + 15_000
+  let lastError
+
+  while (Date.now() < deadline) {
+    if (server.exitCode !== null) {
+      throw new Error(`Node server exited before readiness (code ${server.exitCode})\n${logs}`)
+    }
+
+    try {
+      const response = await fetch(`${origin}/ready`)
+      const body = await response.json()
+      if (response.status === 200 && body?.status === 'ready') {
+        return
+      }
+
+      lastError = new Error(`readiness returned ${response.status}: ${JSON.stringify(body)}`)
+    } catch (error) {
+      lastError = error
+    }
+
+    await delay(100)
+  }
+
+  throw new Error(
+    `Node server did not become ready: ${lastError instanceof Error ? lastError.message : 'unknown error'}\n${logs}`,
+  )
+}
+
+async function stopServer() {
+  if (server.exitCode !== null) {
+    return
+  }
+
+  server.kill('SIGTERM')
+  await Promise.race([
+    new Promise((resolve) => server.once('exit', resolve)),
+    delay(3_000).then(() => {
+      if (server.exitCode === null) {
+        server.kill('SIGKILL')
+      }
+    }),
+  ])
+}
+
+try {
+  await waitUntilReady()
+
+  const response = await fetch(`${origin}/`)
+  if (!response.ok) {
+    throw new Error(`Node server root returned ${response.status}`)
+  }
+
+  const csp = response.headers.get('content-security-policy') ?? ''
+  if (csp.includes('challenges.cloudflare.com')) {
+    throw new Error('Self-hosted none mode unexpectedly enables Turnstile CSP')
+  }
+
+  console.log('Node production runtime smoke check passed')
+} finally {
+  await stopServer()
+  await rm(directory, { recursive: true, force: true })
+}
