@@ -6,8 +6,8 @@ Onceveil uses one D1 binding named `DB`, but Production and Worker Previews must
 
 Create two remote D1 databases:
 
-- `onceveil-production` for `ots.schult.dev` / `main` — configured as `1d203155-cdad-4d27-9c84-383c59c059ab`;
-- `onceveil-preview` for `ots-preview.schult.dev` and PR previews — configured as `a8f3fce5-8226-40f1-804a-96677743f541`.
+- `onceveil-production` for the Production deployment — configured as `1d203155-cdad-4d27-9c84-383c59c059ab`;
+- `onceveil-preview` for PR/branch Previews — configured as `a8f3fce5-8226-40f1-804a-96677743f541`.
 
 A Preview must never inherit or target the production database.
 
@@ -82,7 +82,7 @@ Physical cleanup is deliberately separate from one-time correctness. A future sc
 
 ## Runtime database environment guard
 
-Each database has an `onceveil_environment` marker. Deployment initializes the marker only when it is absent and then verifies the exact expected value before deployment. An existing opposite marker is never overwritten. The Worker derives the expected environment from the request hostname and checks the database marker before create/reveal operations. Preview hostnames require the `preview` marker; Production hostnames require `production`.
+Each database has an `onceveil_environment` marker. Deployment initializes the marker only when it is absent and then verifies the exact expected value before deployment. An existing opposite marker is never overwritten. The Worker reads the expected environment from the explicit `ONCEVEIL_ENVIRONMENT` deployment variable and checks the database marker before create/reveal operations. Production sets `ONCEVEIL_ENVIRONMENT=production`; Worker Previews set `ONCEVEIL_ENVIRONMENT=preview`. Hostnames are deliberately not used to infer deployment mode, so custom domains and alternate hosting layouts remain supported.
 
 This makes Preview/Production isolation fail closed: if a Preview is ever wired to the Production database (or to an unmarked database), secret access returns `503` instead of reading or writing the wrong environment.
 
