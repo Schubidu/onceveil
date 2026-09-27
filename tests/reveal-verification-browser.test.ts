@@ -101,7 +101,12 @@ describe('reveal verification browser isolation', () => {
     const previewVerifier = 'https://feature-x.verify-preview.example.com'
     expect(verificationOriginForParent(previewParent, config)).toBe(previewVerifier)
     expect(parentOriginForVerification(previewVerifier, config)).toBe(previewParent)
-    expect(verificationOriginForParent('http://localhost:3000', config)).toBeUndefined()
+    expect(
+      verificationOriginForParent('https://app.example.com', {
+        appOrigin: 'https://app.example.com',
+        verificationOrigin: 'https://app.example.com',
+      }),
+    ).toBeUndefined()
   })
 
   it('requires an isolated opener-less browsing context', () => {
