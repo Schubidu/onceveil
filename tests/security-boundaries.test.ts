@@ -37,7 +37,7 @@ describe('sensitive browser security policy', () => {
   })
 
   it('allows the share page to frame only its paired verification origin', () => {
-    const verificationOrigin = 'https://onceveil.schult.workers.dev'
+    const verificationOrigin = 'https://verify.example.com'
     const headers = secretSecurityHeaders('isolated', undefined, verificationOrigin)
     const csp = headers['Content-Security-Policy']
 
@@ -61,8 +61,8 @@ describe('sensitive browser security policy', () => {
     expect(secretSurfacePolicy(verification)).toBe('turnstile')
 
     const documentOrigin =
-      'https://feat-issue-20-embedded-reveal-verification-onceveil.schult.workers.dev'
-    const parentOrigin = 'https://feat-issue-20-embedded-reveal-verification.ots-preview.schult.dev'
+      'https://feature-x.verify-preview.example.com'
+    const parentOrigin = 'https://feature-x.preview.example.com'
     const headers = secretSecurityHeaders('turnstile', parentOrigin, undefined, documentOrigin)
     const csp = headers['Content-Security-Policy']
     expect(csp).toContain(`script-src ${documentOrigin}`)
