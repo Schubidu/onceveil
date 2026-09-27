@@ -55,7 +55,9 @@ export function secretSecurityHeaders(
     'X-Content-Type-Options': 'nosniff',
   }
 
-  headers['X-Frame-Options'] = policy === 'turnstile' && frameAncestor ? 'SAMEORIGIN' : 'DENY'
+  if (policy === 'isolated') {
+    headers['X-Frame-Options'] = 'DENY'
+  }
 
   return headers
 }
