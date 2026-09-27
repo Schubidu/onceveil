@@ -280,13 +280,15 @@ function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promis
   iframe.src = verificationUrl
   iframe.referrerPolicy = 'no-referrer'
   iframe.sandbox.add('allow-scripts', 'allow-forms', 'allow-popups')
+  iframe.hidden = true
 
   status.className = 'verification-status'
-  status.textContent = 'Complete verification to reveal the secret.'
+  status.textContent = 'Preparing verification…'
 
   fallback.type = 'button'
   fallback.className = 'verification-fallback'
   fallback.textContent = 'Open verification in new window'
+  fallback.hidden = true
 
   dialog.append(iframe, status, fallback)
   document.body.append(dialog)
@@ -302,7 +304,8 @@ function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promis
       finish(() => reject(new Error('Reveal verification timed out')))
     }, VERIFICATION_TIMEOUT_MS)
     const readyTimeout = window.setTimeout(() => {
-      status.textContent = 'Embedded verification did not start. Open it in a new window instead.'
+      status.textContent = 'Embedded verification did not start.'
+      fallback.hidden = false
     }, VERIFICATION_READY_TIMEOUT_MS)
 
     function cleanupEmbedded() {
@@ -334,6 +337,7 @@ function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promis
 
       status.textContent = message
       iframe.hidden = true
+      fallback.hidden = false
     }
 
     function startFallback() {
@@ -400,6 +404,8 @@ function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promis
               return
             }
 
+            status.textContent = 'Complete verification to reveal the secret.'
+            iframe.hidden = false
             postToVerification({
               type: 'onceveil-reveal-config',
               siteKey: config.siteKey,
