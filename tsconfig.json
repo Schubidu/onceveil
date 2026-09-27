@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
@@ -14,19 +10,10 @@
     "noEmit": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "types": [
-      "vite/client",
-      "node"
-    ],
+    "types": ["vite/client", "node"],
     "paths": {
-      "#onceveil-runtime-context": [
-        "./src/runtime/cloudflare-request-context.ts"
-      ]
+      "#onceveil-runtime-context": ["./src/runtime/cloudflare-request-context.ts"]
     }
   },
-  "include": [
-    "src",
-    "tests",
-    "vite.config.ts"
-  ]
+  "include": ["src", "tests", "vite.config.ts"]
 }
