@@ -8,6 +8,10 @@ import {
 } from '../../src/core/secret'
 
 const OWNER_KEY_HASH = 'a'.repeat(64)
+const REPLAY_ORIGINAL = '1'.repeat(64)
+const REPLAY_REPLACEMENT = '2'.repeat(64)
+const REPLAY_SECRET = '3'.repeat(64)
+const REPLAY_SAME_PAYLOAD = '4'.repeat(64)
 
 export interface SecretRepositoryFixture {
   repository: SecretRepository
@@ -53,11 +57,11 @@ export function secretRepositoryContract(
           ciphertext: new Uint8Array([9, 9, 9]),
         } as PreparedSecretRecord
 
-        expect(await repository.create(original, 'replay-original', OWNER_KEY_HASH)).toEqual({
+        expect(await repository.create(original, REPLAY_ORIGINAL, OWNER_KEY_HASH)).toEqual({
           kind: 'created',
           id: original.id,
         })
-        expect(await repository.create(replacement, 'replay-replacement', OWNER_KEY_HASH)).toEqual({
+        expect(await repository.create(replacement, REPLAY_REPLACEMENT, OWNER_KEY_HASH)).toEqual({
           kind: 'duplicate_id',
         })
 
@@ -75,9 +79,9 @@ export function secretRepositoryContract(
         const secret = record()
 
         const results = await Promise.all([
-          repository.create(secret, 'replay-secret', OWNER_KEY_HASH),
-          repository.create(secret, 'replay-secret', OWNER_KEY_HASH),
-          repository.create(secret, 'replay-secret', OWNER_KEY_HASH),
+          repository.create(secret, REPLAY_SECRET, OWNER_KEY_HASH),
+          repository.create(secret, REPLAY_SECRET, OWNER_KEY_HASH),
+          repository.create(secret, REPLAY_SECRET, OWNER_KEY_HASH),
         ])
 
         expect(results.filter((result) => result.kind === 'created')).toHaveLength(1)
@@ -96,11 +100,11 @@ export function secretRepositoryContract(
         const original = record()
         const replay = record()
 
-        expect(await repository.create(original, 'same-payload', OWNER_KEY_HASH)).toEqual({
+        expect(await repository.create(original, REPLAY_SAME_PAYLOAD, OWNER_KEY_HASH)).toEqual({
           kind: 'created',
           id: original.id,
         })
-        expect(await repository.create(replay, 'same-payload', OWNER_KEY_HASH)).toEqual({
+        expect(await repository.create(replay, REPLAY_SAME_PAYLOAD, OWNER_KEY_HASH)).toEqual({
           kind: 'replayed',
           id: original.id,
         })
@@ -121,11 +125,11 @@ export function secretRepositoryContract(
           throw new Error(`failed to prepare replay conflict: ${changedTtl.reason}`)
         }
 
-        expect(await repository.create(original, 'same-payload', OWNER_KEY_HASH)).toEqual({
+        expect(await repository.create(original, REPLAY_SAME_PAYLOAD, OWNER_KEY_HASH)).toEqual({
           kind: 'created',
           id: original.id,
         })
-        expect(await repository.create(changedTtl.record, 'same-payload', OWNER_KEY_HASH)).toEqual({
+        expect(await repository.create(changedTtl.record, REPLAY_SAME_PAYLOAD, OWNER_KEY_HASH)).toEqual({
           kind: 'replay_conflict',
         })
       })
@@ -134,7 +138,7 @@ export function secretRepositoryContract(
     it('allows only one concurrent consume winner', async () => {
       await withRepository(factory, async (repository) => {
         const secret = record()
-        await repository.create(secret, 'replay-secret', OWNER_KEY_HASH)
+        await repository.create(secret, REPLAY_SECRET, OWNER_KEY_HASH)
 
         const results = await Promise.all([
           repository.consume(secret.id, 500),
@@ -155,7 +159,7 @@ export function secretRepositoryContract(
     it('allows consume or revoke to win, but never both', async () => {
       await withRepository(factory, async (repository) => {
         const secret = record()
-        await repository.create(secret, 'replay-secret', OWNER_KEY_HASH)
+        await repository.create(secret, REPLAY_SECRET, OWNER_KEY_HASH)
 
         const [consume, revoke] = await Promise.all([
           repository.consume(secret.id, 500),
@@ -181,7 +185,7 @@ export function secretRepositoryContract(
     it('treats a wrong owner capability as not found', async () => {
       await withRepository(factory, async (repository) => {
         const secret = record()
-        await repository.create(secret, 'replay-secret', OWNER_KEY_HASH)
+        await repository.create(secret, REPLAY_SECRET, OWNER_KEY_HASH)
 
         await expect(repository.getStatus(secret.id, 'b'.repeat(64), 500)).resolves.toBeUndefined()
         await expect(repository.revoke(secret.id, 'b'.repeat(64), 500)).resolves.toEqual({
@@ -194,7 +198,7 @@ export function secretRepositoryContract(
     it('never exposes ciphertext through status or revoke operations', async () => {
       await withRepository(factory, async (repository) => {
         const secret = record()
-        await repository.create(secret, 'replay-secret', OWNER_KEY_HASH)
+        await repository.create(secret, REPLAY_SECRET, OWNER_KEY_HASH)
 
         const status = await repository.getStatus(secret.id, OWNER_KEY_HASH, 500)
         expect(status?.state).toBe('AVAILABLE')
