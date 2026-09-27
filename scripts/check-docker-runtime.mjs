@@ -2,17 +2,21 @@ import { execFile } from 'node:child_process'
 import { createHash, randomBytes, webcrypto } from 'node:crypto'
 import { promisify } from 'node:util'
 
+import { solveChallenge } from 'altcha-lib'
+import { deriveKey } from 'altcha-lib/algorithms/pbkdf2'
+
 const execFileAsync = promisify(execFile)
 const projectName = `onceveil-ci-${process.pid}`
 const port = 32_000 + (process.pid % 1_000)
 const origin = `http://127.0.0.1:${port}`
+const altchaSecret = randomBytes(32).toString('hex')
 
 const composeEnv = {
   ...process.env,
   COMPOSE_PROJECT_NAME: projectName,
   ONCEVEIL_BIND_ADDRESS: '127.0.0.1',
   ONCEVEIL_PORT: String(port),
-  ONCEVEIL_REVEAL_PROTECTION: 'none',
+  ONCEVEIL_ALTCHA_SECRET: altchaSecret,
 }
 
 async function command(file, args, env = composeEnv) {
@@ -25,19 +29,6 @@ async function command(file, args, env = composeEnv) {
 
 async function compose(args, env = composeEnv) {
   return command('docker', ['compose', ...args], env)
-}
-
-async function assertComposeFailsClosed() {
-  const env = { ...composeEnv }
-  delete env.ONCEVEIL_REVEAL_PROTECTION
-
-  try {
-    await compose(['config'], env)
-  } catch {
-    return
-  }
-
-  throw new Error('docker compose config must fail without explicit reveal protection')
 }
 
 async function containerId() {
@@ -149,6 +140,28 @@ async function createPersistedSecret() {
   }
 }
 
+async function solveAltcha(path, verificationId) {
+  const challengeResponse = await fetch(
+    `${origin}${path}?altcha=1&verification=${verificationId}`,
+    {
+      headers: { Connection: 'close' },
+    },
+  )
+  const challenge = await challengeResponse.json()
+  if (!challengeResponse.ok) {
+    throw new Error(
+      `ALTCHA challenge failed: ${challengeResponse.status} ${JSON.stringify(challenge)}`,
+    )
+  }
+
+  const solution = await solveChallenge({ challenge, deriveKey })
+  if (!solution) {
+    throw new Error('ALTCHA challenge could not be solved')
+  }
+
+  return btoa(JSON.stringify({ challenge, solution }))
+}
+
 async function revealPersistedSecret(secret) {
   const verificationId = randomBytes(16).toString('hex')
   const path = `/api/secrets/${secret.id}/reveal`
@@ -168,13 +181,36 @@ async function revealPersistedSecret(secret) {
     )
   }
 
+  const invalidVerification = await postJson(
+    path,
+    { token: 'invalid-altcha-payload', verificationId },
+    { 'X-Onceveil-Proof-Request': '1' },
+  )
+  if (invalidVerification.status !== 403) {
+    throw new Error(
+      `invalid ALTCHA verification returned ${invalidVerification.status} instead of 403`,
+    )
+  }
+
+  const token = await solveAltcha(path, verificationId)
   const verificationResponse = await postJson(
     path,
-    { verificationId },
+    { token, verificationId },
     { 'X-Onceveil-Proof-Request': '1' },
   )
   if (verificationResponse.status !== 200) {
-    throw new Error(`proof verification failed: ${verificationResponse.status}`)
+    throw new Error(`ALTCHA proof verification failed: ${verificationResponse.status}`)
+  }
+
+  const replayVerification = await postJson(
+    path,
+    { token, verificationId },
+    { 'X-Onceveil-Proof-Request': '1' },
+  )
+  if (replayVerification.status !== 403) {
+    throw new Error(
+      `replayed ALTCHA verification returned ${replayVerification.status} instead of 403`,
+    )
   }
 
   const reveal = () => postJson(path, { proof: prepared.proof }, { 'X-Onceveil-Reveal': '1' })
@@ -201,7 +237,6 @@ async function assertNonRoot() {
 
 try {
   await command('docker', ['compose', 'version'])
-  await assertComposeFailsClosed()
 
   await compose(['up', '--build', '-d', 'onceveil'])
   const firstContainer = await waitUntilHealthy()
@@ -218,7 +253,7 @@ try {
   await assertNonRoot()
   await revealPersistedSecret(secret)
 
-  console.log('Docker Compose persistence and one-time reveal check passed')
+  console.log('Docker Compose ALTCHA, persistence and one-time reveal check passed')
 } finally {
   await compose(['down', '-v', '--remove-orphans']).catch(() => undefined)
 }
