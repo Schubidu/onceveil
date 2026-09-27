@@ -89,11 +89,19 @@ describe('preview-safe share landing route', () => {
       "iframe.sandbox.add('allow-scripts', 'allow-forms', 'allow-popups', 'allow-same-origin')",
     )
     expect(browserSource).not.toContain('allow-top-navigation')
-    expect(browserSource).toContain('getConfiguredVerificationOrigin(id)')
+    expect(browserSource).toContain('loadRevealVerificationOrigin(id: SecretId)')
+    expect(routeSource).toContain('loadRevealVerificationOrigin(id).then')
     expect(browserSource).not.toContain('.workers.dev')
     expect(routeSource).toContain('parentOrigin,')
     expect(routeSource).toContain('window.parent,')
     expect(routeSource).toContain('isExpectedVerificationMessage(')
+  })
+
+  it('keeps popup selection synchronous with the reveal action', async () => {
+    const browserSource = await readFile(path.resolve('src/browser/reveal-verification.ts'), 'utf8')
+
+    expect(browserSource).toContain('export function requestRevealProof(')
+    expect(browserSource).not.toContain('export async function requestRevealProof(')
   })
 
   it('keeps an explicit fallback available after embedded Turnstile errors', async () => {
