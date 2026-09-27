@@ -1,5 +1,4 @@
 import type { SecretId } from '../core/secret'
-import { verificationOriginForParent } from '../platform/cloudflare-verification-origin'
 
 const VERIFICATION_BYTES = 16
 const VERIFICATION_ID_PATTERN = /^[0-9a-f]{32}$/
@@ -48,6 +47,34 @@ export interface RevealVerificationHistory {
 interface RevealProofPreparation {
   proof: string
   verificationId: string
+}
+
+interface RevealBrowserConfig {
+  verificationOrigin?: string
+}
+
+async function getConfiguredVerificationOrigin(id: SecretId): Promise<string | undefined> {
+  const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
+    headers: { 'X-Onceveil-Proof-Config': '1' },
+  })
+  const config = (await response.json().catch(() => undefined)) as
+    | Partial<RevealBrowserConfig>
+    | undefined
+
+  if (!response.ok || typeof config?.verificationOrigin !== 'string') {
+    return undefined
+  }
+
+  try {
+    const origin = new URL(config.verificationOrigin)
+    return origin.protocol === 'https:' &&
+      origin.origin === config.verificationOrigin &&
+      origin.origin !== window.location.origin
+      ? origin.origin
+      : undefined
+  } catch {
+    return undefined
+  }
 }
 
 function randomVerificationId(): string {
@@ -389,18 +416,22 @@ function requestEmbeddedRevealProof(
   })
 }
 
-export function requestRevealProof(id: SecretId, authorization: string): Promise<string> {
+export async function requestRevealProof(
+  id: SecretId,
+  authorization: string,
+): Promise<string> {
   if (!REVEAL_AUTHORIZATION_PATTERN.test(authorization)) {
-    return Promise.reject(new Error('Invalid reveal authorization'))
+    throw new Error('Invalid reveal authorization')
   }
 
   const supportsDialog =
     typeof HTMLDialogElement !== 'undefined' &&
     typeof document.createElement('dialog').showModal === 'function'
+  const verificationOrigin = supportsDialog
+    ? await getConfiguredVerificationOrigin(id)
+    : undefined
 
-  const verificationOrigin = verificationOriginForParent(window.location.origin)
-
-  return supportsDialog && verificationOrigin
+  return verificationOrigin
     ? requestEmbeddedRevealProof(id, authorization, verificationOrigin)
     : requestRevealProofPopup(id, authorization)
 }
