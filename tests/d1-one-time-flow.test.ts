@@ -5,13 +5,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { D1RevealProofRepository } from '../src/adapters/d1-reveal-proof-repository'
-import {
-  D1SecretRepository,
-  type D1BindingValue,
-  type D1DatabaseLike,
-  type D1PreparedStatementLike,
-  type D1ResultLike,
-} from '../src/adapters/d1-secret-repository'
+import { D1SecretRepository, type D1DatabaseLike } from '../src/adapters/d1-secret-repository'
 import { decryptSecret, encryptSecret } from '../src/browser/secret-crypto'
 import { REVEAL_PROOF_TTL_MS } from '../src/core/reveal-protection'
 import type { SecretId } from '../src/core/secret'
@@ -25,118 +19,32 @@ import {
   MAX_CREATE_REQUEST_BYTES,
   revealSecretResponse,
 } from '../src/runtime/secret-http'
-
-function sqliteValue(value: D1BindingValue) {
-  if (value instanceof ArrayBuffer) {
-    return new Uint8Array(value)
-  }
-
-  if (ArrayBuffer.isView(value)) {
-    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
-  }
-
-  return value
-}
+import { SQLiteD1TestDatabase } from './support/d1-test-database'
+import { secretRepositoryContract } from './support/secret-repository-contract'
+import { applySqliteMigrations } from './support/sqlite-migrations'
 
 const PUBLIC_ID = 'f'.repeat(32) as SecretId
 const OWNER_KEY_HASH = 'a'.repeat(64)
 const allocatePublicId = () => PUBLIC_ID
 
-class SQLitePreparedStatement implements D1PreparedStatementLike {
-  constructor(
-    private readonly database: DatabaseSync,
-    private readonly query: string,
-    private readonly values: D1BindingValue[] = [],
-  ) {}
+secretRepositoryContract('D1 adapter', () => {
+  const database = new SQLiteD1TestDatabase()
+  applySqliteMigrations(database.database)
 
-  bind(...values: D1BindingValue[]): D1PreparedStatementLike {
-    return new SQLitePreparedStatement(this.database, this.query, values)
+  return {
+    repository: new D1SecretRepository(database),
+    close: () => database.close(),
   }
-
-  async run<Row = Record<string, unknown>>(): Promise<D1ResultLike<Row>> {
-    return this.execute<Row>()
-  }
-
-  async first<Row = Record<string, unknown>>(): Promise<Row | null> {
-    const statement = this.database.prepare(this.query)
-    return (statement.get(...this.values.map(sqliteValue)) as Row | undefined) ?? null
-  }
-
-  execute<Row = Record<string, unknown>>(): D1ResultLike<Row> {
-    const statement = this.database.prepare(this.query)
-    const values = this.values.map(sqliteValue)
-
-    if (/^\s*SELECT\b/i.test(this.query)) {
-      return {
-        success: true,
-        results: statement.all(...values) as Row[],
-        meta: { changes: 0 },
-      }
-    }
-
-    const result = statement.run(...values)
-    return {
-      success: true,
-      results: [],
-      meta: { changes: Number(result.changes) },
-    }
-  }
-}
-
-class SQLiteD1Database implements D1DatabaseLike {
-  readonly database = new DatabaseSync(':memory:')
-  private queue = Promise.resolve()
-
-  prepare(query: string): D1PreparedStatementLike {
-    return new SQLitePreparedStatement(this.database, query)
-  }
-
-  withSession(): SQLiteD1Database {
-    return this
-  }
-
-  async batch(statements: D1PreparedStatementLike[]): Promise<D1ResultLike[]> {
-    const previous = this.queue
-    let release: (() => void) | undefined
-    this.queue = new Promise<void>((resolve) => {
-      release = resolve
-    })
-
-    await previous
-    await Promise.resolve()
-
-    this.database.exec('BEGIN IMMEDIATE')
-    try {
-      const results = statements.map((statement) => {
-        if (!(statement instanceof SQLitePreparedStatement)) {
-          throw new Error('unexpected statement implementation')
-        }
-
-        return statement.execute()
-      })
-      this.database.exec('COMMIT')
-      return results
-    } catch (error) {
-      this.database.exec('ROLLBACK')
-      throw error
-    } finally {
-      release?.()
-    }
-  }
-
-  close() {
-    this.database.close()
-  }
-}
+})
 
 describe('D1 one-time HTTP flow', () => {
-  let d1: SQLiteD1Database
+  let d1: SQLiteD1TestDatabase
   let repository: D1SecretRepository
   let proofRepository: D1RevealProofRepository
   let verificationSequence: number
 
   beforeEach(async () => {
-    d1 = new SQLiteD1Database()
+    d1 = new SQLiteD1TestDatabase()
     const migration = await readFile(path.resolve('migrations/0001_secrets.sql'), 'utf8')
     const replayMigration = await readFile(
       path.resolve('migrations/0003_secret_replay_key.sql'),
