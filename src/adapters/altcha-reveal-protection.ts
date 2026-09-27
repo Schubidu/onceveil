@@ -58,12 +58,18 @@ function parsePayload(token: string): Payload | undefined {
   }
 }
 
-function matchesContext(payload: Payload, secretId: SecretId, verificationId: string): boolean {
+function matchesContext(
+  payload: Payload,
+  secretId: SecretId,
+  verificationId: string,
+  hostname: string,
+): boolean {
   const data = payload.challenge?.parameters?.data
   return (
     data?.action === REVEAL_PROTECTION_ACTION &&
     data?.secretId === secretId &&
-    data?.verificationId === verificationId
+    data?.verificationId === verificationId &&
+    data?.hostname === hostname
   )
 }
 
@@ -96,9 +102,14 @@ export class AltchaRevealProtection implements RevealChallengeVerifier {
   async createChallenge(
     secretId: SecretId,
     verificationId: string,
+    hostname: string,
     nowMs = Date.now(),
   ): Promise<Challenge> {
-    if (!/^[0-9a-f]{32}$/.test(verificationId) || !Number.isSafeInteger(nowMs)) {
+    if (
+      !/^[0-9a-f]{32}$/.test(verificationId) ||
+      hostname.length === 0 ||
+      !Number.isSafeInteger(nowMs)
+    ) {
       throw new TypeError('Invalid ALTCHA challenge context')
     }
 
@@ -113,13 +124,17 @@ export class AltchaRevealProtection implements RevealChallengeVerifier {
         action: REVEAL_PROTECTION_ACTION,
         secretId,
         verificationId,
+        hostname,
       },
     })
   }
 
   async verify(context: RevealChallengeContext): Promise<RevealChallengeResult> {
     const payload = parsePayload(context.token)
-    if (!payload || !matchesContext(payload, context.secretId, context.verificationId)) {
+    if (
+      !payload ||
+      !matchesContext(payload, context.secretId, context.verificationId, context.hostname)
+    ) {
       return { kind: 'invalid' }
     }
 
