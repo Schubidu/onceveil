@@ -1,11 +1,15 @@
+import { mkdtemp, rm } from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import { D1RevealProofRepository } from '../src/adapters/d1-reveal-proof-repository'
 import { D1SecretRepository } from '../src/adapters/d1-secret-repository'
 import { NodeSqliteDatabase } from '../src/adapters/node-sqlite-database'
+import { applySqliteMigrations } from '../src/adapters/sqlite-migrations'
 import { generateSecretId, prepareSecretRecord } from '../src/core/secret'
 import { secretRepositoryContract } from './support/secret-repository-contract'
-import { applySqliteMigrations } from './support/sqlite-migrations'
 
 const OWNER_KEY_HASH = 'a'.repeat(64)
 const REPLAY_KEY = 'b'.repeat(64)
@@ -60,6 +64,35 @@ describe('Node SQLite reveal-proof persistence', () => {
       expect(results.filter((result) => !result)).toHaveLength(7)
     } finally {
       db.close()
+    }
+  })
+})
+
+describe('Node SQLite migration lifecycle', () => {
+  it('reopens an already migrated database without replaying ALTER migrations', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'onceveil-sqlite-'))
+    const databasePath = path.join(directory, 'onceveil.sqlite')
+    const secret = record()
+
+    try {
+      const first = new NodeSqliteDatabase(databasePath)
+      applySqliteMigrations(first)
+      await new D1SecretRepository(first).create(secret, REPLAY_KEY, OWNER_KEY_HASH)
+      first.close()
+
+      const reopened = new NodeSqliteDatabase(databasePath)
+      try {
+        applySqliteMigrations(reopened)
+        await expect(
+          new D1SecretRepository(reopened).getStatus(secret.id, OWNER_KEY_HASH, 500),
+        ).resolves.toMatchObject({
+          state: 'AVAILABLE',
+        })
+      } finally {
+        reopened.close()
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
     }
   })
 })
