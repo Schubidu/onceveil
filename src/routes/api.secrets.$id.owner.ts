@@ -15,10 +15,7 @@ function jsonError(error: string, status: number): Response {
   return withSecretSecurityHeaders(Response.json({ error }, { status }))
 }
 
-async function withOwnerRepository(
-  request: Request,
-  operation: () => Promise<Response>,
-): Promise<Response> {
+async function withOwnerRepository(operation: () => Promise<Response>): Promise<Response> {
   const expectedEnvironment = getRuntimeEnvironment()
   if (!expectedEnvironment) {
     return jsonError('service_unavailable', 503)
@@ -51,7 +48,7 @@ export const Route = createFileRoute('/api/secrets/$id/owner')({
   server: {
     handlers: {
       GET: async ({ params, request }) =>
-        withOwnerRepository(request, () =>
+        withOwnerRepository(() =>
           ownerStatusResponse(request, params.id, getSecretRepository()),
         ),
       DELETE: async ({ params, request }) =>
