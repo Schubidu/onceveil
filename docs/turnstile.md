@@ -8,18 +8,17 @@ The share page that holds the URL fragment key never loads Turnstile or any othe
 
 When the recipient chooses **Verify & reveal secret**:
 
-1. the share page creates a fragment-free verification iframe on the paired Cloudflare origin for the same deployment (custom domain ↔ `workers.dev`), passing only a random public verification identifier;
-2. browser same-origin policy prevents the verification iframe from accessing the parent document, its fragment-held AES key, plaintext, reveal authorization, or bearer proof;
-3. parent and iframe accept `postMessage` traffic only from the exact paired origin/window and matching random verification identifier;
-4. after the iframe signals readiness, the share page asks the server to prepare a one-time reveal proof, presenting the fragment-only reveal authorization and verification identifier;
-5. the server returns the bearer proof only to the share page and stores only its SHA-256 hash;
-6. the share page sends only a `prepared` signal to the iframe; it never sends the authorization or bearer proof;
-7. only then does the iframe load Cloudflare Turnstile and submit the resulting token to the verification endpoint on its own origin;
-8. Siteverify checks the expected action, exact verification hostname, and secret-bound `cData`;
-9. successful validation marks the matching prepared proof as verified and the iframe sends only success/failure state back to the parent;
-10. reveal atomically consumes the verified proof before attempting the existing strict one-time secret consume.
+1. the share page creates a fragment-free verification iframe on the same Onceveil origin with a random public verification identifier;
+2. the iframe is sandboxed without `allow-same-origin`, so the browser assigns it an opaque origin even though its URL uses the same Onceveil host;
+3. the sandboxed iframe cannot access the parent document, fragment-held AES key, plaintext, reveal authorization, cookies, or same-origin storage;
+4. the parent accepts iframe messages only from the exact iframe window, the opaque `null` origin, and the matching random verification identifier;
+5. after the iframe signals readiness, the parent prepares the one-time reveal proof and fetches the public Turnstile configuration; both server calls happen in the key-holding parent;
+6. the iframe receives only the public site key/action, loads Turnstile, and returns only the provider token or a safe error code;
+7. the parent submits that provider token to the verification endpoint; the iframe never receives the fragment-only reveal authorization or bearer proof;
+8. Siteverify checks the expected action, request hostname, and secret-bound `cData`;
+9. successful validation marks the matching prepared proof as verified, after which the parent consumes that proof and performs the existing one-time secret reveal.
 
-If the paired embedded origin or `<dialog>` is unavailable, the existing opener-less popup flow remains as an explicit fallback.
+If `<dialog>` or embedded verification is unavailable, the existing opener-less popup flow remains as an explicit fallback.
 
 A pending verification expires after five minutes. At most three active pending proofs are allowed per secret, including under concurrent preparation. Once verified, its proof is bound to one secret, expires after 60 seconds, and can be consumed once.
 
@@ -44,7 +43,7 @@ Recommended hostname entries:
 
 Cloudflare authorizes subdomains of a configured hostname, so the Preview entry also covers branch Preview hostnames below `ots-preview.schult.dev`.
 
-Embedded verification uses the paired `workers.dev` hostname. Configure `schult.workers.dev` for the widget so the production Worker and branch Preview hostnames under that account domain are accepted. Server-side proof binding, action, hostname, and `cData` validation still gate reveal.
+Embedded verification stays on the same Onceveil hostname as the share page, so no additional `workers.dev` Turnstile hostname is required.
 
 The public `TURNSTILE_SITE_KEY` is committed in `wrangler.jsonc` for both Production (`vars`) and Preview (`previews.vars`) so generated Preview configuration keeps the correct site key.
 
