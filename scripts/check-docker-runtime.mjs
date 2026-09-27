@@ -174,8 +174,7 @@ async function revealPersistedSecret(secret) {
     throw new Error(`proof verification failed: ${verificationResponse.status}`)
   }
 
-  const reveal = () =>
-    postJson(path, { proof: prepared.proof }, { 'X-Onceveil-Reveal': '1' })
+  const reveal = () => postJson(path, { proof: prepared.proof }, { 'X-Onceveil-Reveal': '1' })
 
   const responses = await Promise.all([reveal(), reveal()])
   const statuses = responses.map((response) => response.status).sort((a, b) => a - b)
