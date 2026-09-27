@@ -64,7 +64,6 @@ describe('Node SQLite reveal-proof persistence', () => {
   })
 })
 
-
 describe('Node SQLite adapter safety', () => {
   it('rejects statements prepared by a different database instance before starting the batch', async () => {
     const first = database()
