@@ -59,9 +59,12 @@ describe('sensitive browser security policy', () => {
     expect(secretSurfacePolicy(malformed)).toBe('isolated')
     expect(secretSurfacePolicy(verification)).toBe('turnstile')
 
-    const headers = secretSecurityHeaders('turnstile', "'self'")
+    const documentOrigin = 'https://ots-preview.schult.dev'
+    const headers = secretSecurityHeaders('turnstile', "'self'", undefined, documentOrigin)
     const csp = headers['Content-Security-Policy']
-    expect(csp).toContain('script-src')
+    expect(csp).toContain(`script-src ${documentOrigin}`)
+    expect(csp).toContain(`style-src ${documentOrigin}`)
+    expect(csp).toContain(`connect-src ${documentOrigin}`)
     expect(csp).toContain('https://challenges.cloudflare.com')
     expect(csp).toContain('frame-src https://challenges.cloudflare.com')
     expect(csp).toContain("frame-ancestors 'self'")
