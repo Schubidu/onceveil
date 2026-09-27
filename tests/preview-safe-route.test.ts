@@ -113,8 +113,9 @@ describe('preview-safe share landing route', () => {
     expect(browserSource).not.toContain('iframe.hidden = true')
     expect(browserSource).toContain('fallback.hidden = true')
     expect(browserSource).toContain('fallback.hidden = false')
-    expect(routeSource).toContain("'error-callback': (errorCode)")
-    expect(routeSource).toContain('errorCode?: string')
+    expect(routeSource).toContain("'error-callback': () => failVerification")
+    expect(browserSource).toContain("| { type: 'onceveil-reveal-proof-error' }")
+    expect(browserSource).not.toContain('candidate.errorCode')
   })
 
   it('reveals only from the explicit browser action', async () => {
