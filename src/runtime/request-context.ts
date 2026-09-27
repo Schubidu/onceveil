@@ -8,6 +8,10 @@ export type RevealProtectionRuntime =
       secretKey: string
     }
   | {
+      provider: 'altcha'
+      secretKey: string
+    }
+  | {
       provider: 'none'
     }
   | {
