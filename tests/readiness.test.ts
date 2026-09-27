@@ -8,10 +8,7 @@ import type {
   D1PreparedStatementLike,
   D1ResultLike,
 } from '../src/adapters/d1-secret-repository'
-import {
-  checkSecretDatabaseReadiness,
-  runtimeEnvironmentForHostname,
-} from '../src/runtime/readiness'
+import { checkSecretDatabaseReadiness, parseRuntimeEnvironment } from '../src/runtime/readiness'
 
 interface DatabaseState {
   environmentTable?: boolean
@@ -78,15 +75,13 @@ function fakeDatabase(state: DatabaseState): D1DatabaseLike {
 
 describe('runtime readiness', () => {
   it.each([
-    ['ots-preview.schult.dev', 'preview'],
-    ['pr-17.ots-preview.schult.dev', 'preview'],
-    ['feat-issue-4-d1-one-time-flow-onceveil.schult.workers.dev', 'preview'],
-    ['localhost', 'preview'],
-    ['ots.schult.dev', 'production'],
-    ['onceveil.schult.workers.dev', 'production'],
-    ['unknown.example', undefined],
-  ] as const)('classifies %s as %s', (hostname, expected) => {
-    expect(runtimeEnvironmentForHostname(hostname)).toBe(expected)
+    ['preview', 'preview'],
+    ['production', 'production'],
+    ['staging', undefined],
+    ['', undefined],
+    [undefined, undefined],
+  ] as const)('parses %s as %s', (value, expected) => {
+    expect(parseRuntimeEnvironment(value)).toBe(expected)
   })
 
   it('reports ready only when the bound database has the expected schema and marker', async () => {
