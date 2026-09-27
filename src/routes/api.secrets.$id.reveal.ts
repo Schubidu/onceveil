@@ -1,5 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
+import { createRequestContext } from '#onceveil-runtime-context'
+
 import { RevealProofStorageError } from '../adapters/d1-reveal-proof-repository'
 import { REVEAL_PROTECTION_ACTION } from '../core/reveal-protection'
 import { isValidSecretId } from '../core/secret'
@@ -32,13 +34,14 @@ function jsonError(error: string, status: number): Response {
 export const Route = createFileRoute('/api/secrets/$id/reveal')({
   server: {
     handlers: {
-      GET: async ({ params, request, context }) => {
+      GET: async ({ params, request }) => {
+        const runtime = createRequestContext(request)
         if (request.headers.get('X-Onceveil-Proof-Config') !== '1' || !isValidSecretId(params.id)) {
           return jsonError('not_found', 404)
         }
 
         try {
-          const provider = getRevealProtectionProvider(context)
+          const provider = getRevealProtectionProvider(runtime)
           if (provider === 'none') {
             return withSecretSecurityHeaders(Response.json({ provider }, { status: 200 }))
           }
@@ -47,7 +50,7 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
             Response.json(
               {
                 provider,
-                siteKey: getTurnstileSiteKey(context),
+                siteKey: getTurnstileSiteKey(runtime),
                 action: REVEAL_PROTECTION_ACTION,
               },
               { status: 200 },
@@ -61,15 +64,16 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
           throw error
         }
       },
-      POST: async ({ params, request, context }) => {
+      POST: async ({ params, request }) => {
+        const runtime = createRequestContext(request)
         if (!isValidSecretId(params.id)) {
           return jsonError('not_found', 404)
         }
 
         try {
-          await assertSecretDatabaseEnvironment(context)
-          const provider = getRevealProtectionProvider(context)
-          const proofs = getRevealProofRepository(context)
+          await assertSecretDatabaseEnvironment(runtime)
+          const provider = getRevealProtectionProvider(runtime)
+          const proofs = getRevealProofRepository(runtime)
 
           if (request.headers.get('X-Onceveil-Proof-Prepare') === '1') {
             return await prepareRevealProofResponse(request, params.id, proofs)
@@ -80,7 +84,7 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
               ? await verifyRevealProofResponse(
                   request,
                   params.id,
-                  getRevealChallengeVerifier(context),
+                  getRevealChallengeVerifier(runtime),
                   proofs,
                 )
               : await verifyRevealProofWithoutChallengeResponse(request, params.id, proofs)
@@ -94,7 +98,7 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
             request,
             params.id,
             proofs,
-            getSecretRepository(context),
+            getSecretRepository(runtime),
           )
         } catch (error) {
           if (
