@@ -47,7 +47,7 @@ export function revealVerificationUrl(
   }
 
   const url = new URL(`/s/${encodeURIComponent(id)}`, origin)
-  url.searchParams.set('verify', 'turnstile')
+  url.searchParams.set('verify', '1')
   url.searchParams.set('verification', verificationId)
   return url.toString()
 }
@@ -66,7 +66,7 @@ export function discardRevealVerificationFragment(
 export function revealVerificationId(search: string): string | undefined {
   const params = new URLSearchParams(search)
   const verificationId = params.get('verification')
-  return params.get('verify') === 'turnstile' &&
+  return params.get('verify') === '1' &&
     verificationId &&
     VERIFICATION_ID_PATTERN.test(verificationId)
     ? verificationId
