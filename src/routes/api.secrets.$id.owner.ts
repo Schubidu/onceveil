@@ -1,13 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { ownerRevokeResponse, ownerStatusResponse } from '../runtime/owner-http'
+import type { OnceveilRequestContext } from '../runtime/request-context'
 import {
   assertSecretDatabaseEnvironment,
   getSecretRepository,
   SecretDatabaseEnvironmentError,
   SecretDatabaseUnavailableError,
 } from '../runtime/secret-repository'
-import { runtimeEnvironmentForRequest } from '../runtime/readiness'
 import { logRuntimeError } from '../runtime/safe-log'
 import { withSecretSecurityHeaders } from '../runtime/security-headers'
 
@@ -16,16 +16,11 @@ function jsonError(error: string, status: number): Response {
 }
 
 async function withOwnerRepository(
-  request: Request,
+  context: OnceveilRequestContext,
   operation: () => Promise<Response>,
 ): Promise<Response> {
-  const expectedEnvironment = runtimeEnvironmentForRequest(request)
-  if (!expectedEnvironment) {
-    return jsonError('service_unavailable', 503)
-  }
-
   try {
-    await assertSecretDatabaseEnvironment(expectedEnvironment)
+    await assertSecretDatabaseEnvironment(context)
     return await operation()
   } catch (error) {
     if (error instanceof SecretDatabaseUnavailableError) {
@@ -50,13 +45,13 @@ async function withOwnerRepository(
 export const Route = createFileRoute('/api/secrets/$id/owner')({
   server: {
     handlers: {
-      GET: async ({ params, request }) =>
-        withOwnerRepository(request, () =>
-          ownerStatusResponse(request, params.id, getSecretRepository()),
+      GET: async ({ params, request, context }) =>
+        withOwnerRepository(context, () =>
+          ownerStatusResponse(request, params.id, getSecretRepository(context)),
         ),
-      DELETE: async ({ params, request }) =>
-        withOwnerRepository(request, () =>
-          ownerRevokeResponse(request, params.id, getSecretRepository()),
+      DELETE: async ({ params, request, context }) =>
+        withOwnerRepository(context, () =>
+          ownerRevokeResponse(request, params.id, getSecretRepository(context)),
         ),
     },
   },
