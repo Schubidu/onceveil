@@ -36,6 +36,18 @@ describe('sensitive browser security policy', () => {
     expect(csp).not.toContain('challenges.cloudflare.com')
   })
 
+  it('allows the share page to frame only its paired verification origin', () => {
+    const verificationOrigin =
+      'https://feat-issue-20-embedded-reveal-verification-onceveil.schult.workers.dev'
+    const headers = secretSecurityHeaders('isolated', undefined, verificationOrigin)
+    const csp = headers['Content-Security-Policy']
+
+    expect(csp).toContain(`frame-src ${verificationOrigin}`)
+    expect(csp).toContain("frame-ancestors 'none'")
+    expect(headers['X-Frame-Options']).toBe('DENY')
+    expect(headers['Cross-Origin-Resource-Policy']).toBe('same-origin')
+  })
+
   it('allows Turnstile only in a valid fragment-free verification context', () => {
     const normal = new Request(`https://onceveil.test/s/${SECRET_ID}`)
     const malformed = new Request(
