@@ -47,7 +47,11 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
 
           if (url.searchParams.get('altcha') === '1') {
             const verificationId = url.searchParams.get('verification')
-            if (provider !== 'altcha' || !verificationId || !/^[0-9a-f]{32}$/.test(verificationId)) {
+            if (
+              provider !== 'altcha' ||
+              !verificationId ||
+              !/^[0-9a-f]{32}$/.test(verificationId)
+            ) {
               return jsonError('not_found', 404)
             }
 
