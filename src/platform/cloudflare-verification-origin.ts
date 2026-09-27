@@ -28,9 +28,7 @@ export function verificationOriginForParent(parentOrigin: string): string | unde
   return undefined
 }
 
-export function parentOriginForVerification(
-  verificationOrigin: string,
-): string | undefined {
+export function parentOriginForVerification(verificationOrigin: string): string | undefined {
   const url = new URL(verificationOrigin)
   if (url.protocol !== 'https:' || url.port) {
     return undefined
