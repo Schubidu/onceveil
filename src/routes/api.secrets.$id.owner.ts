@@ -7,7 +7,7 @@ import {
   SecretDatabaseEnvironmentError,
   SecretDatabaseUnavailableError,
 } from '../runtime/secret-repository'
-import { runtimeEnvironmentForRequest } from '../runtime/readiness'
+import { getRuntimeEnvironment } from '../runtime/environment'
 import { logRuntimeError } from '../runtime/safe-log'
 import { withSecretSecurityHeaders } from '../runtime/security-headers'
 
@@ -19,7 +19,7 @@ async function withOwnerRepository(
   request: Request,
   operation: () => Promise<Response>,
 ): Promise<Response> {
-  const expectedEnvironment = runtimeEnvironmentForRequest(request)
+  const expectedEnvironment = getRuntimeEnvironment()
   if (!expectedEnvironment) {
     return jsonError('service_unavailable', 503)
   }
