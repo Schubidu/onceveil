@@ -1,5 +1,5 @@
-import { REVEAL_PROTECTION_ACTION } from '../core/reveal-protection'
 import type { SecretId } from '../core/secret'
+import { verificationOriginForParent } from '../platform/cloudflare-verification-origin'
 
 const VERIFICATION_BYTES = 16
 const VERIFICATION_ID_PATTERN = /^[0-9a-f]{32}$/
@@ -15,8 +15,6 @@ export type RevealVerificationMessage =
   | { type: 'onceveil-reveal-prepared' }
   | { type: 'onceveil-reveal-verified' }
   | { type: 'onceveil-reveal-proof-error'; errorCode?: string }
-  | { type: 'onceveil-reveal-config'; siteKey: string; action: string }
-  | { type: 'onceveil-reveal-token'; token: string }
 
 export type RevealVerificationWindowMessage = RevealVerificationMessage & {
   verificationId: string
@@ -50,12 +48,6 @@ export interface RevealVerificationHistory {
 interface RevealProofPreparation {
   proof: string
   verificationId: string
-}
-
-interface RevealProtectionConfig {
-  provider: 'turnstile'
-  siteKey: string
-  action: typeof REVEAL_PROTECTION_ACTION
 }
 
 function randomVerificationId(): string {
@@ -133,50 +125,6 @@ async function prepareRevealProof(
   return {
     proof: body.proof,
     verificationId,
-  }
-}
-
-async function getRevealProtectionConfig(id: SecretId): Promise<RevealProtectionConfig> {
-  const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
-    headers: { 'X-Onceveil-Proof-Config': '1' },
-  })
-  const config = (await response.json().catch(() => undefined)) as
-    | Partial<RevealProtectionConfig>
-    | undefined
-
-  if (
-    !response.ok ||
-    config?.provider !== 'turnstile' ||
-    typeof config.siteKey !== 'string' ||
-    config.action !== REVEAL_PROTECTION_ACTION
-  ) {
-    throw new Error('Reveal protection is unavailable')
-  }
-
-  return {
-    provider: 'turnstile',
-    siteKey: config.siteKey,
-    action: REVEAL_PROTECTION_ACTION,
-  }
-}
-
-async function verifyRevealToken(
-  id: SecretId,
-  verificationId: string,
-  token: string,
-): Promise<void> {
-  const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Onceveil-Proof-Request': '1',
-    },
-    body: JSON.stringify({ token, verificationId }),
-  })
-  const body = (await response.json().catch(() => undefined)) as Record<string, unknown> | undefined
-
-  if (!response.ok || body?.verified !== true) {
-    throw new Error('Reveal verification failed')
   }
 }
 
@@ -259,12 +207,16 @@ function requestRevealProofPopup(id: SecretId, authorization: string): Promise<s
   })
 }
 
-function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promise<string> {
+function requestEmbeddedRevealProof(
+  id: SecretId,
+  authorization: string,
+  verificationOrigin: string,
+): Promise<string> {
   const verificationId = randomVerificationId()
   const verificationUrl = revealVerificationUrl(
     id,
     verificationId,
-    window.location.origin,
+    verificationOrigin,
     window.location.origin,
   )
   const dialog = document.createElement('dialog')
@@ -279,7 +231,7 @@ function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promis
   iframe.title = 'Reveal verification'
   iframe.src = verificationUrl
   iframe.referrerPolicy = 'no-referrer'
-  iframe.sandbox.add('allow-scripts', 'allow-forms', 'allow-popups')
+  iframe.sandbox.add('allow-scripts', 'allow-forms', 'allow-popups', 'allow-same-origin')
 
   status.className = 'verification-status'
   status.textContent = 'Preparing verification…'
@@ -295,7 +247,6 @@ function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promis
   return new Promise((resolve, reject) => {
     let proof: string | undefined
     let preparing = false
-    let verifying = false
     let settled = false
     let fallbackStarted = false
 
@@ -372,12 +323,19 @@ function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promis
           ...message,
           verificationId,
         } satisfies RevealVerificationWindowMessage,
-        '*',
+        verificationOrigin,
       )
     }
 
     function onMessage(event: MessageEvent<unknown>) {
-      if (!isExpectedVerificationMessage(event, iframe.contentWindow, 'null', verificationId)) {
+      if (
+        !isExpectedVerificationMessage(
+          event,
+          iframe.contentWindow,
+          verificationOrigin,
+          verificationId,
+        )
+      ) {
         return
       }
 
@@ -391,50 +349,20 @@ function requestEmbeddedRevealProof(id: SecretId, authorization: string): Promis
         window.clearTimeout(readyTimeout)
         preparing = true
         void prepareRevealProof(id, authorization, verificationId)
-          .then(async (prepared) => {
+          .then((prepared) => {
             if (settled || fallbackStarted) {
               return
             }
 
             proof = prepared.proof
-            const config = await getRevealProtectionConfig(id)
-            if (settled || fallbackStarted) {
-              return
-            }
-
             status.textContent = 'Complete verification to reveal the secret.'
-            postToVerification({
-              type: 'onceveil-reveal-config',
-              siteKey: config.siteKey,
-              action: config.action,
-            })
+            postToVerification({ type: 'onceveil-reveal-prepared' })
           })
           .catch(() => {
             failEmbedded(
               'Embedded verification could not be prepared. Open verification in a new window instead.',
             )
           })
-        return
-      }
-
-      if (candidate.type === 'onceveil-reveal-token' && proof !== undefined && !verifying) {
-        if (typeof candidate.token !== 'string' || candidate.token.length === 0) {
-          failEmbedded('Embedded verification failed. Open verification in a new window instead.')
-          return
-        }
-
-        verifying = true
-        void verifyRevealToken(id, verificationId, candidate.token).then(
-          () => {
-            if (!settled && !fallbackStarted && proof !== undefined) {
-              finish(() => resolve(proof as string))
-            }
-          },
-          () => {
-            verifying = false
-            failEmbedded('Embedded verification failed. Open verification in a new window instead.')
-          },
-        )
         return
       }
 
@@ -470,7 +398,9 @@ export function requestRevealProof(id: SecretId, authorization: string): Promise
     typeof HTMLDialogElement !== 'undefined' &&
     typeof document.createElement('dialog').showModal === 'function'
 
-  return supportsDialog
-    ? requestEmbeddedRevealProof(id, authorization)
+  const verificationOrigin = verificationOriginForParent(window.location.origin)
+
+  return supportsDialog && verificationOrigin
+    ? requestEmbeddedRevealProof(id, authorization, verificationOrigin)
     : requestRevealProofPopup(id, authorization)
 }
