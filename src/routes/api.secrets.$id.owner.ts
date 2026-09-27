@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
+import { createRequestContext } from '#onceveil-runtime-context'
 import { ownerRevokeResponse, ownerStatusResponse } from '../runtime/owner-http'
 import type { OnceveilRequestContext } from '../runtime/request-context'
 import {
@@ -45,14 +46,18 @@ async function withOwnerRepository(
 export const Route = createFileRoute('/api/secrets/$id/owner')({
   server: {
     handlers: {
-      GET: async ({ params, request, context }) =>
-        withOwnerRepository(context, () =>
-          ownerStatusResponse(request, params.id, getSecretRepository(context)),
-        ),
-      DELETE: async ({ params, request, context }) =>
-        withOwnerRepository(context, () =>
-          ownerRevokeResponse(request, params.id, getSecretRepository(context)),
-        ),
+      GET: async ({ params, request }) => {
+        const runtime = createRequestContext(request)
+        return withOwnerRepository(runtime, () =>
+          ownerStatusResponse(request, params.id, getSecretRepository(runtime)),
+        )
+      },
+      DELETE: async ({ params, request }) => {
+        const runtime = createRequestContext(request)
+        return withOwnerRepository(runtime, () =>
+          ownerRevokeResponse(request, params.id, getSecretRepository(runtime)),
+        )
+      },
     },
   },
 })
