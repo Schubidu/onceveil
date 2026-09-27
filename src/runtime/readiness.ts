@@ -58,6 +58,12 @@ export function runtimeEnvironmentForRequest(request: Request): RuntimeEnvironme
   return runtimeEnvironmentForHostname(new URL(request.url).hostname)
 }
 
+export function requiredRuntimeEnvironmentForRequest(
+  request: Request,
+): RuntimeEnvironment | 'unavailable' {
+  return runtimeEnvironmentForRequest(request) ?? 'unavailable'
+}
+
 export async function checkSecretDatabaseReadiness(
   database: D1DatabaseLike,
   expected?: RuntimeEnvironment,
