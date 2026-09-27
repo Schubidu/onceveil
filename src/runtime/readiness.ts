@@ -14,7 +14,7 @@ export type SecretDatabaseReadiness =
   | {
       status: 'ready'
       database: 'ok'
-      environment: RuntimeEnvironment
+      environment?: RuntimeEnvironment
     }
   | {
       status: 'not_ready'
@@ -25,10 +25,6 @@ export type SecretDatabaseReadiness =
       database: 'environment_mismatch'
       expected: RuntimeEnvironment
       actual: string
-    }
-  | {
-      status: 'not_ready'
-      database: 'environment_unknown'
     }
   | {
       status: 'not_ready'
@@ -64,14 +60,9 @@ export function runtimeEnvironmentForRequest(request: Request): RuntimeEnvironme
 
 export async function checkSecretDatabaseReadiness(
   database: D1DatabaseLike,
-  expected: RuntimeEnvironment,
+  expected?: RuntimeEnvironment,
 ): Promise<SecretDatabaseReadiness> {
   try {
-    const environmentTable = await database
-      .prepare(
-        "SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'onceveil_environment'",
-      )
-      .first<PresentRow>()
     const secretsTable = await database
       .prepare("SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'secrets'")
       .first<PresentRow>()
@@ -81,20 +72,31 @@ export async function checkSecretDatabaseReadiness(
       )
       .first<PresentRow>()
 
-    if (!environmentTable || !secretsTable || !revealProofsTable) {
+    if (!secretsTable || !revealProofsTable) {
       return { status: 'not_ready', database: 'migration_required' }
     }
 
-    const marker = await database
-      .prepare('SELECT environment FROM onceveil_environment WHERE id = 1 LIMIT 1')
-      .first<EnvironmentRow>()
-    const actual = marker?.environment ?? 'missing-marker'
-    if (actual !== expected) {
-      return {
-        status: 'not_ready',
-        database: 'environment_mismatch',
-        expected,
-        actual,
+    if (expected) {
+      const environmentTable = await database
+        .prepare(
+          "SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'onceveil_environment'",
+        )
+        .first<PresentRow>()
+      if (!environmentTable) {
+        return { status: 'not_ready', database: 'migration_required' }
+      }
+
+      const marker = await database
+        .prepare('SELECT environment FROM onceveil_environment WHERE id = 1 LIMIT 1')
+        .first<EnvironmentRow>()
+      const actual = marker?.environment ?? 'missing-marker'
+      if (actual !== expected) {
+        return {
+          status: 'not_ready',
+          database: 'environment_mismatch',
+          expected,
+          actual,
+        }
       }
     }
 
@@ -113,11 +115,16 @@ export async function checkSecretDatabaseReadiness(
       return { status: 'not_ready', database: 'migration_required' }
     }
 
-    return {
-      status: 'ready',
-      database: 'ok',
-      environment: expected,
-    }
+    return expected
+      ? {
+          status: 'ready',
+          database: 'ok',
+          environment: expected,
+        }
+      : {
+          status: 'ready',
+          database: 'ok',
+        }
   } catch {
     return { status: 'not_ready', database: 'unavailable' }
   }
