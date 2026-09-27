@@ -1,12 +1,6 @@
-import { env } from 'cloudflare:workers'
-
 import { D1SecretRepository, type D1DatabaseLike } from '../adapters/d1-secret-repository'
 import type { SecretRepository } from '../core/secret'
-import type { RuntimeEnvironment } from './readiness'
-
-interface OnceveilEnv {
-  DB?: D1DatabaseLike
-}
+import type { OnceveilRequestContext } from './request-context'
 
 interface EnvironmentRow {
   environment: string
@@ -29,25 +23,28 @@ export class SecretDatabaseEnvironmentError extends Error {
   }
 }
 
-function runtimeEnv(): OnceveilEnv {
-  return env as OnceveilEnv
-}
-
-export function getSecretDatabase(): D1DatabaseLike {
-  const database = runtimeEnv().DB
-  if (!database) {
+export function getSecretDatabase(context: OnceveilRequestContext): D1DatabaseLike {
+  if (!context.secretDatabase) {
     throw new SecretDatabaseUnavailableError()
   }
 
-  return database
+  return context.secretDatabase
 }
 
-export function getSecretRepository(): SecretRepository {
-  return new D1SecretRepository(getSecretDatabase())
+export function getSecretRepository(context: OnceveilRequestContext): SecretRepository {
+  return new D1SecretRepository(getSecretDatabase(context))
 }
 
-export async function assertSecretDatabaseEnvironment(expected: RuntimeEnvironment): Promise<void> {
-  const database = getSecretDatabase()
+export async function assertSecretDatabaseEnvironment(
+  context: OnceveilRequestContext,
+): Promise<void> {
+  const expected = context.expectedDatabaseEnvironment
+  if (!expected) {
+    getSecretDatabase(context)
+    return
+  }
+
+  const database = getSecretDatabase(context)
 
   let row: EnvironmentRow | null
   try {
