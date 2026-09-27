@@ -10,6 +10,7 @@ import type {
 } from '../src/adapters/d1-secret-repository'
 import {
   checkSecretDatabaseReadiness,
+  requiredRuntimeEnvironmentForRequest,
   runtimeEnvironmentForHostname,
 } from '../src/runtime/readiness'
 
@@ -87,6 +88,15 @@ describe('runtime readiness', () => {
     ['unknown.example', undefined],
   ] as const)('classifies %s as %s', (hostname, expected) => {
     expect(runtimeEnvironmentForHostname(hostname)).toBe(expected)
+  })
+
+  it('fails closed when a runtime requiring an environment receives an unknown host', () => {
+    expect(
+      requiredRuntimeEnvironmentForRequest(new Request('https://unknown.example/ready')),
+    ).toBe('unavailable')
+    expect(
+      requiredRuntimeEnvironmentForRequest(new Request('https://ots-preview.schult.dev/ready')),
+    ).toBe('preview')
   })
 
   it('reports ready only when the bound database has the expected schema and marker', async () => {
