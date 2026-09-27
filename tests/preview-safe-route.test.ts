@@ -83,7 +83,7 @@ describe('preview-safe share landing route', () => {
 
     expect(browserSource).toContain("window.addEventListener('message', onMessage)")
     expect(browserSource).toContain('isExpectedVerificationMessage(')
-    expect(browserSource).toContain("iframe.contentWindow,")
+    expect(browserSource).toContain('iframe.contentWindow,')
     expect(browserSource).toContain("'null',")
     expect(browserSource).toContain(
       "iframe.sandbox.add('allow-scripts', 'allow-forms', 'allow-popups')",
