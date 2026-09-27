@@ -11,16 +11,21 @@ const port = 31_000 + (process.pid % 1_000)
 const origin = `http://127.0.0.1:${port}`
 let logs = ''
 
+const runtimeEnvironment = { ...process.env }
+delete runtimeEnvironment.CI
+delete runtimeEnvironment.TEST
+
 await cp('.output', runtimeDirectory, { recursive: true })
 
 const server = spawn(process.execPath, [path.join(runtimeDirectory, 'server/index.mjs')], {
   cwd: runtimeDirectory,
   env: {
-    ...process.env,
+    ...runtimeEnvironment,
     HOST: '127.0.0.1',
     PORT: String(port),
     ONCEVEIL_SQLITE_PATH: databasePath,
     ONCEVEIL_REVEAL_PROTECTION: 'none',
+    SERVER_SHUTDOWN_TIMEOUT: '1',
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
@@ -81,13 +86,13 @@ async function stopServer() {
 
   const result = await Promise.race([
     exited.then(() => 'exited'),
-    delay(5_000).then(() => 'timeout'),
+    delay(3_000).then(() => 'timeout'),
   ])
 
   if (result === 'timeout' && server.exitCode === null) {
     server.kill('SIGKILL')
     await exited
-    throw new Error('Node production runtime did not stop within 5 seconds after SIGTERM')
+    throw new Error('Node production runtime did not stop within 3 seconds after SIGTERM')
   }
 }
 
