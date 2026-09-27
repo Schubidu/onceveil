@@ -11,6 +11,10 @@ const raw = await readFile('dist/server/wrangler.json', 'utf8')
 const config = JSON.parse(raw)
 const bindings = config?.previews?.d1_databases
 
+if (config?.workers_dev !== false || config?.preview_urls !== false) {
+  throw new Error('Generated Wrangler config must keep workers.dev URLs disabled')
+}
+
 if (!Array.isArray(bindings)) {
   throw new Error('Generated Wrangler config is missing previews.d1_databases')
 }
@@ -46,6 +50,7 @@ if (
   )
 }
 
+console.log('Generated workers.dev URLs are disabled')
 console.log(`Generated Preview D1 binding ${expected.binding} -> ${expected.databaseId}`)
 console.log('Generated Preview TURNSTILE_SITE_KEY is configured')
 console.log('Generated Preview runtime environment is configured')
