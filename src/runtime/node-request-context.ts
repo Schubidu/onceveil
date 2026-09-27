@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 
+import { isValidAltchaSecret } from '../adapters/altcha-reveal-protection'
 import { NodeSqliteDatabase } from '../adapters/node-sqlite-database'
 import { applySqliteMigrations } from '../adapters/sqlite-migrations'
 import type { OnceveilRequestContext, RevealProtectionRuntime } from './request-context'
@@ -47,8 +48,22 @@ function databaseForPath(configuredPath: string): NodeSqliteDatabase {
   return database
 }
 
-export function nodeRevealProtection(value: string | undefined): RevealProtectionRuntime {
-  return value === 'none' ? { provider: 'none' } : { provider: 'unavailable' }
+export function nodeRevealProtection(
+  value: string | undefined,
+  altchaSecret: string | undefined,
+): RevealProtectionRuntime {
+  if (value === 'none') {
+    return { provider: 'none' }
+  }
+
+  if (value === 'altcha' && isValidAltchaSecret(altchaSecret)) {
+    return {
+      provider: 'altcha',
+      secretKey: altchaSecret.trim(),
+    }
+  }
+
+  return { provider: 'unavailable' }
 }
 
 export function createRequestContext(_request: Request): OnceveilRequestContext {
@@ -63,6 +78,9 @@ export function createRequestContext(_request: Request): OnceveilRequestContext 
   return {
     secretDatabase,
     databaseEnvironment: 'markerless',
-    revealProtection: nodeRevealProtection(process.env.ONCEVEIL_REVEAL_PROTECTION),
+    revealProtection: nodeRevealProtection(
+      process.env.ONCEVEIL_REVEAL_PROTECTION,
+      process.env.ONCEVEIL_ALTCHA_SECRET,
+    ),
   }
 }
