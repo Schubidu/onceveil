@@ -29,7 +29,8 @@
     "check:preview-config": "node scripts/check-preview-config.mjs",
     "build:node": "vite build --config vite.node.config.ts",
     "check:node-runtime": "node scripts/check-node-runtime.mjs",
-    "start": "node .output/server/index.mjs"
+    "start": "node .output/server/index.mjs",
+    "check:docker-runtime": "node scripts/check-docker-runtime.mjs"
   },
   "dependencies": {
     "@tanstack/react-router": "1.170.39",
