@@ -54,18 +54,18 @@ interface RevealBrowserConfig {
 }
 
 async function getConfiguredVerificationOrigin(id: SecretId): Promise<string | undefined> {
-  const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
-    headers: { 'X-Onceveil-Proof-Config': '1' },
-  })
-  const config = (await response.json().catch(() => undefined)) as
-    | Partial<RevealBrowserConfig>
-    | undefined
-
-  if (!response.ok || typeof config?.verificationOrigin !== 'string') {
-    return undefined
-  }
-
   try {
+    const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
+      headers: { 'X-Onceveil-Proof-Config': '1' },
+    })
+    const config = (await response.json().catch(() => undefined)) as
+      | Partial<RevealBrowserConfig>
+      | undefined
+
+    if (!response.ok || typeof config?.verificationOrigin !== 'string') {
+      return undefined
+    }
+
     const origin = new URL(config.verificationOrigin)
     return origin.protocol === 'https:' &&
       origin.origin === config.verificationOrigin &&
@@ -390,6 +390,11 @@ function requestEmbeddedRevealProof(
               'Embedded verification could not be prepared. Open verification in a new window instead.',
             )
           })
+        return
+      }
+
+      if (candidate.type === 'onceveil-reveal-verified' && proof !== undefined) {
+        finish(() => resolve(proof as string))
         return
       }
 
