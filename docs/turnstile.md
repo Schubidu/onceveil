@@ -8,7 +8,7 @@ The share page that holds the URL fragment key never loads Turnstile or any othe
 
 When the recipient chooses **Verify & reveal secret**:
 
-1. the share page creates a fragment-free verification iframe on the paired Onceveil `workers.dev` origin with a random public verification identifier;
+1. when the deployment configures a distinct verification origin, the share page creates a fragment-free verification iframe there with a random public verification identifier;
 2. the iframe remains sandboxed, but `allow-same-origin` is safe because the verifier is genuinely cross-origin from the key-holding parent; browser same-origin policy therefore keeps it away from the parent DOM, fragment-held AES key, plaintext, reveal authorization, cookies, and storage;
 3. the parent accepts iframe messages only from the exact iframe window, the exact paired verifier origin, and the matching random verification identifier;
 4. after the iframe signals readiness, the parent prepares the one-time reveal proof and keeps both the fragment-only reveal authorization and bearer proof exclusively in the parent;
@@ -34,21 +34,27 @@ Migration `0006_expire_legacy_share_links.sql` first blocks inserts that omit `r
 
 ## Cloudflare configuration
 
-Create a Turnstile widget for the Onceveil Cloudflare deployment.
+Create a Turnstile widget for the Onceveil deployment and allow the hostnames on which the verification context actually runs.
 
-Recommended hostname entries:
+Embedded verification is deployment-configurable rather than tied to any Onceveil-owned hostname. Configure an exact production pair with:
 
-- `ots.schult.dev`
-- `ots-preview.schult.dev`
-- `schult.workers.dev`
+- `REVEAL_APP_ORIGIN`
+- `REVEAL_VERIFICATION_ORIGIN`
 
-Cloudflare authorizes subdomains of a configured hostname, so the Preview entry covers branch Preview hostnames below `ots-preview.schult.dev`, while `schult.workers.dev` covers the production and Preview verifier hostnames.
+For per-branch Previews, configure the two Preview custom-domain bases with:
+
+- `REVEAL_PREVIEW_APP_ORIGIN`
+- `REVEAL_PREVIEW_VERIFICATION_ORIGIN`
+
+A Preview name is copied from the configured app Preview base to the configured verification Preview base. For example, generic bases `https://preview.example.com` and `https://verify-preview.example.com` map `https://feature-x.preview.example.com` to `https://feature-x.verify-preview.example.com`.
+
+If no distinct verification origin is configured for the current deployment, Onceveil does not guess a hostname and does not enable the embedded path; it uses the existing opener-less popup verification flow instead.
 
 The public `TURNSTILE_SITE_KEY` is committed in `wrangler.jsonc` for both Production (`vars`) and Preview (`previews.vars`) so generated Preview configuration keeps the correct site key.
 
 Configure `TURNSTILE_SECRET_KEY` separately for Production and Preview in **Workers & Pages → onceveil → Settings**. Keep it as a Cloudflare secret; do not commit it or copy it to GitHub Actions.
 
-Both values are mandatory at runtime. Missing values do not disable protection; they make verification unavailable and reveal returns a generic service error.
+Both Turnstile values are mandatory at runtime. Missing values do not disable protection; they make verification unavailable and reveal returns a generic service error.
 
 ## Siteverify validation
 
