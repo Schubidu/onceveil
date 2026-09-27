@@ -18,8 +18,9 @@ export interface SecretRepositoryFixture {
   close?(): void | Promise<void>
 }
 
-export type SecretRepositoryFixtureFactory =
-  () => SecretRepositoryFixture | Promise<SecretRepositoryFixture>
+export type SecretRepositoryFixtureFactory = () =>
+  | SecretRepositoryFixture
+  | Promise<SecretRepositoryFixture>
 
 function record(ciphertext = new Uint8Array([7, 8, 9])): PreparedSecretRecord {
   const prepared = prepareSecretRecord(generateSecretId(), ciphertext, 100, 900)
@@ -129,7 +130,9 @@ export function secretRepositoryContract(
           kind: 'created',
           id: original.id,
         })
-        expect(await repository.create(changedTtl.record, REPLAY_SAME_PAYLOAD, OWNER_KEY_HASH)).toEqual({
+        expect(
+          await repository.create(changedTtl.record, REPLAY_SAME_PAYLOAD, OWNER_KEY_HASH),
+        ).toEqual({
           kind: 'replay_conflict',
         })
       })
@@ -191,7 +194,9 @@ export function secretRepositoryContract(
         await expect(repository.revoke(secret.id, 'b'.repeat(64), 500)).resolves.toEqual({
           kind: 'not_found',
         })
-        expect((await repository.getStatus(secret.id, OWNER_KEY_HASH, 500))?.state).toBe('AVAILABLE')
+        expect((await repository.getStatus(secret.id, OWNER_KEY_HASH, 500))?.state).toBe(
+          'AVAILABLE',
+        )
       })
     })
 
