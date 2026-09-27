@@ -54,9 +54,9 @@ describe('sensitive browser security policy', () => {
     expect(csp).toContain('https://challenges.cloudflare.com')
     expect(csp).toContain('frame-src https://challenges.cloudflare.com')
 
-    const selfHostedCsp = secretSecurityHeaders(
-      secretSurfacePolicy(verification, 'none'),
-    )['Content-Security-Policy']
+    const selfHostedCsp = secretSecurityHeaders(secretSurfacePolicy(verification, 'none'))[
+      'Content-Security-Policy'
+    ]
     expect(selfHostedCsp).not.toContain('challenges.cloudflare.com')
   })
 })
