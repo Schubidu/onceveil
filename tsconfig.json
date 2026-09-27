@@ -20,7 +20,7 @@
     ],
     "paths": {
       "#onceveil-runtime-context": [
-        "src/runtime/cloudflare-request-context.ts"
+        "./src/runtime/cloudflare-request-context.ts"
       ]
     }
   },
