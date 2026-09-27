@@ -26,7 +26,9 @@
     "db:verify:preview": "node scripts/d1-environment.mjs verify preview onceveil-preview wrangler.preview-migrations.jsonc",
     "db:mark:production": "node scripts/d1-environment.mjs mark production onceveil-production",
     "db:mark:preview": "node scripts/d1-environment.mjs mark preview onceveil-preview wrangler.preview-migrations.jsonc",
-    "check:preview-config": "node scripts/check-preview-config.mjs"
+    "check:preview-config": "node scripts/check-preview-config.mjs",
+    "build:node": "vite build --config vite.node.config.ts",
+    "start:node": "node .output/server/index.mjs"
   },
   "dependencies": {
     "@tanstack/react-router": "1.170.39",
@@ -44,6 +46,7 @@
     "typescript": "6.0.3",
     "vite": "8.3.1",
     "vitest": "5.0.1",
-    "wrangler": "4.138.0"
+    "wrangler": "4.138.0",
+    "nitro": "3.0.260903-beta"
   }
 }
