@@ -46,6 +46,14 @@ describe('sensitive browser security policy', () => {
     expect(headers['Cross-Origin-Resource-Policy']).toBe('same-origin')
   })
 
+  it('allows the opaque verification iframe to load only public client assets cross-origin', async () => {
+    const assetHeaders = await readFile(path.resolve('public/_headers'), 'utf8')
+
+    expect(assetHeaders).toContain('/assets/*')
+    expect(assetHeaders).toContain('Access-Control-Allow-Origin: *')
+    expect(assetHeaders).toContain('Cross-Origin-Resource-Policy: cross-origin')
+  })
+
   it('allows Turnstile only in a valid fragment-free verification context', () => {
     const normal = new Request(`https://onceveil.test/s/${SECRET_ID}`)
     const malformed = new Request(
