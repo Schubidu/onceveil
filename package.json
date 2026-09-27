@@ -28,8 +28,8 @@
     "db:mark:preview": "node scripts/d1-environment.mjs mark preview onceveil-preview wrangler.preview-migrations.jsonc",
     "check:preview-config": "node scripts/check-preview-config.mjs",
     "build:node": "vite build --config vite.node.config.ts",
-    "start:node": "node .output/server/index.mjs",
-    "check:node-runtime": "node scripts/check-node-runtime.mjs"
+    "check:node-runtime": "node scripts/check-node-runtime.mjs",
+    "start": "node .output/server/index.mjs"
   },
   "dependencies": {
     "@tanstack/react-router": "1.170.39",
