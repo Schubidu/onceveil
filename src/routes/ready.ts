@@ -12,9 +12,13 @@ export const Route = createFileRoute('/ready')({
         let ready = false
 
         try {
+          const expectedEnvironment =
+            runtime.databaseEnvironment === 'production' || runtime.databaseEnvironment === 'preview'
+              ? runtime.databaseEnvironment
+              : undefined
           const readiness = await checkSecretDatabaseReadiness(
             getSecretDatabase(runtime),
-            runtime.databaseEnvironment === 'markerless' ? undefined : runtime.databaseEnvironment,
+            expectedEnvironment,
           )
           ready = readiness.status === 'ready'
         } catch (error) {
