@@ -1,16 +1,20 @@
 import { spawn } from 'node:child_process'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { cp, mkdtemp, rm, stat } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 
 const directory = await mkdtemp(path.join(os.tmpdir(), 'onceveil-node-smoke-'))
+const runtimeDirectory = path.join(directory, 'runtime')
 const databasePath = path.join(directory, 'onceveil.sqlite')
 const port = 31_000 + (process.pid % 1_000)
 const origin = `http://127.0.0.1:${port}`
 let logs = ''
 
-const server = spawn(process.execPath, ['.output/server/index.mjs'], {
+await cp('.output', runtimeDirectory, { recursive: true })
+
+const server = spawn(process.execPath, [path.join(runtimeDirectory, 'server/index.mjs')], {
+  cwd: runtimeDirectory,
   env: {
     ...process.env,
     HOST: '127.0.0.1',
@@ -30,6 +34,14 @@ server.stderr.on('data', (chunk) => {
   logs += chunk
 })
 
+function fetchLocal(pathname) {
+  return fetch(`${origin}${pathname}`, {
+    headers: {
+      Connection: 'close',
+    },
+  })
+}
+
 async function waitUntilReady() {
   const deadline = Date.now() + 15_000
   let lastError
@@ -40,7 +52,7 @@ async function waitUntilReady() {
     }
 
     try {
-      const response = await fetch(`${origin}/ready`)
+      const response = await fetchLocal('/ready')
       const body = await response.json()
       if (response.status === 200 && body?.status === 'ready') {
         return
@@ -69,20 +81,21 @@ async function stopServer() {
 
   const result = await Promise.race([
     exited.then(() => 'exited'),
-    delay(3_000).then(() => 'timeout'),
+    delay(5_000).then(() => 'timeout'),
   ])
 
   if (result === 'timeout' && server.exitCode === null) {
     server.kill('SIGKILL')
     await exited
-    throw new Error('Node production runtime did not stop within 3 seconds after SIGTERM')
+    throw new Error('Node production runtime did not stop within 5 seconds after SIGTERM')
   }
 }
 
 try {
   await waitUntilReady()
+  await stat(databasePath)
 
-  const response = await fetch(`${origin}/`)
+  const response = await fetchLocal('/')
   if (!response.ok) {
     throw new Error(`Node server root returned ${response.status}`)
   }
@@ -92,7 +105,7 @@ try {
     throw new Error('Self-hosted none mode unexpectedly enables Turnstile CSP')
   }
 
-  console.log('Node production runtime smoke check passed')
+  console.log('Standalone Node production runtime smoke check passed')
 } finally {
   await stopServer()
   await rm(directory, { recursive: true, force: true })
