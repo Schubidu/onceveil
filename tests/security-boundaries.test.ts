@@ -62,8 +62,7 @@ describe('sensitive browser security policy', () => {
 
     const documentOrigin =
       'https://feat-issue-20-embedded-reveal-verification-onceveil.schult.workers.dev'
-    const parentOrigin =
-      'https://feat-issue-20-embedded-reveal-verification.ots-preview.schult.dev'
+    const parentOrigin = 'https://feat-issue-20-embedded-reveal-verification.ots-preview.schult.dev'
     const headers = secretSecurityHeaders('turnstile', parentOrigin, undefined, documentOrigin)
     const csp = headers['Content-Security-Policy']
     expect(csp).toContain(`script-src ${documentOrigin}`)
