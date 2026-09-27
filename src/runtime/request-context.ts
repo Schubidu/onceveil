@@ -14,8 +14,10 @@ export type RevealProtectionRuntime =
       provider: 'unavailable'
     }
 
+export type DatabaseEnvironment = RuntimeEnvironment | 'markerless' | 'unavailable'
+
 export interface OnceveilRequestContext {
   secretDatabase?: D1DatabaseLike
-  expectedDatabaseEnvironment?: RuntimeEnvironment
+  databaseEnvironment: DatabaseEnvironment
   revealProtection: RevealProtectionRuntime
 }
