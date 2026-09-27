@@ -12,14 +12,15 @@ interface CloudflareOnceveilEnv {
 
 export function createRequestContext(request: Request): OnceveilRequestContext {
   const runtime = env as CloudflareOnceveilEnv
+  const databaseEnvironment = requiredRuntimeEnvironmentForRequest(request)
   const siteKey = runtime.TURNSTILE_SITE_KEY?.trim()
   const secretKey = runtime.TURNSTILE_SECRET_KEY?.trim()
 
   return {
     secretDatabase: runtime.DB,
-    databaseEnvironment: requiredRuntimeEnvironmentForRequest(request),
+    databaseEnvironment,
     revealProtection:
-      siteKey && secretKey
+      databaseEnvironment !== 'unavailable' && siteKey && secretKey
         ? {
             provider: 'turnstile',
             siteKey,
