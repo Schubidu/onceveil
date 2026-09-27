@@ -35,6 +35,7 @@ export interface RevealProofRepository {
     verificationId: string,
     nowMs: number,
   ): Promise<RevealProof | undefined>
+  isPending(secretId: SecretId, verificationId: string, nowMs: number): Promise<boolean>
   verify(secretId: SecretId, verificationId: string, nowMs: number): Promise<boolean>
   consume(secretId: SecretId, proof: string, nowMs: number): Promise<boolean>
 }
