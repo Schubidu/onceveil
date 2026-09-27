@@ -1,18 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router'
 
+import { createRequestContext } from '#onceveil-runtime-context'
 import { checkSecretDatabaseReadiness } from '../runtime/readiness'
 import { getSecretDatabase, SecretDatabaseUnavailableError } from '../runtime/secret-repository'
 
 export const Route = createFileRoute('/ready')({
   server: {
     handlers: {
-      GET: async ({ context }) => {
+      GET: async ({ request }) => {
+        const runtime = createRequestContext(request)
         let ready = false
 
         try {
           const readiness = await checkSecretDatabaseReadiness(
-            getSecretDatabase(context),
-            context.expectedDatabaseEnvironment,
+            getSecretDatabase(runtime),
+            runtime.expectedDatabaseEnvironment,
           )
           ready = readiness.status === 'ready'
         } catch (error) {
