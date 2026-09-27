@@ -43,16 +43,13 @@ export function secretSecurityHeaders(
     'Cache-Control': 'no-store',
     'Content-Security-Policy': contentSecurityPolicy(policy, frameAncestor, frameSource),
     'Cross-Origin-Opener-Policy': 'same-origin',
-    'Cross-Origin-Resource-Policy':
-      policy === 'turnstile' && frameAncestor ? 'cross-origin' : 'same-origin',
+    'Cross-Origin-Resource-Policy': 'same-origin',
     'Permissions-Policy': 'camera=(), geolocation=(), microphone=(), payment=()',
     'Referrer-Policy': 'no-referrer',
     'X-Content-Type-Options': 'nosniff',
   }
 
-  if (!(policy === 'turnstile' && frameAncestor)) {
-    headers['X-Frame-Options'] = 'DENY'
-  }
+  headers['X-Frame-Options'] = policy === 'turnstile' && frameAncestor ? 'SAMEORIGIN' : 'DENY'
 
   return headers
 }
