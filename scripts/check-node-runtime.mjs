@@ -50,6 +50,14 @@ function hasExited() {
   return server.exitCode !== null || server.signalCode !== null
 }
 
+function assertCleanExit() {
+  if (server.exitCode !== 0 || server.signalCode !== null) {
+    throw new Error(
+      `Node production runtime exited unexpectedly (code ${server.exitCode}, signal ${server.signalCode})\n${logs}`,
+    )
+  }
+}
+
 async function waitUntilReady() {
   const deadline = Date.now() + 15_000
   let lastError
@@ -83,6 +91,7 @@ async function waitUntilReady() {
 
 async function stopServer() {
   if (hasExited()) {
+    assertCleanExit()
     return
   }
 
@@ -102,6 +111,8 @@ async function stopServer() {
     await exited
     throw new Error('Node production runtime did not stop within 7 seconds after SIGTERM')
   }
+
+  assertCleanExit()
 }
 
 try {
@@ -111,6 +122,11 @@ try {
   const response = await fetchLocal('/')
   if (!response.ok) {
     throw new Error(`Node server root returned ${response.status}`)
+  }
+
+  const body = await response.text()
+  if (!body.includes('id="onceveil-title"')) {
+    throw new Error('Node server root did not render the Onceveil application')
   }
 
   const csp = response.headers.get('content-security-policy') ?? ''
