@@ -54,7 +54,8 @@ function pairedPreviewOrigin(
     return undefined
   }
 
-  return `https://${previewName}.${target.hostname}`
+  const paired = `https://${previewName}.${target.hostname}`
+  return paired === current.origin ? undefined : paired
 }
 
 export function verificationOriginForParent(
@@ -64,7 +65,13 @@ export function verificationOriginForParent(
   const parent = configuredOrigin(parentOrigin)
   const app = configuredOrigin(config.appOrigin)
   const verification = configuredOrigin(config.verificationOrigin)
-  if (parent && app && verification && parent.origin === app.origin) {
+  if (
+    parent &&
+    app &&
+    verification &&
+    parent.origin === app.origin &&
+    verification.origin !== parent.origin
+  ) {
     return verification.origin
   }
 
@@ -86,7 +93,8 @@ export function parentOriginForVerification(
     verification &&
     configuredVerification &&
     app &&
-    verification.origin === configuredVerification.origin
+    verification.origin === configuredVerification.origin &&
+    app.origin !== verification.origin
   ) {
     return app.origin
   }
