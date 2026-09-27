@@ -60,8 +60,7 @@ describe('sensitive browser security policy', () => {
     expect(secretSurfacePolicy(malformed)).toBe('isolated')
     expect(secretSurfacePolicy(verification)).toBe('turnstile')
 
-    const documentOrigin =
-      'https://feature-x.verify-preview.example.com'
+    const documentOrigin = 'https://feature-x.verify-preview.example.com'
     const parentOrigin = 'https://feature-x.preview.example.com'
     const headers = secretSecurityHeaders('turnstile', parentOrigin, undefined, documentOrigin)
     const csp = headers['Content-Security-Policy']
