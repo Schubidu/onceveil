@@ -82,15 +82,17 @@ describe('preview-safe share landing route', () => {
     const routeSource = await readFile(path.resolve('src/routes/s.$id.tsx'), 'utf8')
 
     expect(browserSource).toContain("window.addEventListener('message', onMessage)")
-    expect(browserSource).toContain("event.origin !== 'null'")
-    expect(browserSource).toContain('event.source !== iframe.contentWindow')
+    expect(browserSource).toContain('isExpectedVerificationMessage(')
+    expect(browserSource).toContain("iframe.contentWindow,")
+    expect(browserSource).toContain("'null',")
     expect(browserSource).toContain(
       "iframe.sandbox.add('allow-scripts', 'allow-forms', 'allow-popups')",
     )
     expect(browserSource).not.toContain('allow-same-origin')
     expect(browserSource).not.toContain('allow-top-navigation')
-    expect(routeSource).toContain('event.source !== window.parent')
-    expect(routeSource).not.toContain('event.origin !== window.location.origin')
+    expect(routeSource).toContain('parentOrigin,')
+    expect(routeSource).toContain('window.parent,')
+    expect(routeSource).toContain('isExpectedVerificationMessage(')
     expect(browserSource).not.toContain('pairedCloudflareVerificationOrigin')
   })
 
