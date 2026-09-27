@@ -104,12 +104,7 @@ describe('ALTCHA reveal protection', () => {
       counterMax: 1,
       challengeTtlMs: 1,
     })
-    const expiredToken = await tokenFor(
-      protection,
-      SECRET_ID,
-      VERIFICATION_ID,
-      Date.now() - 60_000,
-    )
+    const expiredToken = await tokenFor(protection, SECRET_ID, VERIFICATION_ID, Date.now() - 60_000)
 
     await expect(
       protection.verify({
