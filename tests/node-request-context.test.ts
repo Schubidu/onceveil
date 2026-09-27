@@ -7,10 +7,7 @@ describe('Node reveal protection configuration', () => {
     expect(nodeRevealProtection('none')).toEqual({ provider: 'none' })
   })
 
-  it.each([undefined, '', 'turnstile', 'NONE', 'none '])(
-    'fails closed for %s',
-    (value) => {
-      expect(nodeRevealProtection(value)).toEqual({ provider: 'unavailable' })
-    },
-  )
+  it.each([undefined, '', 'turnstile', 'NONE', 'none '])('fails closed for %s', (value) => {
+    expect(nodeRevealProtection(value)).toEqual({ provider: 'unavailable' })
+  })
 })
