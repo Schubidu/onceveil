@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { NodeSqliteDatabase } from '../adapters/node-sqlite-database'
 import { applySqliteMigrations } from '../adapters/sqlite-migrations'
-import type { OnceveilRequestContext } from './request-context'
+import type { OnceveilRequestContext, RevealProtectionRuntime } from './request-context'
 
 const DEFAULT_SQLITE_PATH = './data/onceveil.sqlite'
 
@@ -47,6 +47,10 @@ function databaseForPath(configuredPath: string): NodeSqliteDatabase {
   return database
 }
 
+export function nodeRevealProtection(value: string | undefined): RevealProtectionRuntime {
+  return value === 'none' ? { provider: 'none' } : { provider: 'unavailable' }
+}
+
 export function createRequestContext(_request: Request): OnceveilRequestContext {
   let secretDatabase: NodeSqliteDatabase | undefined
 
@@ -59,9 +63,6 @@ export function createRequestContext(_request: Request): OnceveilRequestContext 
   return {
     secretDatabase,
     databaseEnvironment: 'markerless',
-    revealProtection:
-      process.env.ONCEVEIL_REVEAL_PROTECTION === 'none'
-        ? { provider: 'none' }
-        : { provider: 'unavailable' },
+    revealProtection: nodeRevealProtection(process.env.ONCEVEIL_REVEAL_PROTECTION),
   }
 }
