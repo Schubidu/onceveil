@@ -6,6 +6,8 @@ import migration5 from '../../migrations/0005_reveal_proof_verification.sql?raw'
 import migration6 from '../../migrations/0006_expire_legacy_share_links.sql?raw'
 import migration7 from '../../migrations/0007_owner_capability.sql?raw'
 
+import type { NodeSqliteDatabase } from './node-sqlite-database'
+
 const SQLITE_MIGRATIONS = [
   migration1,
   migration2,
@@ -14,10 +16,8 @@ const SQLITE_MIGRATIONS = [
   migration5,
   migration6,
   migration7,
-]
+] as const
 
-export function applySqliteMigrations(database: { exec(sql: string): void }): void {
-  for (const migration of SQLITE_MIGRATIONS) {
-    database.exec(migration)
-  }
+export function applySqliteMigrations(database: NodeSqliteDatabase): void {
+  database.applyMigrations(SQLITE_MIGRATIONS)
 }
