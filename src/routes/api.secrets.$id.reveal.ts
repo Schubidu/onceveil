@@ -21,7 +21,9 @@ import {
 import { runtimeEnvironmentForRequest } from '../runtime/readiness'
 import { logRuntimeError } from '../runtime/safe-log'
 import { withSecretSecurityHeaders } from '../runtime/security-headers'
+import { getRevealVerificationOriginConfig } from '../runtime/reveal-verification-origin'
 import { REVEAL_PROTECTION_ACTION } from '../core/reveal-protection'
+import { verificationOriginForParent } from '../core/reveal-verification-origin'
 import { RevealProofStorageError } from '../adapters/d1-reveal-proof-repository'
 
 function jsonError(error: string, status: number): Response {
@@ -43,6 +45,10 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
                 provider: 'turnstile',
                 siteKey: getTurnstileSiteKey(),
                 action: REVEAL_PROTECTION_ACTION,
+                verificationOrigin: verificationOriginForParent(
+                  new URL(request.url).origin,
+                  getRevealVerificationOriginConfig(),
+                ),
               },
               { status: 200 },
             ),
