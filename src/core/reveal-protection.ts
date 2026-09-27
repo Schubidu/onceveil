@@ -8,6 +8,7 @@ export const MAX_ACTIVE_REVEAL_PROOFS_PER_SECRET = 3
 export interface RevealChallengeContext {
   token: string
   secretId: SecretId
+  verificationId: string
   hostname: string
   remoteIp?: string
 }
