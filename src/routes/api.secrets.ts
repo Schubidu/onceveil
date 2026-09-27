@@ -8,7 +8,7 @@ import {
   SecretDatabaseEnvironmentError,
   SecretDatabaseUnavailableError,
 } from '../runtime/secret-repository'
-import { runtimeEnvironmentForRequest } from '../runtime/readiness'
+import { getRuntimeEnvironment } from '../runtime/environment'
 import { logRuntimeError } from '../runtime/safe-log'
 import { withSecretSecurityHeaders } from '../runtime/security-headers'
 
@@ -16,7 +16,7 @@ export const Route = createFileRoute('/api/secrets')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const expectedEnvironment = runtimeEnvironmentForRequest(request)
+        const expectedEnvironment = getRuntimeEnvironment()
         if (!expectedEnvironment) {
           return withSecretSecurityHeaders(
             Response.json({ error: 'service_unavailable' }, { status: 503 }),
