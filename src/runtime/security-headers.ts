@@ -1,4 +1,5 @@
-export type SecretSurfacePolicy = 'isolated' | 'verification'
+export type SecretSurfacePolicy = 'isolated' | 'turnstile'
+export type RevealProtectionProvider = 'turnstile' | 'none' | 'unavailable'
 
 const VERIFICATION_ID_PATTERN = /^[0-9a-f]{32}$/
 
@@ -15,14 +16,14 @@ const BASE_DIRECTIVES = [
 ]
 
 function contentSecurityPolicy(policy: SecretSurfacePolicy): string {
-  const verification = policy === 'verification'
+  const turnstile = policy === 'turnstile'
   return [
     ...BASE_DIRECTIVES,
-    verification
+    turnstile
       ? "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com"
       : "script-src 'self' 'unsafe-inline'",
-    verification ? "connect-src 'self' https://challenges.cloudflare.com" : "connect-src 'self'",
-    verification ? 'frame-src https://challenges.cloudflare.com' : "frame-src 'none'",
+    turnstile ? "connect-src 'self' https://challenges.cloudflare.com" : "connect-src 'self'",
+    turnstile ? 'frame-src https://challenges.cloudflare.com' : "frame-src 'none'",
   ].join('; ')
 }
 
@@ -66,13 +67,17 @@ export function isSecretSurface(request: Request): boolean {
   )
 }
 
-export function secretSurfacePolicy(request: Request): SecretSurfacePolicy {
+export function secretSurfacePolicy(
+  request: Request,
+  provider: RevealProtectionProvider,
+): SecretSurfacePolicy {
   const url = new URL(request.url)
   const verificationId = url.searchParams.get('verification')
-  return url.pathname.startsWith('/s/') &&
+  return provider === 'turnstile' &&
+    url.pathname.startsWith('/s/') &&
     url.searchParams.get('verify') === '1' &&
     verificationId !== null &&
     VERIFICATION_ID_PATTERN.test(verificationId)
-    ? 'verification'
+    ? 'turnstile'
     : 'isolated'
 }
