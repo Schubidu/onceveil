@@ -25,6 +25,7 @@ function databaseForPath(configuredPath: string): NodeSqliteDatabase {
   }
 
   opened?.database.close()
+  opened = undefined
 
   if (configuredPath !== ':memory:') {
     mkdirSync(path.dirname(path.resolve(configuredPath)), { recursive: true })
