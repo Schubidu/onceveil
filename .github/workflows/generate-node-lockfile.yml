@@ -38,5 +38,25 @@ jobs:
             exit 0
           fi
 
-          sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/package-lock.json?ref=${HEAD_BRANCH}" --jq .sha)"
-          gh api             --method PUT             "repos/${GITHUB_REPOSITORY}/contents/package-lock.json"             -f message='build: update Nitro lockfile'             -f content="$(base64 -w0 package-lock.json)"             -f branch="${HEAD_BRANCH}"             -f sha="${sha}"
+          export LOCK_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/contents/package-lock.json?ref=${HEAD_BRANCH}" --jq .sha)"
+          python - <<'PY'
+          import base64
+          import json
+          import os
+
+          with open("package-lock.json", "rb") as handle:
+              content = base64.b64encode(handle.read()).decode("ascii")
+
+          with open("/tmp/package-lock-payload.json", "w", encoding="utf-8") as handle:
+              json.dump(
+                  {
+                      "message": "build: update Nitro lockfile",
+                      "content": content,
+                      "branch": os.environ["HEAD_BRANCH"],
+                      "sha": os.environ["LOCK_SHA"],
+                  },
+                  handle,
+              )
+          PY
+
+          gh api             --method PUT             "repos/${GITHUB_REPOSITORY}/contents/package-lock.json"             --input /tmp/package-lock-payload.json
