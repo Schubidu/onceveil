@@ -374,7 +374,7 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
     }
 
     function handleEmbeddedMessage(event: MessageEvent<unknown>) {
-      if (event.source !== window.parent || event.origin !== window.location.origin) {
+      if (event.source !== window.parent) {
         return
       }
 
