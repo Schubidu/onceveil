@@ -84,16 +84,15 @@ describe('preview-safe share landing route', () => {
     expect(browserSource).toContain("window.addEventListener('message', onMessage)")
     expect(browserSource).toContain('isExpectedVerificationMessage(')
     expect(browserSource).toContain('iframe.contentWindow,')
-    expect(browserSource).toContain("'null',")
+    expect(browserSource).toContain('verificationOrigin,')
     expect(browserSource).toContain(
-      "iframe.sandbox.add('allow-scripts', 'allow-forms', 'allow-popups')",
+      "iframe.sandbox.add('allow-scripts', 'allow-forms', 'allow-popups', 'allow-same-origin')",
     )
-    expect(browserSource).not.toContain('allow-same-origin')
     expect(browserSource).not.toContain('allow-top-navigation')
+    expect(browserSource).toContain('verificationOriginForParent(window.location.origin)')
     expect(routeSource).toContain('parentOrigin,')
     expect(routeSource).toContain('window.parent,')
     expect(routeSource).toContain('isExpectedVerificationMessage(')
-    expect(browserSource).not.toContain('pairedCloudflareVerificationOrigin')
   })
 
   it('keeps an explicit fallback available after embedded Turnstile errors', async () => {
