@@ -129,6 +129,35 @@ export class NodeSqliteDatabase implements D1DatabaseLike {
     this.database.exec(sql)
   }
 
+  applyMigrations(migrations: readonly string[]): void {
+    this.database.exec('BEGIN IMMEDIATE')
+
+    try {
+      const row = this.database.prepare('PRAGMA user_version').get() as
+        | { user_version?: unknown }
+        | undefined
+      const currentVersion = row?.user_version
+      if (
+        typeof currentVersion !== 'number' ||
+        !Number.isSafeInteger(currentVersion) ||
+        currentVersion < 0 ||
+        currentVersion > migrations.length
+      ) {
+        throw new Error('Invalid SQLite migration version')
+      }
+
+      for (let index = currentVersion; index < migrations.length; index += 1) {
+        this.database.exec(migrations[index])
+        this.database.exec(`PRAGMA user_version = ${index + 1}`)
+      }
+
+      this.database.exec('COMMIT')
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
+  }
+
   close(): void {
     this.database.close()
   }

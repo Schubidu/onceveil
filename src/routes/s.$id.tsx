@@ -38,12 +38,6 @@ declare global {
   }
 }
 
-interface TurnstileConfig {
-  provider: 'turnstile'
-  siteKey: string
-  action: typeof REVEAL_PROTECTION_ACTION
-}
-
 export const Route = createFileRoute('/s/$id')({
   server: {
     handlers: {
@@ -75,7 +69,7 @@ function SecretLanding() {
   }
 
   return verificationId ? (
-    <TurnstileVerification id={id} verificationId={verificationId} />
+    <RevealVerification id={id} verificationId={verificationId} />
   ) : (
     <SecretReveal key={id} id={id} />
   )
@@ -249,7 +243,7 @@ function SecretReveal({ id }: { id: SecretId }) {
   )
 }
 
-function TurnstileVerification({ id, verificationId }: { id: SecretId; verificationId: string }) {
+function RevealVerification({ id, verificationId }: { id: SecretId; verificationId: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [status, setStatus] = useState('Preparing verification…')
   const [error, setError] = useState<string>()
@@ -269,7 +263,7 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
       setError(message)
     }
 
-    async function completeVerification(token: string) {
+    async function completeVerification(token?: string) {
       try {
         const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
           method: 'POST',
@@ -277,7 +271,7 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
             'Content-Type': 'application/json',
             'X-Onceveil-Proof-Request': '1',
           },
-          body: JSON.stringify({ token, verificationId }),
+          body: JSON.stringify(token ? { token, verificationId } : { verificationId }),
         })
 
         const body = (await response.json().catch(() => undefined)) as
@@ -303,12 +297,20 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
           headers: { 'X-Onceveil-Proof-Config': '1' },
         })
         const config = (await response.json().catch(() => undefined)) as
-          | Partial<TurnstileConfig>
+          | Record<string, unknown>
           | undefined
 
+        if (!active || !response.ok) {
+          throw new Error('Reveal protection is unavailable')
+        }
+
+        if (config?.provider === 'none') {
+          setStatus('No interactive verification is required. Returning to the secret…')
+          await completeVerification()
+          return
+        }
+
         if (
-          !active ||
-          !response.ok ||
           config?.provider !== 'turnstile' ||
           typeof config.siteKey !== 'string' ||
           config.action !== REVEAL_PROTECTION_ACTION
