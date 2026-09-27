@@ -14,7 +14,7 @@ export type RevealVerificationMessage =
   | { type: 'onceveil-reveal-verification-ready' }
   | { type: 'onceveil-reveal-prepared' }
   | { type: 'onceveil-reveal-verified' }
-  | { type: 'onceveil-reveal-proof-error' }
+  | { type: 'onceveil-reveal-proof-error'; errorCode?: string }
 
 export type RevealVerificationWindowMessage = RevealVerificationMessage & {
   verificationId: string
@@ -339,7 +339,12 @@ function requestEmbeddedRevealProof(
       }
 
       if (candidate.type === 'onceveil-reveal-proof-error') {
-        finish(() => reject(new Error('Reveal verification failed')))
+        const errorCode =
+          typeof candidate.errorCode === 'string' && candidate.errorCode
+            ? ` (Turnstile ${candidate.errorCode})`
+            : ''
+        status.textContent = `Embedded verification failed${errorCode}. Open verification in a new window instead.`
+        iframe.hidden = true
       }
     }
 
