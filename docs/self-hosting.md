@@ -2,26 +2,42 @@
 
 Onceveil supports a Node.js + SQLite deployment profile. Docker Compose is the recommended self-hosted packaging for v0.1.
 
-> [!WARNING]
-> ALTCHA support is tracked separately in #7. Until that is implemented, the only self-hosted reveal-protection mode is `none`, which is intended for trusted networks, VPNs, or local evaluation only. It is never selected implicitly.
+## Reveal protection
 
-## Docker Compose
+Self-hosted deployments use ALTCHA by default. ALTCHA's open-source proof-of-work runs locally: Onceveil generates and verifies signed challenges itself, and the browser widget is bundled with Onceveil. No Cloudflare or other verification service is required.
 
-Start the service with an explicit trusted-network opt-in:
+Generate a stable HMAC secret once and keep it with the deployment configuration:
+
+```sh
+umask 077
+printf 'ONCEVEIL_ALTCHA_SECRET=%s\n' "$(openssl rand -hex 32)" > .env
+```
+
+The secret must contain at least 32 characters. Keep the same value across normal restarts. Missing or invalid ALTCHA configuration fails closed and makes `/ready` return HTTP 503.
+
+ALTCHA proof-of-work raises the computational cost of automated abuse. It is **not recipient authentication** and does not prove who is opening a share link.
+
+For a trusted network, VPN, or local evaluation environment only, ALTCHA can be disabled explicitly:
 
 ```sh
 ONCEVEIL_REVEAL_PROTECTION=none docker compose up --build -d
 ```
 
-The service listens on `127.0.0.1:3000` by default. Override the host port with `ONCEVEIL_PORT`. Set `ONCEVEIL_BIND_ADDRESS=0.0.0.0` only when you intentionally want Docker to publish the port on all interfaces.
+There is no automatic fallback from ALTCHA to `none`.
+
+## Docker Compose
+
+With `ONCEVEIL_ALTCHA_SECRET` stored in `.env`, start the default ALTCHA-protected profile:
 
 ```sh
-ONCEVEIL_REVEAL_PROTECTION=none \
-ONCEVEIL_PORT=8080 \
 docker compose up --build -d
 ```
 
-If `ONCEVEIL_REVEAL_PROTECTION` is omitted, Compose fails before starting the service.
+The service listens on `127.0.0.1:3000` by default. Override the host port with `ONCEVEIL_PORT`. Set `ONCEVEIL_BIND_ADDRESS=0.0.0.0` only when you intentionally want Docker to publish the port on all interfaces.
+
+```sh
+ONCEVEIL_PORT=8080 docker compose up --build -d
+```
 
 Check readiness with:
 
@@ -30,7 +46,7 @@ docker compose ps
 curl --fail http://127.0.0.1:3000/ready
 ```
 
-The container healthcheck uses the same `/ready` endpoint.
+The container healthcheck uses the same `/ready` endpoint and includes both SQLite and reveal-protection configuration readiness.
 
 ## Persistent data
 
@@ -42,7 +58,7 @@ The container process runs as the non-root `node` user.
 
 ## Reverse proxy and TLS
 
-The Node container serves HTTP only. For an HTTPS deployment, place it behind a reverse proxy that terminates TLS.
+The Node container serves HTTP only. ALTCHA's browser widget requires a secure context for non-local deployments, so place public or remotely accessed deployments behind HTTPS.
 
 Recommended boundary:
 
@@ -68,16 +84,16 @@ The reverse proxy should:
 
 Onceveil already emits `Cache-Control: no-store` and security headers on secret-bearing surfaces. The proxy should preserve them rather than replacing them with weaker values.
 
-For public internet exposure, keep reveal protection fail-closed until the self-hosted ALTCHA profile from #7 is available.
-
 ## Native Node runtime
 
-Docker is packaging around the same standalone Node artifact used by the non-containerized profile:
+Docker packages the same standalone Node artifact used by the non-containerized profile:
 
 ```sh
 npm ci
 npm run build:node
-ONCEVEIL_REVEAL_PROTECTION=none npm start
+ONCEVEIL_REVEAL_PROTECTION=altcha \
+ONCEVEIL_ALTCHA_SECRET='<stable-random-secret>' \
+npm start
 ```
 
 The default non-containerized SQLite path is `./data/onceveil.sqlite`; override it with `ONCEVEIL_SQLITE_PATH`.
