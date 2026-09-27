@@ -16,7 +16,7 @@
     "lint": "biome lint .",
     "format": "biome format . --write",
     "format:check": "biome format .",
-    "check": "npm run build && npm run check:preview-config && npm run check:generated && npm run typecheck && npm run test && npm run lint && npm run format:check",
+    "check": "npm run build && npm run check:preview-config && npm run build:node && npm run check:node-runtime && npm run check:generated && npm run typecheck && npm run test && npm run lint && npm run format:check",
     "ci": "npm run check",
     "db:migrate:production": "wrangler d1 migrations apply onceveil-production --remote",
     "db:migrate:preview": "wrangler d1 migrations apply onceveil-preview --remote --config wrangler.preview-migrations.jsonc",
@@ -28,7 +28,8 @@
     "db:mark:preview": "node scripts/d1-environment.mjs mark preview onceveil-preview wrangler.preview-migrations.jsonc",
     "check:preview-config": "node scripts/check-preview-config.mjs",
     "build:node": "vite build --config vite.node.config.ts",
-    "start:node": "node .output/server/index.mjs"
+    "start:node": "node .output/server/index.mjs",
+    "check:node-runtime": "node scripts/check-node-runtime.mjs"
   },
   "dependencies": {
     "@tanstack/react-router": "1.170.39",
