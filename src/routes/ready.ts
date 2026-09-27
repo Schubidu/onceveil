@@ -21,7 +21,7 @@ export const Route = createFileRoute('/ready')({
             getSecretDatabase(runtime),
             expectedEnvironment,
           )
-          ready = readiness.status === 'ready'
+          ready = readiness.status === 'ready' && runtime.revealProtection.provider !== 'unavailable'
         } catch (error) {
           if (!(error instanceof SecretDatabaseUnavailableError)) {
             throw error
