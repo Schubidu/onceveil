@@ -9,7 +9,7 @@ The share page that holds the URL fragment key never loads Turnstile or any othe
 When the recipient chooses **Verify & reveal secret**:
 
 1. when the deployment configures a distinct verification origin, the share page creates a fragment-free verification iframe there with a random public verification identifier;
-2. the iframe remains sandboxed, but `allow-same-origin` is safe because the verifier is genuinely cross-origin from the key-holding parent; browser same-origin policy therefore keeps it away from the parent DOM, fragment-held AES key, plaintext, reveal authorization, cookies, and storage;
+2. the iframe remains sandboxed, but `allow-same-origin` is safe because the verifier is genuinely cross-origin from the key-holding parent; browser same-origin policy therefore keeps it away from the parent DOM and origin-scoped storage. Secret material remains only in parent memory. Cross-origin does not by itself isolate broadly scoped cookies, so sensitive cookies must be host-only to the app origin and must not use a `Domain` scope shared with the verifier;
 3. the parent accepts iframe messages only from the exact iframe window, the exact paired verifier origin, and the matching random verification identifier;
 4. after the iframe signals readiness, the parent prepares the one-time reveal proof and keeps both the fragment-only reveal authorization and bearer proof exclusively in the parent;
 5. the parent sends only a prepared-state message to the verifier;
@@ -51,6 +51,8 @@ Cloudflare Worker Previews can expose the same Preview on multiple custom-domain
 A Preview name is copied from the configured app Preview base to the configured verification Preview base. For example, generic bases `https://preview.example.com` and `https://verify-preview.example.com` map `https://feature-x.preview.example.com` to `https://feature-x.verify-preview.example.com`.
 
 If no distinct verification origin is configured for the current deployment, Onceveil does not guess a hostname and does not enable the embedded path; it uses the existing opener-less popup verification flow instead.
+
+For deployments that add authenticated modes later, keep sensitive session cookies host-only on the app origin. Do not scope authentication or capability cookies to a parent domain shared by the app and verifier origins. The current anonymous reveal flow stores no secret material in cookies.
 
 The public `TURNSTILE_SITE_KEY` is committed in `wrangler.jsonc` for both Production (`vars`) and Preview (`previews.vars`) so generated Preview configuration keeps the correct site key.
 
