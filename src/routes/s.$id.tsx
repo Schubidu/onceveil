@@ -17,7 +17,6 @@ import {
 } from '../browser/reveal-verification'
 import { REVEAL_PROTECTION_ACTION } from '../core/reveal-protection'
 import { isValidSecretId, type SecretId } from '../core/secret'
-import { pairedCloudflareVerificationOrigin } from '../platform/cloudflare-verification-origin'
 
 const TURNSTILE_SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
 
@@ -261,22 +260,19 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
     let active = true
     let started = false
     let script: HTMLScriptElement | undefined
-    const parentOrigin =
-      window.parent !== window
-        ? pairedCloudflareVerificationOrigin(window.location.origin)
-        : undefined
-    const broadcast = parentOrigin
+    const embedded = window.parent !== window
+    const broadcast = embedded
       ? undefined
       : new BroadcastChannel(`onceveil-reveal-${verificationId}`)
 
     function send(message: RevealVerificationMessage) {
-      if (parentOrigin) {
+      if (embedded) {
         window.parent.postMessage(
           {
             ...message,
             verificationId,
           } satisfies RevealVerificationWindowMessage,
-          parentOrigin,
+          '*',
         )
         return
       }
@@ -293,7 +289,7 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
       setError(message)
     }
 
-    async function completeVerification(token: string) {
+    async function completePopupVerification(token: string) {
       try {
         const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
           method: 'POST',
@@ -315,15 +311,44 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
 
         send({ type: 'onceveil-reveal-verified' })
         setStatus('Verified. Returning to the secret…')
-        if (!parentOrigin) {
-          window.close()
-        }
+        window.close()
       } catch {
         failVerification('Verification failed. Try again.')
       }
     }
 
-    async function startVerification() {
+    function renderTurnstile(siteKey: string, onToken: (token: string) => void) {
+      if (started) {
+        return
+      }
+
+      started = true
+      script = document.createElement('script')
+      script.src = TURNSTILE_SCRIPT_URL
+      script.async = true
+      script.defer = true
+      script.onload = () => {
+        if (!active || !containerRef.current || !window.turnstile) {
+          failVerification('Verification failed to initialize.')
+          return
+        }
+
+        setStatus('Complete the verification to continue.')
+        window.turnstile.render(containerRef.current, {
+          sitekey: siteKey,
+          action: REVEAL_PROTECTION_ACTION,
+          cData: id,
+          callback: onToken,
+          'error-callback': (errorCode) =>
+            failVerification('Verification failed. Try again.', errorCode),
+          'expired-callback': () => failVerification('Verification expired. Try again.'),
+        })
+      }
+      script.onerror = () => failVerification('Verification failed to load.')
+      document.head.append(script)
+    }
+
+    async function startPopupVerification() {
       try {
         const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
           headers: { 'X-Onceveil-Proof-Config': '1' },
@@ -342,53 +367,14 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
           throw new Error('Reveal protection is unavailable')
         }
 
-        script = document.createElement('script')
-        script.src = TURNSTILE_SCRIPT_URL
-        script.async = true
-        script.defer = true
-        script.onload = () => {
-          if (!active || !containerRef.current || !window.turnstile) {
-            failVerification('Verification failed to initialize.')
-            return
-          }
-
-          setStatus('Complete the verification to continue.')
-          window.turnstile.render(containerRef.current, {
-            sitekey: config.siteKey as string,
-            action: REVEAL_PROTECTION_ACTION,
-            cData: id,
-            callback: (token) => void completeVerification(token),
-            'error-callback': (errorCode) =>
-              failVerification('Verification failed. Try again.', errorCode),
-            'expired-callback': () => failVerification('Verification expired. Try again.'),
-          })
-        }
-        script.onerror = () => failVerification('Verification failed to load.')
-        document.head.append(script)
+        renderTurnstile(config.siteKey, (token) => void completePopupVerification(token))
       } catch {
         failVerification('Verification is unavailable.')
       }
     }
 
-    function handleMessage(message: unknown) {
-      if (typeof message !== 'object' || message === null || !('type' in message)) {
-        return
-      }
-
-      const candidate = message as Partial<RevealVerificationMessage>
-      if (candidate.type === 'onceveil-reveal-prepared' && !started) {
-        started = true
-        void startVerification()
-        return
-      }
-
-      if (candidate.type === 'onceveil-reveal-proof-error') {
-        setError('Verification could not be prepared. Try again.')
-      }
-    }
-
-    function onWindowMessage(event: MessageEvent<unknown>) {
-      if (!parentOrigin || event.origin !== parentOrigin || event.source !== window.parent) {
+    function handleEmbeddedMessage(event: MessageEvent<unknown>) {
+      if (event.source !== window.parent || event.origin !== window.location.origin) {
         return
       }
 
@@ -397,23 +383,47 @@ function TurnstileVerification({ id, verificationId }: { id: SecretId; verificat
         return
       }
 
-      handleMessage(candidate)
-    }
+      if (
+        candidate.type === 'onceveil-reveal-config' &&
+        typeof candidate.siteKey === 'string' &&
+        candidate.action === REVEAL_PROTECTION_ACTION
+      ) {
+        renderTurnstile(candidate.siteKey, (token) => {
+          send({ type: 'onceveil-reveal-token', token })
+        })
+      }
 
-    if (parentOrigin) {
-      window.addEventListener('message', onWindowMessage)
-    } else if (broadcast) {
-      broadcast.onmessage = (event: MessageEvent<unknown>) => {
-        handleMessage(event.data)
+      if (candidate.type === 'onceveil-reveal-proof-error') {
+        setError('Verification could not be prepared. Try again.')
       }
     }
 
-    send({ type: 'onceveil-reveal-verification-ready' })
+    if (embedded) {
+      window.addEventListener('message', handleEmbeddedMessage)
+      send({ type: 'onceveil-reveal-verification-ready' })
+    } else if (broadcast) {
+      broadcast.onmessage = (event: MessageEvent<unknown>) => {
+        const message = event.data
+        if (typeof message !== 'object' || message === null || !('type' in message)) {
+          return
+        }
+
+        const candidate = message as Partial<RevealVerificationMessage>
+        if (candidate.type === 'onceveil-reveal-prepared') {
+          void startPopupVerification()
+        }
+
+        if (candidate.type === 'onceveil-reveal-proof-error') {
+          setError('Verification could not be prepared. Close this window and try again.')
+        }
+      }
+      send({ type: 'onceveil-reveal-verification-ready' })
+    }
 
     return () => {
       active = false
       script?.remove()
-      window.removeEventListener('message', onWindowMessage)
+      window.removeEventListener('message', handleEmbeddedMessage)
       broadcast?.close()
     }
   }, [id, verificationId])
