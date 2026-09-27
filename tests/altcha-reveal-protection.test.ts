@@ -27,8 +27,9 @@ async function tokenFor(
   secretId = SECRET_ID,
   verificationId = VERIFICATION_ID,
   nowMs = Date.now(),
+  hostname = 'localhost',
 ): Promise<string> {
-  const challenge = await protection.createChallenge(secretId, verificationId, nowMs)
+  const challenge = await protection.createChallenge(secretId, verificationId, hostname, nowMs)
   const solution = await solveChallenge({ challenge, deriveKey })
   if (!solution) {
     throw new Error('ALTCHA test challenge was not solved')
@@ -78,6 +79,20 @@ describe('ALTCHA reveal protection', () => {
         secretId: SECRET_ID,
         verificationId: 'b'.repeat(32),
         hostname: 'localhost',
+      }),
+    ).resolves.toEqual({ kind: 'invalid' })
+  })
+
+  it('rejects a valid solution on another hostname', async () => {
+    const protection = verifier()
+    const token = await tokenFor(protection)
+
+    await expect(
+      protection.verify({
+        token,
+        secretId: SECRET_ID,
+        verificationId: VERIFICATION_ID,
+        hostname: 'other.example',
       }),
     ).resolves.toEqual({ kind: 'invalid' })
   })
