@@ -63,7 +63,10 @@ async function deriveSubkey(storageKey: Uint8Array, info: string): Promise<Uint8
 
 async function encryptionKey(storageKey: Uint8Array): Promise<CryptoKey> {
   const key = await deriveSubkey(storageKey, 'handoff-encryption')
-  return crypto.subtle.importKey('raw', toArrayBuffer(key), 'AES-GCM', false, ['encrypt', 'decrypt'])
+  return crypto.subtle.importKey('raw', toArrayBuffer(key), 'AES-GCM', false, [
+    'encrypt',
+    'decrypt',
+  ])
 }
 
 export async function deriveMcpRequestStateKey(storageKey: Uint8Array): Promise<Uint8Array> {
@@ -131,4 +134,3 @@ export async function openMcpValue(
 export function mcpHandoffTokenAad(flowId: string, action: string): string {
   return `onceveil:mcp:handoff-token:${action}:${flowId}`
 }
-
