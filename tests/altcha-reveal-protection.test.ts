@@ -116,13 +116,18 @@ describe('ALTCHA reveal protection', () => {
       counterMax: 2,
     })
 
-    await expect(
-      provider.verify({
-        token: 'not-base64-json',
-        secretId: SECRET_ID,
-        verificationId: VERIFICATION_ID,
-        hostname: 'localhost',
-      }),
-    ).resolves.toEqual({ kind: 'invalid' })
+    for (const malformedToken of [
+      'not-base64-json',
+      token({ challenge: {}, solution: {} }),
+    ]) {
+      await expect(
+        provider.verify({
+          token: malformedToken,
+          secretId: SECRET_ID,
+          verificationId: VERIFICATION_ID,
+          hostname: 'localhost',
+        }),
+      ).resolves.toEqual({ kind: 'invalid' })
+    }
   })
 })
