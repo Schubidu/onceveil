@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  takeMcpHandoffToken,
-  validOnceveilShareUrl,
-} from '../src/browser/mcp-handoff'
+import { takeMcpHandoffToken, validOnceveilShareUrl } from '../src/browser/mcp-handoff'
 import { encryptSecret, sharePath } from '../src/browser/secret-crypto'
 import { generateSecretId } from '../src/core/secret'
 
