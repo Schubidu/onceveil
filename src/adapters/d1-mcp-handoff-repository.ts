@@ -27,6 +27,8 @@ interface McpHandoffRow {
   owner_key_hash: string | null
 }
 
+const REDACTED_HANDOFF_TOKEN_HASH = '0'.repeat(64)
+
 const SELECT_HANDOFF = [
   'SELECT',
   '  flow_id,',
@@ -138,6 +140,16 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
     }
 
     const session = this.db.withSession('first-primary')
+    const scrub = await session
+      .prepare(
+        `UPDATE mcp_handoffs
+         SET handoff_token_hash = ?
+         WHERE handoff_expires_at_ms <= ?
+           AND state = 'COMPLETED'
+           AND action = 'create'`,
+      )
+      .bind(REDACTED_HANDOFF_TOKEN_HASH, record.createdAtMs)
+      .run()
     const cleanup = await session
       .prepare(
         `DELETE FROM mcp_handoffs
@@ -147,7 +159,7 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
       .bind(record.createdAtMs)
       .run()
 
-    if (!cleanup.success) {
+    if (!scrub.success || !cleanup.success) {
       return false
     }
 
