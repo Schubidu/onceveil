@@ -22,6 +22,8 @@ const DEFAULT_COUNTER_MIN = 5_000
 const DEFAULT_COUNTER_MAX = 10_000
 const MAX_TOKEN_LENGTH = 16 * 1024
 const MIN_HMAC_SECRET_LENGTH = 32
+const HEX_16_BYTES = /^[0-9a-f]{32}$/i
+const HEX_32_BYTES = /^[0-9a-f]{64}$/i
 
 export interface AltchaRevealProtectionConfiguration {
   hmacSecret: string
@@ -65,18 +67,27 @@ function isPayload(value: unknown): value is Payload {
   }
 
   return (
-    typeof parameters.algorithm === 'string' &&
+    parameters.algorithm === ALGORITHM &&
     typeof parameters.nonce === 'string' &&
+    HEX_16_BYTES.test(parameters.nonce) &&
     typeof parameters.salt === 'string' &&
+    HEX_16_BYTES.test(parameters.salt) &&
     typeof parameters.cost === 'number' &&
-    Number.isFinite(parameters.cost) &&
-    typeof parameters.keyLength === 'number' &&
-    Number.isFinite(parameters.keyLength) &&
+    Number.isSafeInteger(parameters.cost) &&
+    parameters.cost > 0 &&
+    parameters.keyLength === 32 &&
     typeof parameters.keyPrefix === 'string' &&
-    (value.challenge.signature === undefined || typeof value.challenge.signature === 'string') &&
+    HEX_16_BYTES.test(parameters.keyPrefix) &&
+    typeof parameters.keySignature === 'string' &&
+    HEX_32_BYTES.test(parameters.keySignature) &&
+    typeof value.challenge.signature === 'string' &&
+    HEX_32_BYTES.test(value.challenge.signature) &&
     typeof value.solution.counter === 'number' &&
-    Number.isFinite(value.solution.counter) &&
-    typeof value.solution.derivedKey === 'string'
+    Number.isSafeInteger(value.solution.counter) &&
+    value.solution.counter >= 0 &&
+    value.solution.counter <= 0xffffffff &&
+    typeof value.solution.derivedKey === 'string' &&
+    HEX_32_BYTES.test(value.solution.derivedKey)
   )
 }
 
@@ -131,6 +142,7 @@ export class AltchaRevealProtection implements RevealChallengeVerifier {
       },
       deriveKey,
       expiresAt: new Date(nowMs + REVEAL_VERIFICATION_TTL_MS),
+      hmacKeySignatureSecret: this.hmacSecret,
       hmacSignatureSecret: this.hmacSecret,
     })
   }
@@ -141,11 +153,16 @@ export class AltchaRevealProtection implements RevealChallengeVerifier {
       return { kind: 'invalid' }
     }
 
+    if (payload.challenge.parameters.cost !== this.settings.cost) {
+      return { kind: 'invalid' }
+    }
+
     try {
       const result = await verifySolution({
         challenge: payload.challenge,
         solution: payload.solution,
         deriveKey,
+        hmacKeySignatureSecret: this.hmacSecret,
         hmacSignatureSecret: this.hmacSecret,
       })
 
