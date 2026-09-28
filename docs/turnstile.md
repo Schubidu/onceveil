@@ -1,6 +1,6 @@
 # Cloudflare Turnstile reveal protection
 
-Cloudflare deployments require Turnstile protection before any secret can be revealed.
+The current Cloudflare deployment explicitly selects Turnstile protection before any secret can be revealed. Turnstile is a reveal-protection provider, not a requirement of the Cloudflare runtime.
 
 ## Trust boundary
 
@@ -45,7 +45,7 @@ Cloudflare authorizes subdomains of a configured hostname, so the Preview entry 
 
 If the `workers.dev` URLs are used for interactive reveal testing, configure the corresponding Workers hostname as well.
 
-The public `TURNSTILE_SITE_KEY` is committed in `wrangler.jsonc` for both Production (`vars`) and Preview (`previews.vars`) so generated Preview configuration keeps the correct site key.
+`wrangler.jsonc` explicitly sets `ONCEVEIL_REVEAL_PROTECTION=turnstile` for Production and Preview. The public `TURNSTILE_SITE_KEY` is committed alongside that selection so generated Preview configuration keeps the correct site key.
 
 Configure `TURNSTILE_SECRET_KEY` separately for Production and Preview in **Workers & Pages → onceveil → Settings**. Keep it as a Cloudflare secret; do not commit it or copy it to GitHub Actions.
 
