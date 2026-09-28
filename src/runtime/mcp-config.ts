@@ -4,6 +4,7 @@ export interface McpEnvironment {
   enabled?: string
   authToken?: string
   storageKey?: string
+  publicOrigin?: string
 }
 
 const HEX_KEY_PATTERN = /^[0-9a-fA-F]{64}$/
@@ -16,6 +17,32 @@ function hexBytes(value: string): Uint8Array {
     bytes[index] = Number.parseInt(value.slice(index * 2, index * 2 + 2), 16)
   }
   return bytes
+}
+
+function validPublicOrigin(value: string | undefined): string | undefined {
+  if (!value || value.trim() !== value) {
+    return undefined
+  }
+
+  try {
+    const url = new URL(value)
+    const loopback =
+      url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]'
+    if (
+      (url.protocol !== 'https:' && !(loopback && url.protocol === 'http:')) ||
+      url.username ||
+      url.password ||
+      url.pathname !== '/' ||
+      url.search ||
+      url.hash
+    ) {
+      return undefined
+    }
+
+    return url.origin
+  } catch {
+    return undefined
+  }
 }
 
 function validAuthToken(value: string | undefined): value is string {
@@ -39,7 +66,12 @@ export function resolveMcpRuntime(
     return { status: 'unavailable' }
   }
 
-  if (!validAuthToken(environment.authToken) || !HEX_KEY_PATTERN.test(environment.storageKey ?? '')) {
+  const publicOrigin = validPublicOrigin(environment.publicOrigin)
+  if (
+    !validAuthToken(environment.authToken) ||
+    !HEX_KEY_PATTERN.test(environment.storageKey ?? '') ||
+    !publicOrigin
+  ) {
     return { status: 'unavailable' }
   }
 
@@ -47,5 +79,6 @@ export function resolveMcpRuntime(
     status: 'enabled',
     authToken: environment.authToken,
     storageKey: hexBytes(environment.storageKey as string),
+    publicOrigin,
   }
 }
