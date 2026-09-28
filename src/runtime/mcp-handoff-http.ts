@@ -1,8 +1,4 @@
-import {
-  isValidMcpFlowId,
-  isValidMcpHandoffToken,
-  type McpFlowId,
-} from '../core/mcp-handoff'
+import { isValidMcpFlowId, isValidMcpHandoffToken, type McpFlowId } from '../core/mcp-handoff'
 import { isValidOwnerCapabilityHash } from '../core/owner-capability'
 import { isValidSecretId } from '../core/secret'
 import { hashMcpHandoffToken } from './mcp-crypto'
