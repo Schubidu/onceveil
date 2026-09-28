@@ -6,10 +6,7 @@ import { applySqliteMigrations } from '../src/adapters/sqlite-migrations'
 import { encryptedShareForCreate } from '../src/browser/secret-create-retry'
 import { DEFAULT_BRANDING } from '../src/core/branding'
 import type { SecretId } from '../src/core/secret'
-import {
-  completeMcpHandoffResponse,
-  mcpHandoffInfoResponse,
-} from '../src/runtime/mcp-handoff-http'
+import { completeMcpHandoffResponse, mcpHandoffInfoResponse } from '../src/runtime/mcp-handoff-http'
 import { createMcpHandoff, mcpHandoffUrl } from '../src/runtime/mcp-service'
 import type { OnceveilRequestContext } from '../src/runtime/request-context'
 import { createSecretResponse } from '../src/runtime/secret-http'
