@@ -53,10 +53,7 @@ function McpBrowserHandoff() {
         const body = (await response.json().catch(() => undefined)) as
           | Record<string, unknown>
           | undefined
-        if (
-          !response.ok ||
-          (body?.action !== 'create' && body?.action !== 'reveal')
-        ) {
+        if (!response.ok || (body?.action !== 'create' && body?.action !== 'reveal')) {
           throw new Error('handoff_unavailable')
         }
         return body.action
@@ -124,10 +121,7 @@ function HandoffFrame({
   )
 }
 
-function CreateHandoff({
-  flowId,
-  token,
-}: Readonly<{ flowId: string; token: McpHandoffToken }>) {
+function CreateHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpHandoffToken }>) {
   const [secret, setSecret] = useState('')
   const [pending, setPending] = useState<PendingEncryptedCreate>()
   const [created, setCreated] = useState<CreatedSecret>()
@@ -283,10 +277,7 @@ function CreateHandoff({
   )
 }
 
-function RevealHandoff({
-  flowId,
-  token,
-}: Readonly<{ flowId: string; token: McpHandoffToken }>) {
+function RevealHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpHandoffToken }>) {
   const [shareUrl, setShareUrl] = useState('')
   const [opening, setOpening] = useState(false)
   const [error, setError] = useState<string>()
