@@ -3,16 +3,9 @@ import {
   isValidMcpHandoffToken,
   type McpFlowId,
 } from '../core/mcp-handoff'
-import {
-  hashOwnerCapability,
-  isValidOwnerCapability,
-} from '../core/owner-capability'
+import { isValidOwnerCapabilityHash } from '../core/owner-capability'
 import { isValidSecretId } from '../core/secret'
-import {
-  hashMcpHandoffToken,
-  mcpOwnerCapabilityAad,
-  sealMcpValue,
-} from './mcp-crypto'
+import { hashMcpHandoffToken } from './mcp-crypto'
 import { getMcpHandoffRepository } from './mcp-repository'
 import type { OnceveilRequestContext } from './request-context'
 import { getSecretRepository } from './secret-repository'
@@ -115,33 +108,25 @@ export async function completeMcpHandoffResponse(
     return json({ error: 'invalid_request' }, 400)
   }
 
-  const { secretId, ownerCapability } = body as Record<string, unknown>
+  const { secretId, ownerKeyHash } = body as Record<string, unknown>
   if (
     typeof secretId !== 'string' ||
     !isValidSecretId(secretId) ||
-    typeof ownerCapability !== 'string' ||
-    !isValidOwnerCapability(ownerCapability)
+    typeof ownerKeyHash !== 'string' ||
+    !isValidOwnerCapabilityHash(ownerKeyHash)
   ) {
     return json({ error: 'invalid_request' }, 400)
   }
-
-  const ownerKeyHash = await hashOwnerCapability(ownerCapability)
   const status = await getSecretRepository(context).getStatus(secretId, ownerKeyHash, nowMs)
   if (!status) {
     return json({ error: 'not_found' }, 404)
   }
 
-  const sealedOwnerCapability = await sealMcpValue(
-    ownerCapability,
-    context.mcp.storageKey,
-    mcpOwnerCapabilityAad(authorized.record.flowId, secretId),
-  )
   const result = await getMcpHandoffRepository(context).completeCreate(
     authorized.record.flowId,
     authorized.tokenHash,
     secretId,
     ownerKeyHash,
-    sealedOwnerCapability,
     nowMs,
   )
 
