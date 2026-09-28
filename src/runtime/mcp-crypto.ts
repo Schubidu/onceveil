@@ -132,6 +132,3 @@ export function mcpHandoffTokenAad(flowId: string, action: string): string {
   return `onceveil:mcp:handoff-token:${action}:${flowId}`
 }
 
-export function mcpOwnerCapabilityAad(flowId: string, secretId: string): string {
-  return `onceveil:mcp:owner-capability:${flowId}:${secretId}`
-}
