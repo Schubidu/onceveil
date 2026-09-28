@@ -53,7 +53,7 @@ export function nodeRevealProtection(
   altchaSecret?: string,
 ): RevealProtectionRuntime {
   if (value === 'none') {
-    return { provider: 'none' }
+    return { provider: 'noop' }
   }
 
   if (value === 'altcha') {
