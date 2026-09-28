@@ -3,11 +3,7 @@ import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import {
-  DEFAULT_BRANDING,
-  parseBrandingConfig,
-  resolveBrandingConfig,
-} from '../src/core/branding'
+import { DEFAULT_BRANDING, parseBrandingConfig, resolveBrandingConfig } from '../src/core/branding'
 
 describe('deployment branding', () => {
   it('uses the Onceveil presentation by default', () => {
