@@ -99,3 +99,10 @@ npm start
 ```
 
 The default non-containerized SQLite path is `./data/onceveil.sqlite`; override it with `ONCEVEIL_SQLITE_PATH`.
+
+
+## White-label branding
+
+Docker Compose forwards the deployment branding variables `ONCEVEIL_BRAND_NAME`, `ONCEVEIL_BRAND_LOGO`, `ONCEVEIL_BRAND_FAVICON`, and `ONCEVEIL_BRAND_ACCENT`.
+
+Logo and favicon paths must stay on the Onceveil origin; arbitrary CSS, HTML, JavaScript, and external asset origins are intentionally unsupported. See [branding.md](branding.md) for the complete contract.
