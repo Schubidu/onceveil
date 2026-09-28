@@ -1,6 +1,7 @@
 import handler, { createServerEntry } from '@tanstack/react-start/server-entry'
 
 import { createRequestContext } from '#onceveil-runtime-context'
+import { handleMcpRequest } from './runtime/mcp-http'
 import {
   isSecretSurface,
   secretSurfacePolicy,
@@ -9,6 +10,10 @@ import {
 
 export default createServerEntry({
   async fetch(request) {
+    if (new URL(request.url).pathname === '/mcp') {
+      return handleMcpRequest(request)
+    }
+
     const response = await handler.fetch(request)
     if (!isSecretSurface(request)) {
       return response
