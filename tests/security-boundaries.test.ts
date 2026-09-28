@@ -47,7 +47,7 @@ describe('sensitive browser security policy', () => {
     expect(secretSurfacePolicy(malformed, 'turnstile')).toBe('isolated')
     expect(secretSurfacePolicy(verification, 'turnstile')).toBe('turnstile')
     expect(secretSurfacePolicy(verification, 'altcha')).toBe('altcha')
-    expect(secretSurfacePolicy(verification, 'none')).toBe('isolated')
+    expect(secretSurfacePolicy(verification, 'noop')).toBe('isolated')
     expect(secretSurfacePolicy(verification, 'unavailable')).toBe('isolated')
 
     const csp = secretSecurityHeaders('turnstile')['Content-Security-Policy']
@@ -59,7 +59,7 @@ describe('sensitive browser security policy', () => {
     expect(altchaCsp).toContain("worker-src 'self' blob:")
     expect(altchaCsp).not.toContain('challenges.cloudflare.com')
 
-    const selfHostedCsp = secretSecurityHeaders(secretSurfacePolicy(verification, 'none'))[
+    const selfHostedCsp = secretSecurityHeaders(secretSurfacePolicy(verification, 'noop'))[
       'Content-Security-Policy'
     ]
     expect(selfHostedCsp).toContain("worker-src 'none'")
