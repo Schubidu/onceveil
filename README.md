@@ -16,7 +16,7 @@ MCP support is planned with secure browser handoff so secret material does not e
 
 ## Current status
 
-The application and Cloudflare runtime baseline, strict one-time lifecycle, browser-side encryption, D1-backed create/reveal flow, fail-closed Turnstile reveal protection, and separate owner status/revocation capabilities are implemented. Production and Preview use separate D1 databases. The portable Node/SQLite runtime, standalone Nitro production build, and Docker Compose packaging are implemented; ALTCHA and MCP are still pending.
+The application and Cloudflare runtime baseline, strict one-time lifecycle, browser-side encryption, D1-backed create/reveal flow, fail-closed Turnstile reveal protection, and separate owner status/revocation capabilities are implemented. Production and Preview use separate D1 databases. The portable Node/SQLite runtime, standalone Nitro production build, Docker Compose packaging, and self-hosted ALTCHA reveal protection are implemented; MCP is still pending.
 
 ## Development
 
@@ -47,10 +47,12 @@ The standalone Node.js/SQLite runtime is also available without Docker:
 ```sh
 npm ci
 npm run build:node
-ONCEVEIL_REVEAL_PROTECTION=none npm start
+ONCEVEIL_REVEAL_PROTECTION=altcha \
+ONCEVEIL_ALTCHA_SECRET='<stable-random-secret>' \
+npm start
 ```
 
-By default SQLite is stored at `./data/onceveil.sqlite`; set `ONCEVEIL_SQLITE_PATH` to use another path. The `none` reveal-protection mode is intended only for trusted-network/self-hosted use. Docker Compose, persistence, healthcheck, reverse-proxy/TLS expectations, and trusted-network startup are documented in [docs/self-hosting.md](docs/self-hosting.md). Public self-hosting remains incomplete until ALTCHA is implemented.
+By default SQLite is stored at `./data/onceveil.sqlite`; set `ONCEVEIL_SQLITE_PATH` to use another path. ALTCHA is the default self-hosted reveal protection; `none` remains an explicit trusted-network/VPN option. Docker Compose, persistent configuration, healthcheck, and reverse-proxy/TLS expectations are documented in [docs/self-hosting.md](docs/self-hosting.md).
 
 ## Cloudflare deployment
 
