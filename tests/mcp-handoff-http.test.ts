@@ -7,7 +7,11 @@ import { revealAuthorizationFromFragment } from '../src/browser/secret-crypto'
 import { encryptedShareForCreate } from '../src/browser/secret-create-retry'
 import { DEFAULT_BRANDING } from '../src/core/branding'
 import type { SecretId } from '../src/core/secret'
-import { completeMcpHandoffResponse, mcpHandoffInfoResponse } from '../src/runtime/mcp-handoff-http'
+import {
+  completeMcpHandoffResponse,
+  MAX_MCP_HANDOFF_COMPLETION_BYTES,
+  mcpHandoffInfoResponse,
+} from '../src/runtime/mcp-handoff-http'
 import { createMcpHandoff, mcpHandoffUrl } from '../src/runtime/mcp-service'
 import type { OnceveilRequestContext } from '../src/runtime/request-context'
 import { createSecretResponse } from '../src/runtime/secret-http'
@@ -218,6 +222,41 @@ describe('MCP browser handoff HTTP boundary', () => {
       db.close()
     }
   })
+
+  it.each(['create', 'reveal'] as const)(
+    'rejects oversized %s completion bodies before JSON parsing',
+    async (action) => {
+      const db = database()
+      try {
+        const runtime = context(db)
+        const nowMs = Date.now()
+        const handoff = await createMcpHandoff(runtime, action, nowMs)
+        const token = tokenFrom(await mcpHandoffUrl(runtime, handoff))
+        const oversized = 'x'.repeat(MAX_MCP_HANDOFF_COMPLETION_BYTES + 1)
+
+        const response = await completeMcpHandoffResponse(
+          request(handoff.flowId, token, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: oversized,
+          }),
+          handoff.flowId,
+          runtime,
+          nowMs + 1,
+        )
+        expect(response.status).toBe(413)
+        await expect(response.json()).resolves.toEqual({ error: 'payload_too_large' })
+
+        const row = await db
+          .prepare('SELECT state FROM mcp_handoffs WHERE flow_id = ?')
+          .bind(handoff.flowId)
+          .first<{ state: string }>()
+        expect(row?.state).toBe('PENDING')
+      } finally {
+        db.close()
+      }
+    },
+  )
 
   it('revokes issued browser handoff tokens when the storage key rotates', async () => {
     const db = database()
