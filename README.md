@@ -9,8 +9,10 @@ Onceveil is an open-source service for sharing an encrypted secret exactly once 
 
 The planned product supports two first-class deployment profiles:
 
-- **Cloudflare:** TanStack Start on Workers, D1, and Turnstile.
-- **Self-hosted:** TanStack Start on Node.js/Docker, SQLite, and ALTCHA.
+- **Cloudflare:** TanStack Start on Workers and D1; the current deployment selects Turnstile.
+- **Self-hosted:** TanStack Start on Node.js/Docker and SQLite; Docker defaults to ALTCHA.
+
+Reveal protection is selected explicitly at runtime and is not coupled to either platform.
 
 MCP support is planned with secure browser handoff so secret material does not enter model/tool context.
 
@@ -66,7 +68,7 @@ One-time Cloudflare dashboard setup:
 4. Set the build command to `npm run build`.
 5. Set the production deploy command to `npm run deploy:production`.
 6. If Cloudflare shows **Set up Worker Previews**, complete that one-time irreversible switch first. Then enable Preview Builds and use `npm run deploy:preview` as the Preview command.
-7. Keep Production and Preview secrets and bindings configured separately in Cloudflare. The public Turnstile site key is committed in `wrangler.jsonc` for both scopes; the private Turnstile secret remains dashboard-managed.
+7. Keep Production and Preview secrets and bindings configured separately in Cloudflare. `wrangler.jsonc` explicitly selects `ONCEVEIL_REVEAL_PROTECTION=turnstile` for both scopes. The public Turnstile site key is committed there; the private Turnstile secret remains dashboard-managed.
 
 Cloudflare posts the Preview build status and Preview URL back to the pull request; subsequent pushes update the branch Preview without touching Production.
 
