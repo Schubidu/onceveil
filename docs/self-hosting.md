@@ -4,7 +4,7 @@ Onceveil supports a Node.js + SQLite deployment profile. Docker Compose is the r
 
 ## Reveal protection
 
-Self-hosted deployments use ALTCHA by default. ALTCHA's open-source proof-of-work runs locally: Onceveil generates and verifies signed challenges itself, and the browser widget is bundled with Onceveil. No Cloudflare or other verification service is required.
+Docker Compose selects ALTCHA by default through `ONCEVEIL_REVEAL_PROTECTION=altcha`. Provider selection is runtime configuration rather than a Node/Docker constraint. ALTCHA's open-source proof-of-work runs locally: Onceveil generates and verifies signed challenges itself, and the browser widget is bundled with Onceveil. No Cloudflare or other verification service is required.
 
 Generate a stable HMAC secret once and keep it with the deployment configuration:
 
@@ -23,7 +23,9 @@ For a trusted network, VPN, or local evaluation environment only, ALTCHA can be 
 ONCEVEIL_REVEAL_PROTECTION=none docker compose up --build -d
 ```
 
-There is no automatic fallback from ALTCHA to `none`.
+There is no automatic fallback from ALTCHA or another misconfigured provider to `none`. Internally, explicit `none` is handled by the same provider contract through a no-op implementation.
+
+The Node/Docker runtime can also select `turnstile` when `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are configured.
 
 ## Docker Compose
 
