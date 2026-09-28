@@ -149,6 +149,20 @@ async function postJson(pathname, body, headers = {}) {
   })
 }
 
+async function assertMcpDisabledByDefault() {
+  const response = await fetch(`${origin}/mcp`, {
+    method: 'POST',
+    headers: {
+      Connection: 'close',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+  })
+  if (response.status !== 404) {
+    throw new Error(`MCP must be disabled by default, got HTTP ${response.status}`)
+  }
+}
+
 async function assertBrandingConfiguration() {
   const response = await fetch(origin, {
     headers: { Connection: 'close' },
@@ -297,6 +311,7 @@ try {
   const firstContainer = await waitUntilHealthy()
   await assertNonRoot()
   await assertBrandingConfiguration()
+  await assertMcpDisabledByDefault()
 
   const secret = await createPersistedSecret()
 
@@ -309,7 +324,7 @@ try {
   await assertNonRoot()
   await revealPersistedSecret(secret)
 
-  console.log('Docker Compose branding, ALTCHA, persistence and one-time reveal check passed')
+  console.log('Docker Compose branding, MCP opt-in, ALTCHA, persistence and one-time reveal check passed')
 } finally {
   await compose(['down', '-v', '--remove-orphans']).catch(() => undefined)
 }
