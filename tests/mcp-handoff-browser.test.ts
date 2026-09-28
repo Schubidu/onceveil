@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { takeMcpHandoffToken, validOnceveilShareUrl } from '../src/browser/mcp-handoff'
-import { encryptSecret, sharePath } from '../src/browser/secret-crypto'
+import {
+  parseOnceveilShareUrl,
+  takeMcpHandoffToken,
+  validOnceveilShareUrl,
+} from '../src/browser/mcp-handoff'
+import {
+  encryptSecret,
+  revealAuthorizationFromFragment,
+  sharePath,
+} from '../src/browser/secret-crypto'
 import { generateSecretId } from '../src/core/secret'
 
 describe('MCP browser handoff boundary', () => {
@@ -33,6 +41,11 @@ describe('MCP browser handoff boundary', () => {
     const url = `https://onceveil.example${path}`
 
     expect(validOnceveilShareUrl(url, 'https://onceveil.example')).toBe(url)
+    expect(parseOnceveilShareUrl(url, 'https://onceveil.example')).toEqual({
+      url,
+      secretId: id,
+      revealAuthorization: revealAuthorizationFromFragment(encrypted.fragment),
+    })
     expect(validOnceveilShareUrl(url, 'https://other.example')).toBeUndefined()
     expect(
       validOnceveilShareUrl(
