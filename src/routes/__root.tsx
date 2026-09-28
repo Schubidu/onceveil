@@ -52,10 +52,7 @@ function RootDocument({
   children,
 }: Readonly<{ branding: BrandingConfig; children: ReactNode }>) {
   return (
-    <html
-      lang="en"
-      style={{ '--brand-accent': branding.theme.accent } as CSSProperties}
-    >
+    <html lang="en" style={{ '--brand-accent': branding.theme.accent } as CSSProperties}>
       <head>
         <HeadContent />
       </head>
