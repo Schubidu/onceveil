@@ -27,6 +27,7 @@ const MAX_NAME_LENGTH = 80
 const MAX_ASSET_PATH_LENGTH = 2_048
 const ACCENT_PATTERN = /^#[0-9a-fA-F]{6}$/
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/
+const MARKUP_CHARACTERS = /[<>]/
 const ASSET_BASE = 'https://onceveil.invalid'
 
 function safeName(value: unknown): string {
@@ -38,7 +39,8 @@ function safeName(value: unknown): string {
   if (
     normalized.length === 0 ||
     normalized.length > MAX_NAME_LENGTH ||
-    CONTROL_CHARACTERS.test(normalized)
+    CONTROL_CHARACTERS.test(normalized) ||
+    MARKUP_CHARACTERS.test(normalized)
   ) {
     return DEFAULT_BRANDING.name
   }
