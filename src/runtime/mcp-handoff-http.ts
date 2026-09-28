@@ -19,6 +19,67 @@ function json(data: unknown, status: number): Response {
   })
 }
 
+export const MAX_MCP_HANDOFF_COMPLETION_BYTES = 1024
+
+type CompletionBodyResult =
+  | { kind: 'ok'; body: Record<string, unknown> }
+  | { kind: 'invalid' }
+  | { kind: 'too_large' }
+
+async function readCompletionBody(request: Request): Promise<CompletionBodyResult> {
+  const contentLength = request.headers.get('content-length')
+  if (contentLength !== null) {
+    const length = Number(contentLength)
+    if (Number.isFinite(length) && length > MAX_MCP_HANDOFF_COMPLETION_BYTES) {
+      return { kind: 'too_large' }
+    }
+  }
+
+  if (!request.body) {
+    return { kind: 'invalid' }
+  }
+
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        break
+      }
+
+      total += value.byteLength
+      if (total > MAX_MCP_HANDOFF_COMPLETION_BYTES) {
+        await reader.cancel().catch(() => undefined)
+        return { kind: 'too_large' }
+      }
+      chunks.push(value)
+    }
+
+    const bytes = new Uint8Array(total)
+    let offset = 0
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset)
+      offset += chunk.byteLength
+    }
+
+    const value: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
+    return typeof value === 'object' && value !== null
+      ? { kind: 'ok', body: value as Record<string, unknown> }
+      : { kind: 'invalid' }
+  } catch {
+    return { kind: 'invalid' }
+  }
+}
+
+function completionBodyError(result: Exclude<CompletionBodyResult, { kind: 'ok' }>): Response {
+  return result.kind === 'too_large'
+    ? json({ error: 'payload_too_large' }, 413)
+    : json({ error: 'invalid_request' }, 400)
+}
+
 function bearerToken(request: Request): string | undefined {
   const authorization = request.headers.get('Authorization')
   if (!authorization?.startsWith('Bearer ')) {
@@ -88,18 +149,12 @@ export async function completeMcpHandoffResponse(
   }
 
   if (authorized.record.action === 'reveal') {
-    let body: unknown
-    try {
-      body = await request.json()
-    } catch {
-      return json({ error: 'invalid_request' }, 400)
+    const bodyResult = await readCompletionBody(request)
+    if (bodyResult.kind !== 'ok') {
+      return completionBodyError(bodyResult)
     }
 
-    if (typeof body !== 'object' || body === null) {
-      return json({ error: 'invalid_request' }, 400)
-    }
-
-    const { secretId, revealAuthorization } = body as Record<string, unknown>
+    const { secretId, revealAuthorization } = bodyResult.body
     if (
       typeof secretId !== 'string' ||
       !isValidSecretId(secretId) ||
@@ -123,18 +178,12 @@ export async function completeMcpHandoffResponse(
       : json({ completed: true }, 200)
   }
 
-  let body: unknown
-  try {
-    body = await request.json()
-  } catch {
-    return json({ error: 'invalid_request' }, 400)
+  const bodyResult = await readCompletionBody(request)
+  if (bodyResult.kind !== 'ok') {
+    return completionBodyError(bodyResult)
   }
 
-  if (typeof body !== 'object' || body === null) {
-    return json({ error: 'invalid_request' }, 400)
-  }
-
-  const { secretId, ownerKeyHash } = body as Record<string, unknown>
+  const { secretId, ownerKeyHash } = bodyResult.body
   if (
     typeof secretId !== 'string' ||
     !isValidSecretId(secretId) ||
