@@ -126,9 +126,7 @@ describe('reveal protection browser providers', () => {
 
     widget.dispatchEvent(customEvent('verified', { payload: 42 }))
 
-    expect(failed).toHaveBeenCalledWith(
-      'Verification failed. Close this window and try again.',
-    )
+    expect(failed).toHaveBeenCalledWith('Verification failed. Close this window and try again.')
     expect(verified).not.toHaveBeenCalled()
   })
 })
