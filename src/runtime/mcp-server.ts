@@ -8,7 +8,11 @@ import {
 } from '@modelcontextprotocol/server'
 import * as z from 'zod/v4'
 
-import { isValidMcpFlowId, type McpHandoffAction } from '../core/mcp-handoff'
+import {
+  isValidMcpFlowId,
+  type McpHandoffAction,
+  type McpHandoffRecord,
+} from '../core/mcp-handoff'
 import { deriveMcpRequestStateKey } from './mcp-crypto'
 import {
   createMcpHandoff,
@@ -63,7 +67,7 @@ async function handoffTool(
 ): Promise<CallToolResult | InputRequiredResult> {
   try {
     const state = ctx.mcpReq.requestState<HandoffRequestState>()
-    let record
+    let record: McpHandoffRecord
 
     if (state) {
       if (state.action !== action || !isValidMcpFlowId(state.flowId)) {
