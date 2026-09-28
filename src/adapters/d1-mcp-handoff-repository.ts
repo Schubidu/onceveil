@@ -137,7 +137,21 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
       return false
     }
 
-    const result = await this.db
+    const session = this.db.withSession('first-primary')
+    const cleanup = await session
+      .prepare(
+        `DELETE FROM mcp_handoffs
+         WHERE handoff_expires_at_ms <= ?
+           AND (state = 'PENDING' OR action = 'reveal')`,
+      )
+      .bind(record.createdAtMs)
+      .run()
+
+    if (!cleanup.success) {
+      return false
+    }
+
+    const result = await session
       .prepare(
         'INSERT OR IGNORE INTO mcp_handoffs (' +
           'flow_id, action, state, handoff_token_hash, handoff_token_nonce, ' +
