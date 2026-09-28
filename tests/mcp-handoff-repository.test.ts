@@ -3,11 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { D1McpHandoffRepository } from '../src/adapters/d1-mcp-handoff-repository'
 import { NodeSqliteDatabase } from '../src/adapters/node-sqlite-database'
 import { applySqliteMigrations } from '../src/adapters/sqlite-migrations'
-import type {
-  McpFlowId,
-  McpHandoffRecord,
-  SealedMcpValue,
-} from '../src/core/mcp-handoff'
+import type { McpFlowId, McpHandoffRecord, SealedMcpValue } from '../src/core/mcp-handoff'
 import type { OwnerCapabilityHash } from '../src/core/owner-capability'
 import type { SecretId } from '../src/core/secret'
 
@@ -70,12 +66,12 @@ describe('MCP handoff repository', () => {
       const record = pending('2'.repeat(32), 'reveal')
       await repository.create(record)
 
-      await expect(
-        repository.completeReveal(record.flowId, TOKEN_HASH, 1_500),
-      ).resolves.toBe('completed')
-      await expect(
-        repository.completeReveal(record.flowId, TOKEN_HASH, 1_501),
-      ).resolves.toBe('replayed')
+      await expect(repository.completeReveal(record.flowId, TOKEN_HASH, 1_500)).resolves.toBe(
+        'completed',
+      )
+      await expect(repository.completeReveal(record.flowId, TOKEN_HASH, 1_501)).resolves.toBe(
+        'replayed',
+      )
       await expect(repository.get(record.flowId)).resolves.toMatchObject({
         state: 'COMPLETED',
         completedAtMs: 1_500,
@@ -133,9 +129,9 @@ describe('MCP handoff repository', () => {
       await repository.create(reveal)
       await repository.create(create)
 
-      await expect(
-        repository.completeReveal(reveal.flowId, TOKEN_HASH, 2_000),
-      ).resolves.toBe('unavailable')
+      await expect(repository.completeReveal(reveal.flowId, TOKEN_HASH, 2_000)).resolves.toBe(
+        'unavailable',
+      )
       await expect(
         repository.completeCreate(create.flowId, '0'.repeat(64), SECRET_ID, OWNER_HASH, 1_500),
       ).resolves.toBe('unavailable')
