@@ -68,6 +68,10 @@ export async function mcpHandoffUrl(
   record: McpHandoffRecord,
 ): Promise<string> {
   const mcp = enabledMcp(context)
+  if (!record.handoffToken) {
+    throw new McpUnavailableError()
+  }
+
   const token = await openMcpValue(
     record.handoffToken,
     mcp.storageKey,
