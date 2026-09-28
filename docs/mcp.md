@@ -52,6 +52,10 @@ The server stores only:
 
 The raw owner capability never enters the MCP server. It remains in the browser-only owner link.
 
+The handoff page treats browser lifecycle transitions as a security boundary: `pagehide` and BFCache restoration clear the transition token, create plaintext, encrypted retry state, generated share/owner links, and pasted reveal URL from React state and invalidate in-flight UI work. Returning with Back therefore cannot restore a usable sensitive handoff state.
+
+Browser completion request bodies are capped at 1 KiB and read with a bounded stream before JSON parsing. Oversized bodies fail with HTTP 413 and cannot advance the handoff.
+
 Handoff tokens expire after ten minutes and are action-bound. Completion is one-way and retry-safe. After successful completion, Onceveil discards the encrypted token copy and temporarily retains only the keyed fingerprint needed to recognize an identical completion retry. After the handoff window expires, stale pending/reveal rows are pruned and completed-create mappings scrub the transition fingerprint while retaining only the management mapping required for `status`/`revoke`.
 
 ## Runtime configuration
