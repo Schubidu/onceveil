@@ -1,6 +1,8 @@
 import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
+import { BrandingProvider } from '../browser/branding'
+import { DEFAULT_BRANDING } from '../core/branding'
 import stylesheet from '../styles.css?url'
 
 export const Route = createRootRoute({
@@ -12,7 +14,7 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'Onceveil',
+        title: DEFAULT_BRANDING.name,
       },
       {
         name: 'description',
@@ -27,7 +29,9 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <RootDocument>
-      <Outlet />
+      <BrandingProvider>
+        <Outlet />
+      </BrandingProvider>
     </RootDocument>
   )
 }
