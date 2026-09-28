@@ -324,8 +324,14 @@ describe('MCP model-context boundary', () => {
       const handoffUrl = elicitation(first)
       const flowId = handoffUrl.pathname.split('/').at(-1) ?? ''
       const requestState = String(first.requestState)
-      const last = requestState.at(-1)
-      const tampered = requestState.slice(0, -1) + (last === 'A' ? 'B' : 'A')
+      const macSeparator = requestState.lastIndexOf('.')
+      expect(macSeparator).toBeGreaterThan(0)
+      const macStart = macSeparator + 1
+      const firstMacCharacter = requestState[macStart]
+      const tampered =
+        requestState.slice(0, macStart) +
+        (firstMacCharacter === 'A' ? 'B' : 'A') +
+        requestState.slice(macStart + 1)
 
       const response = await handler.fetch(
         modernToolCall('create_secret_handoff', {}, {
