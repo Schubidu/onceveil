@@ -74,7 +74,6 @@ export async function createMcpHandoff(
 
 export async function mcpHandoffUrl(
   context: OnceveilRequestContext,
-  origin: string,
   record: McpHandoffRecord,
 ): Promise<string> {
   const mcp = enabledMcp(context)
@@ -83,7 +82,7 @@ export async function mcpHandoffUrl(
     mcp.storageKey,
     mcpHandoffTokenAad(record.flowId, record.action),
   )
-  const url = new URL(`/mcp/handoff/${record.flowId}`, origin)
+  const url = new URL(`/mcp/handoff/${record.flowId}`, mcp.publicOrigin)
   url.hash = `v1.${token}`
   return url.toString()
 }
