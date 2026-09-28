@@ -4,6 +4,7 @@ import path from 'node:path'
 import { NodeSqliteDatabase } from '../adapters/node-sqlite-database'
 import { applySqliteMigrations } from '../adapters/sqlite-migrations'
 import { resolveBrandingConfig } from '../core/branding'
+import { resolveMcpRuntime } from './mcp-config'
 import type { OnceveilRequestContext } from './request-context'
 import { resolveRevealProtectionRuntime } from './reveal-protection-config'
 
@@ -71,6 +72,10 @@ export function createRequestContext(_request: Request): OnceveilRequestContext 
     branding: getBrandingConfig(),
     secretDatabase,
     databaseEnvironment: 'markerless',
+    mcp: resolveMcpRuntime(process.env.ONCEVEIL_MCP_ENABLED, {
+      authToken: process.env.ONCEVEIL_MCP_TOKEN,
+      storageKey: process.env.ONCEVEIL_MCP_STORAGE_KEY,
+    }),
     revealProtection: resolveRevealProtectionRuntime(process.env.ONCEVEIL_REVEAL_PROTECTION, {
       altchaSecret: process.env.ONCEVEIL_ALTCHA_SECRET,
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY,
