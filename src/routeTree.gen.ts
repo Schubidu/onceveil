@@ -87,11 +87,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
   '/ready': typeof ReadyRoute
-  '/api/mcp/handoffs/$flowId': typeof ApiMcpHandoffsFlowIdRoute
   '/api/secrets': typeof ApiSecretsRouteWithChildren
-  '/mcp/handoff/$flowId': typeof McpHandoffFlowIdRoute
   '/o/$id': typeof OIdRoute
   '/s/$id': typeof SIdRoute
+  '/mcp/handoff/$flowId': typeof McpHandoffFlowIdRoute
+  '/api/mcp/handoffs/$flowId': typeof ApiMcpHandoffsFlowIdRoute
   '/api/secrets/$id/owner': typeof ApiSecretsIdOwnerRoute
   '/api/secrets/$id/reveal': typeof ApiSecretsIdRevealRoute
 }
@@ -100,11 +100,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
   '/ready': typeof ReadyRoute
-  '/api/mcp/handoffs/$flowId': typeof ApiMcpHandoffsFlowIdRoute
   '/api/secrets': typeof ApiSecretsRouteWithChildren
-  '/mcp/handoff/$flowId': typeof McpHandoffFlowIdRoute
   '/o/$id': typeof OIdRoute
   '/s/$id': typeof SIdRoute
+  '/mcp/handoff/$flowId': typeof McpHandoffFlowIdRoute
+  '/api/mcp/handoffs/$flowId': typeof ApiMcpHandoffsFlowIdRoute
   '/api/secrets/$id/owner': typeof ApiSecretsIdOwnerRoute
   '/api/secrets/$id/reveal': typeof ApiSecretsIdRevealRoute
 }
