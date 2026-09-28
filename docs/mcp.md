@@ -20,11 +20,13 @@ MCP does **not** receive or return:
 - AES decryption keys or complete anonymous share URLs;
 - raw owner capabilities or owner links.
 
-The deliberate exception is the URL-elicitation handoff token. MCP serializes the browser URL in the `input_required` response, so the MCP client/tool infrastructure can see this short-lived transition capability. It does not reveal, decrypt, revoke, or manage an existing secret by itself; it only authorizes entry into one pending create or reveal handoff. It is 256-bit random, action-bound, expires after ten minutes, and is not copied into normal tool `content`, `structuredContent`, or `requestState`.
+The deliberate exception is the URL-elicitation handoff token. MCP serializes the browser URL in the `input_required` response, so the MCP client/tool infrastructure can see this short-lived transition capability. It does not reveal, decrypt, revoke, or manage an existing secret by itself; it only authorizes entry into one pending create or reveal handoff. For reveal, it cannot even finalize that handoff without the browser-only share authorization. It is 256-bit random, action-bound, expires after ten minutes, and is not copied into normal tool `content`, `structuredContent`, or `requestState`.
 
 The browser performs secret encryption before the encrypted payload is sent to Onceveil. The create handoff returns the recipient share link and owner link only inside that browser context.
 
-For reveal, the browser receives the complete share URL directly from the user and then continues to the normal protected `/s/:id#...` flow. Completing the MCP handoff does not consume the secret, create a reveal proof, or bypass Turnstile/ALTCHA/noop provider semantics.
+For reveal, the browser receives the complete share URL directly from the user and then continues to the normal protected `/s/:id#...` flow. The MCP-visible transition token alone is not sufficient to complete this handoff: the browser must additionally present the share's `secretId` and non-decrypting reveal authorization extracted from the pasted URL. Onceveil checks that pair against the stored replay key before marking the handoff complete. The AES key and complete share URL never leave the browser.
+
+This completion check does not consume the secret, create a reveal proof, or bypass Turnstile/ALTCHA/noop provider semantics. It only proves that the browser possessed a valid Onceveil share capability before the MCP flow may report browser handoff completion.
 
 ## Tools
 
