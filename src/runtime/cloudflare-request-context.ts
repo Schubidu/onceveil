@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers'
 
 import type { D1DatabaseLike } from '../adapters/d1-secret-repository'
 import { resolveBrandingConfig } from '../core/branding'
+import { resolveMcpRuntime } from './mcp-config'
 import { requiredRuntimeEnvironmentForRequest } from './readiness'
 import type { OnceveilRequestContext } from './request-context'
 import { resolveRevealProtectionRuntime } from './reveal-protection-config'
@@ -12,6 +13,9 @@ interface CloudflareOnceveilEnv {
   ONCEVEIL_BRAND_LOGO?: string
   ONCEVEIL_BRAND_FAVICON?: string
   ONCEVEIL_BRAND_ACCENT?: string
+  ONCEVEIL_MCP_ENABLED?: string
+  ONCEVEIL_MCP_TOKEN?: string
+  ONCEVEIL_MCP_STORAGE_KEY?: string
   ONCEVEIL_REVEAL_PROTECTION?: string
   ONCEVEIL_ALTCHA_SECRET?: string
   TURNSTILE_SITE_KEY?: string
@@ -44,6 +48,10 @@ export function createRequestContext(request: Request): OnceveilRequestContext {
     branding: getBrandingConfig(),
     secretDatabase: runtime.DB,
     databaseEnvironment,
+    mcp: resolveMcpRuntime(runtime.ONCEVEIL_MCP_ENABLED, {
+      authToken: runtime.ONCEVEIL_MCP_TOKEN,
+      storageKey: runtime.ONCEVEIL_MCP_STORAGE_KEY,
+    }),
     revealProtection,
   }
 }
