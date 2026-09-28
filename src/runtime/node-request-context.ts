@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 
+import { altchaRevealProtectionConfiguration } from '../adapters/altcha-reveal-protection'
 import { NodeSqliteDatabase } from '../adapters/node-sqlite-database'
 import { applySqliteMigrations } from '../adapters/sqlite-migrations'
 import type { OnceveilRequestContext, RevealProtectionRuntime } from './request-context'
@@ -56,9 +57,9 @@ export function nodeRevealProtection(
   }
 
   if (value === 'altcha') {
-    const hmacSecret = altchaHmacSecret?.trim()
-    return hmacSecret && hmacSecret.length >= 32
-      ? { provider: 'altcha', hmacSecret }
+    const configuration = altchaRevealProtectionConfiguration(altchaHmacSecret)
+    return configuration
+      ? { provider: 'altcha', ...configuration }
       : { provider: 'unavailable' }
   }
 
