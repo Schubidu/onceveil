@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as ReadyRouteImport } from './routes/ready'
-import { Route as ApiBrandingRouteImport } from './routes/api.branding'
 import { Route as ApiSecretsRouteImport } from './routes/api.secrets'
 import { Route as OIdRouteImport } from './routes/o.$id'
 import { Route as SIdRouteImport } from './routes/s.$id'
@@ -32,11 +31,6 @@ const HealthRoute = HealthRouteImport.update({
 const ReadyRoute = ReadyRouteImport.update({
   id: '/ready',
   path: '/ready',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBrandingRoute = ApiBrandingRouteImport.update({
-  id: '/api/branding',
-  path: '/api/branding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSecretsRoute = ApiSecretsRouteImport.update({
@@ -69,7 +63,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
   '/ready': typeof ReadyRoute
-  '/api/branding': typeof ApiBrandingRoute
   '/api/secrets': typeof ApiSecretsRouteWithChildren
   '/o/$id': typeof OIdRoute
   '/s/$id': typeof SIdRoute
@@ -80,7 +73,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
   '/ready': typeof ReadyRoute
-  '/api/branding': typeof ApiBrandingRoute
   '/api/secrets': typeof ApiSecretsRouteWithChildren
   '/o/$id': typeof OIdRoute
   '/s/$id': typeof SIdRoute
@@ -92,7 +84,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
   '/ready': typeof ReadyRoute
-  '/api/branding': typeof ApiBrandingRoute
   '/api/secrets': typeof ApiSecretsRouteWithChildren
   '/o/$id': typeof OIdRoute
   '/s/$id': typeof SIdRoute
@@ -105,7 +96,6 @@ export interface FileRouteTypes {
     | '/'
     | '/health'
     | '/ready'
-    | '/api/branding'
     | '/api/secrets'
     | '/o/$id'
     | '/s/$id'
@@ -116,7 +106,6 @@ export interface FileRouteTypes {
     | '/'
     | '/health'
     | '/ready'
-    | '/api/branding'
     | '/api/secrets'
     | '/o/$id'
     | '/s/$id'
@@ -127,7 +116,6 @@ export interface FileRouteTypes {
     | '/'
     | '/health'
     | '/ready'
-    | '/api/branding'
     | '/api/secrets'
     | '/o/$id'
     | '/s/$id'
@@ -139,7 +127,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HealthRoute: typeof HealthRoute
   ReadyRoute: typeof ReadyRoute
-  ApiBrandingRoute: typeof ApiBrandingRoute
   ApiSecretsRoute: typeof ApiSecretsRouteWithChildren
   OIdRoute: typeof OIdRoute
   SIdRoute: typeof SIdRoute
@@ -166,13 +153,6 @@ declare module '@tanstack/react-router' {
       path: '/ready'
       fullPath: '/ready'
       preLoaderRoute: typeof ReadyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/branding': {
-      id: '/api/branding'
-      path: '/api/branding'
-      fullPath: '/api/branding'
-      preLoaderRoute: typeof ApiBrandingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/secrets': {
@@ -231,7 +211,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HealthRoute: HealthRoute,
   ReadyRoute: ReadyRoute,
-  ApiBrandingRoute: ApiBrandingRoute,
   ApiSecretsRoute: ApiSecretsRouteWithChildren,
   OIdRoute: OIdRoute,
   SIdRoute: SIdRoute,
