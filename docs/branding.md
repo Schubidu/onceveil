@@ -24,7 +24,7 @@ ONCEVEIL_BRAND_FAVICON='/branding/favicon.svg'
 ONCEVEIL_BRAND_ACCENT='#6E56CF'
 ```
 
-Docker Compose forwards the same variables. On Cloudflare, configure them as ordinary non-secret Worker variables for the relevant Production or Preview environment.
+Docker Compose forwards the same variables. For Cloudflare deployments managed by Wrangler, add these non-sensitive values to the appropriate `vars` blocks in `wrangler.jsonc`. Production `vars` and `previews.vars` are separate configuration scopes, so configure both when both environments should use the same brand. Treat the Wrangler configuration as the source of truth; dashboard-only variables can be overwritten by a later Wrangler deployment unless `keep_vars` is intentionally enabled.
 
 ## Asset boundary
 
