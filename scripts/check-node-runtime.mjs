@@ -187,9 +187,7 @@ try {
     !mcpBody.includes('revoke_secret') ||
     mcpBody.includes(mcpToken)
   ) {
-    throw new Error(
-      `Authenticated MCP tool listing failed: ${authenticatedMcp.status} ${mcpBody}`,
-    )
+    throw new Error(`Authenticated MCP tool listing failed: ${authenticatedMcp.status} ${mcpBody}`)
   }
 
   console.log('Standalone Node production runtime and authenticated MCP smoke check passed')
