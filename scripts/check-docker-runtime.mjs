@@ -150,18 +150,19 @@ async function postJson(pathname, body, headers = {}) {
 }
 
 async function assertBrandingConfiguration() {
-  const response = await fetch(`${origin}/api/branding`, {
+  const response = await fetch(origin, {
     headers: { Connection: 'close' },
   })
-  const branding = await response.json()
+  const html = await response.text()
   if (
     !response.ok ||
-    branding?.name !== 'CI Vault' ||
-    branding?.logo !== '/branding/ci-logo.svg' ||
-    branding?.favicon !== '/branding/ci-favicon.svg' ||
-    branding?.theme?.accent !== '#6E56CF'
+    !html.includes('<title>CI Vault</title>') ||
+    !html.includes('>CI Vault</h1>') ||
+    !html.includes('src="/branding/ci-logo.svg"') ||
+    !html.includes('href="/branding/ci-favicon.svg"') ||
+    !html.includes('--brand-accent:#6E56CF')
   ) {
-    throw new Error(`branding configuration failed: ${response.status} ${JSON.stringify(branding)}`)
+    throw new Error(`SSR branding configuration failed: ${response.status}`)
   }
 }
 
