@@ -116,6 +116,8 @@ For MCP-created secrets the browser sends only the existing owner capability has
 
 Multi-round-trip MCP `requestState` is HMAC-protected with a key derived independently from the MCP storage key and expires with the handoff window. Tampered or expired state fails before the tool handler can advance the flow.
 
+The MCP handoff browser surface clears its transition token, create plaintext, encrypted retry state, generated share/owner links, and pasted recipient URL on `pagehide` and on BFCache restoration. In-flight UI operations are generation-bound so restored or departed pages cannot repopulate cleared sensitive state. Handoff completion bodies are bounded to 1 KiB before JSON parsing to prevent a transition-token holder from forcing unbounded request buffering.
+
 ## Browser and observability hardening
 
 Create, share, owner, and secret API surfaces are treated as sensitive surfaces. Responses are non-cacheable, do not send referrers, cannot be framed, and use a restrictive Content Security Policy. The normal key-holding context permits no third-party script, frame, or connection origins and disables workers. Only the fragment-free Turnstile verification context permits the Cloudflare challenge origin.
