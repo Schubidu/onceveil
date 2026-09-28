@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { D1SecretRepository } from '../src/adapters/d1-secret-repository'
 import { NodeSqliteDatabase } from '../src/adapters/node-sqlite-database'
 import { applySqliteMigrations } from '../src/adapters/sqlite-migrations'
+import { revealAuthorizationFromFragment } from '../src/browser/secret-crypto'
 import { encryptedShareForCreate } from '../src/browser/secret-create-retry'
 import { DEFAULT_BRANDING } from '../src/core/branding'
 import type { SecretId } from '../src/core/secret'
@@ -132,6 +133,87 @@ describe('MCP browser handoff HTTP boundary', () => {
         nowMs + 3,
       )
       expect(retry.status).toBe(200)
+    } finally {
+      db.close()
+    }
+  })
+
+  it('requires possession of a valid share capability before completing a reveal handoff', async () => {
+    const db = database()
+    try {
+      const runtime = context(db)
+      const nowMs = Date.now()
+      const encrypted = await encryptedShareForCreate('still browser protected', undefined)
+      const secrets = new D1SecretRepository(db)
+      const created = await createSecretResponse(
+        new Request('https://onceveil.test/api/secrets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            payload: encrypted.encrypted.payload,
+            ownerKeyHash: encrypted.ownerCapabilityHash,
+          }),
+        }),
+        secrets,
+        nowMs,
+        () => SECRET_ID,
+      )
+      expect(created.status).toBe(201)
+
+      const handoff = await createMcpHandoff(runtime, 'reveal', nowMs)
+      const token = tokenFrom(await mcpHandoffUrl(runtime, handoff))
+
+      const tokenOnly = await completeMcpHandoffResponse(
+        request(handoff.flowId, token, { method: 'POST' }),
+        handoff.flowId,
+        runtime,
+        nowMs + 1,
+      )
+      expect(tokenOnly.status).toBe(400)
+
+      const invalid = await completeMcpHandoffResponse(
+        request(handoff.flowId, token, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            secretId: SECRET_ID,
+            revealAuthorization: '0'.repeat(64),
+          }),
+        }),
+        handoff.flowId,
+        runtime,
+        nowMs + 2,
+      )
+      expect(invalid.status).toBe(404)
+
+      const pending = await db
+        .prepare('SELECT state FROM mcp_handoffs WHERE flow_id = ?')
+        .bind(handoff.flowId)
+        .first<{ state: string }>()
+      expect(pending?.state).toBe('PENDING')
+
+      const completed = await completeMcpHandoffResponse(
+        request(handoff.flowId, token, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            secretId: SECRET_ID,
+            revealAuthorization: revealAuthorizationFromFragment(encrypted.encrypted.fragment),
+          }),
+        }),
+        handoff.flowId,
+        runtime,
+        nowMs + 3,
+      )
+      expect(completed.status).toBe(200)
+
+      await expect(
+        secrets.getStatus(SECRET_ID, encrypted.ownerCapabilityHash, nowMs + 4),
+      ).resolves.toMatchObject({ state: 'AVAILABLE' })
+      const proofCount = await db
+        .prepare('SELECT COUNT(*) AS count FROM reveal_proofs')
+        .first<{ count: number }>()
+      expect(proofCount?.count).toBe(0)
     } finally {
       db.close()
     }
