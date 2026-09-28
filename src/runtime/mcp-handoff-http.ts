@@ -42,7 +42,7 @@ async function authorizedHandoff(
     return undefined
   }
 
-  const hash = await hashMcpHandoffToken(token)
+  const hash = await hashMcpHandoffToken(token, context.mcp.storageKey)
   const record = await getMcpHandoffRepository(context).getAuthorized(flowId, hash, nowMs)
   return record ? { tokenHash: hash, record } : undefined
 }
