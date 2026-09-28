@@ -106,3 +106,12 @@ The default non-containerized SQLite path is `./data/onceveil.sqlite`; override 
 Docker Compose forwards the deployment branding variables `ONCEVEIL_BRAND_NAME`, `ONCEVEIL_BRAND_LOGO`, `ONCEVEIL_BRAND_FAVICON`, and `ONCEVEIL_BRAND_ACCENT`.
 
 Logo and favicon paths must stay on the Onceveil origin; arbitrary CSS, HTML, JavaScript, and external asset origins are intentionally unsupported. See [branding.md](branding.md) for the complete contract.
+
+
+## MCP secure browser handoff
+
+MCP is disabled by default. To enable the administrative MCP endpoint, configure `ONCEVEIL_MCP_ENABLED=true` together with an independent bearer token, 256-bit hexadecimal storage key, and canonical public HTTPS origin.
+
+Docker Compose forwards `ONCEVEIL_MCP_ENABLED`, `ONCEVEIL_MCP_TOKEN`, `ONCEVEIL_MCP_STORAGE_KEY`, and `ONCEVEIL_MCP_PUBLIC_ORIGIN`.
+
+The MCP interface does not transport plaintext secrets, decryption keys, owner links, or complete recipient share URLs through model/tool context. Create and reveal use a browser handoff. See [mcp.md](mcp.md) for configuration, client compatibility, rotation behavior, and the security boundary.
