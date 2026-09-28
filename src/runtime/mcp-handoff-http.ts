@@ -1,8 +1,10 @@
 import { isValidMcpFlowId, isValidMcpHandoffToken, type McpFlowId } from '../core/mcp-handoff'
 import { isValidOwnerCapabilityHash } from '../core/owner-capability'
+import { isValidRevealAuthorization } from '../core/share-capability'
 import { isValidSecretId } from '../core/secret'
 import { hashMcpHandoffToken } from './mcp-crypto'
 import { getMcpHandoffRepository } from './mcp-repository'
+import { matchesRevealAuthorization } from './reveal-protection'
 import type { OnceveilRequestContext } from './request-context'
 import { getSecretRepository } from './secret-repository'
 
@@ -86,6 +88,31 @@ export async function completeMcpHandoffResponse(
   }
 
   if (authorized.record.action === 'reveal') {
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return json({ error: 'invalid_request' }, 400)
+    }
+
+    if (typeof body !== 'object' || body === null) {
+      return json({ error: 'invalid_request' }, 400)
+    }
+
+    const { secretId, revealAuthorization } = body as Record<string, unknown>
+    if (
+      typeof secretId !== 'string' ||
+      !isValidSecretId(secretId) ||
+      typeof revealAuthorization !== 'string' ||
+      !isValidRevealAuthorization(revealAuthorization)
+    ) {
+      return json({ error: 'invalid_request' }, 400)
+    }
+
+    if (!(await matchesRevealAuthorization(context, secretId, revealAuthorization))) {
+      return json({ error: 'not_found' }, 404)
+    }
+
     const result = await getMcpHandoffRepository(context).completeReveal(
       authorized.record.flowId,
       authorized.tokenHash,
