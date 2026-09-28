@@ -8,35 +8,13 @@ import {
   revealAuthorizationFromFragment,
   takeShareFragment,
 } from '../browser/secret-crypto'
+import { startRevealProtection } from '../browser/reveal-protection'
 import {
   discardRevealVerificationFragment,
   requestRevealProof,
   revealVerificationId,
 } from '../browser/reveal-verification'
-import { REVEAL_PROTECTION_ACTION } from '../core/reveal-protection'
 import { isValidSecretId, type SecretId } from '../core/secret'
-
-const TURNSTILE_SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
-
-interface TurnstileApi {
-  render(
-    container: HTMLElement,
-    options: {
-      sitekey: string
-      action: string
-      cData: string
-      callback(token: string): void
-      'error-callback'(): void
-      'expired-callback'(): void
-    },
-  ): string
-}
-
-declare global {
-  interface Window {
-    turnstile?: TurnstileApi
-  }
-}
 
 export const Route = createFileRoute('/s/$id')({
   server: {
@@ -251,7 +229,7 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
   useEffect(() => {
     let active = true
     let started = false
-    let script: HTMLScriptElement | undefined
+    let stopProtection: (() => void) | undefined
     const broadcast = new BroadcastChannel(`onceveil-reveal-${verificationId}`)
 
     function failVerification(message: string) {
@@ -293,53 +271,37 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
 
     async function start() {
       try {
-        const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
+        const configUrl = new URL(
+          `/api/secrets/${encodeURIComponent(id)}/reveal`,
+          window.location.origin,
+        )
+        configUrl.searchParams.set('verification', verificationId)
+        const response = await fetch(configUrl, {
           headers: { 'X-Onceveil-Proof-Config': '1' },
         })
         const config = (await response.json().catch(() => undefined)) as
           | Record<string, unknown>
           | undefined
 
-        if (!active || !response.ok) {
+        if (!active || !response.ok || !containerRef.current) {
           throw new Error('Reveal protection is unavailable')
         }
 
-        if (config?.provider === 'none') {
-          setStatus('No interactive verification is required. Returning to the secret…')
-          await completeVerification()
+        const stop = await startRevealProtection(config, containerRef.current, id, {
+          verified: completeVerification,
+          failed: failVerification,
+          status(message) {
+            if (active) {
+              setStatus(message)
+            }
+          },
+        })
+        if (!active) {
+          stop()
           return
         }
 
-        if (
-          config?.provider !== 'turnstile' ||
-          typeof config.siteKey !== 'string' ||
-          config.action !== REVEAL_PROTECTION_ACTION
-        ) {
-          throw new Error('Reveal protection is unavailable')
-        }
-
-        script = document.createElement('script')
-        script.src = TURNSTILE_SCRIPT_URL
-        script.async = true
-        script.defer = true
-        script.onload = () => {
-          if (!active || !containerRef.current || !window.turnstile) {
-            failVerification('Verification failed to initialize.')
-            return
-          }
-
-          setStatus('Complete the verification to continue.')
-          window.turnstile.render(containerRef.current, {
-            sitekey: config.siteKey as string,
-            action: REVEAL_PROTECTION_ACTION,
-            cData: id,
-            callback: (token) => void completeVerification(token),
-            'error-callback': () => failVerification('Verification failed. Try again.'),
-            'expired-callback': () => failVerification('Verification expired. Try again.'),
-          })
-        }
-        script.onerror = () => failVerification('Verification failed to load.')
-        document.head.append(script)
+        stopProtection = stop
       } catch {
         failVerification('Verification is unavailable.')
       }
@@ -366,7 +328,7 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
 
     return () => {
       active = false
-      script?.remove()
+      stopProtection?.()
       broadcast.close()
     }
   }, [id, verificationId])

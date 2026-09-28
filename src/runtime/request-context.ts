@@ -12,7 +12,7 @@ export type RevealProtectionRuntime =
       hmacSecret: string
     }
   | {
-      provider: 'none'
+      provider: 'noop'
     }
   | {
       provider: 'unavailable'

@@ -1,4 +1,4 @@
-import type { RevealChallengeVerifier, RevealProofRepository } from '../core/reveal-protection'
+import type { RevealProtectionVerifier, RevealProofRepository } from '../core/reveal-protection'
 import type { SecretId, SecretRepository } from '../core/secret'
 import { revealSecretResponse } from './secret-http'
 import { withSecretSecurityHeaders } from './security-headers'
@@ -103,7 +103,7 @@ export async function prepareRevealProofResponse(
 export async function verifyRevealProofResponse(
   request: Request,
   secretId: SecretId,
-  verifier: RevealChallengeVerifier,
+  verifier: RevealProtectionVerifier,
   proofs: RevealProofRepository,
   nowMs = Date.now(),
 ): Promise<Response> {
@@ -114,7 +114,7 @@ export async function verifyRevealProofResponse(
 
   const token = bodyResult.kind === 'ok' ? bodyResult.body.token : undefined
   const verificationId = bodyResult.kind === 'ok' ? bodyResult.body.verificationId : undefined
-  if (typeof token !== 'string' || typeof verificationId !== 'string') {
+  if ((token !== undefined && typeof token !== 'string') || typeof verificationId !== 'string') {
     return json({ error: 'invalid_verification' }, 400)
   }
 
@@ -132,29 +132,6 @@ export async function verifyRevealProofResponse(
 
   if (verification.kind !== 'verified') {
     return json({ error: 'verification_failed' }, 403)
-  }
-
-  if (!(await proofs.verify(secretId, verificationId, nowMs))) {
-    return json({ error: 'verification_failed' }, 403)
-  }
-
-  return json({ verified: true }, 200)
-}
-
-export async function verifyRevealProofWithoutChallengeResponse(
-  request: Request,
-  secretId: SecretId,
-  proofs: RevealProofRepository,
-  nowMs = Date.now(),
-): Promise<Response> {
-  const bodyResult = await readProtectionBody(request)
-  if (bodyResult.kind === 'too_large') {
-    return json({ error: 'invalid_verification' }, 400)
-  }
-
-  const verificationId = bodyResult.kind === 'ok' ? bodyResult.body.verificationId : undefined
-  if (typeof verificationId !== 'string') {
-    return json({ error: 'invalid_verification' }, 400)
   }
 
   if (!(await proofs.verify(secretId, verificationId, nowMs))) {

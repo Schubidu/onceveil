@@ -1,9 +1,9 @@
 import { logRuntimeWarning } from '../runtime/safe-log'
 import {
   REVEAL_PROTECTION_ACTION,
-  type RevealChallengeContext,
-  type RevealChallengeResult,
-  type RevealChallengeVerifier,
+  type RevealProtectionContext,
+  type RevealProtectionResult,
+  type RevealProtectionVerifier,
 } from '../core/reveal-protection'
 
 const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
@@ -39,14 +39,14 @@ interface SiteverifyResponse {
   'error-codes'?: unknown
 }
 
-export class TurnstileRevealChallengeVerifier implements RevealChallengeVerifier {
+export class TurnstileRevealProtection implements RevealProtectionVerifier {
   constructor(
     private readonly secretKey: string,
     private readonly fetchImpl: typeof fetch = fetch,
   ) {}
 
-  async verify(context: RevealChallengeContext): Promise<RevealChallengeResult> {
-    const token = context.token.trim()
+  async verify(context: RevealProtectionContext): Promise<RevealProtectionResult> {
+    const token = context.token?.trim() ?? ''
     if (token.length === 0 || token.length > MAX_TOKEN_LENGTH) {
       return { kind: 'invalid' }
     }

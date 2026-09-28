@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
-  TurnstileRevealChallengeVerifier,
+  TurnstileRevealProtection,
   turnstileRevealProtectionConfiguration,
 } from '../src/adapters/turnstile-reveal-protection'
 import { REVEAL_PROTECTION_ACTION } from '../src/core/reveal-protection'
@@ -13,7 +13,7 @@ function response(body: unknown, status = 200): Response {
   return Response.json(body, { status })
 }
 
-describe('Turnstile reveal challenge verifier', () => {
+describe('Turnstile reveal protection', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
@@ -41,7 +41,7 @@ describe('Turnstile reveal challenge verifier', () => {
         }),
       )
     } as typeof fetch
-    const verifier = new TurnstileRevealChallengeVerifier('secret-key', fetchImpl)
+    const verifier = new TurnstileRevealProtection('secret-key', fetchImpl)
 
     await expect(
       verifier.verify({
@@ -68,7 +68,7 @@ describe('Turnstile reveal challenge verifier', () => {
         cdata: SECRET_ID,
       })
     }) as typeof fetch
-    const verifier = new TurnstileRevealChallengeVerifier('secret-key', fetchImpl)
+    const verifier = new TurnstileRevealProtection('secret-key', fetchImpl)
 
     await expect(
       verifier.verify({
@@ -102,7 +102,7 @@ describe('Turnstile reveal challenge verifier', () => {
     { success: true, action: REVEAL_PROTECTION_ACTION, hostname: 'ots.schult.dev', cdata: 'other' },
   ])('rejects mismatched verification context %#', async (siteverify) => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const verifier = new TurnstileRevealChallengeVerifier('secret-key', (async () =>
+    const verifier = new TurnstileRevealProtection('secret-key', (async () =>
       response(siteverify)) as typeof fetch)
 
     await expect(
@@ -130,7 +130,7 @@ describe('Turnstile reveal challenge verifier', () => {
 
   it('fails closed and classifies a lost Siteverify connection', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const verifier = new TurnstileRevealChallengeVerifier('secret-key', (async () => {
+    const verifier = new TurnstileRevealProtection('secret-key', (async () => {
       throw new Error('Network connection lost')
     }) as typeof fetch)
 
@@ -148,7 +148,7 @@ describe('Turnstile reveal challenge verifier', () => {
   })
 
   it('fails closed on a null Siteverify response', async () => {
-    const verifier = new TurnstileRevealChallengeVerifier('secret-key', (async () =>
+    const verifier = new TurnstileRevealProtection('secret-key', (async () =>
       response(null)) as typeof fetch)
 
     await expect(
@@ -162,7 +162,7 @@ describe('Turnstile reveal challenge verifier', () => {
   })
 
   it('fails closed on a non-successful Siteverify HTTP response', async () => {
-    const verifier = new TurnstileRevealChallengeVerifier('secret-key', (async () =>
+    const verifier = new TurnstileRevealProtection('secret-key', (async () =>
       response({}, 503)) as typeof fetch)
 
     await expect(

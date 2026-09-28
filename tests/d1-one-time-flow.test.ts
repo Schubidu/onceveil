@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { AltchaRevealProtection } from '../src/adapters/altcha-reveal-protection'
 import { D1RevealProofRepository } from '../src/adapters/d1-reveal-proof-repository'
 import { D1SecretRepository, type D1DatabaseLike } from '../src/adapters/d1-secret-repository'
+import { NoopRevealProtection } from '../src/adapters/noop-reveal-protection'
 import { decryptSecret, encryptSecret } from '../src/browser/secret-crypto'
 import { REVEAL_PROOF_TTL_MS } from '../src/core/reveal-protection'
 import type { SecretId } from '../src/core/secret'
@@ -16,7 +17,6 @@ import {
   prepareRevealProofResponse,
   protectedRevealResponse,
   verifyRevealProofResponse,
-  verifyRevealProofWithoutChallengeResponse,
 } from '../src/runtime/reveal-protection-http'
 import {
   createSecretResponse,
@@ -735,17 +735,18 @@ describe('D1 one-time HTTP flow', () => {
     expect(revealed.status).toBe(200)
   })
 
-  it('can verify a prepared proof without an external challenge in explicit none mode', async () => {
+  it('verifies a prepared proof through the explicit noop provider', async () => {
     await storeTestSecret('trusted network proof')
     const prepared = await prepareProof(PUBLIC_ID, 1_000)
 
-    const verification = await verifyRevealProofWithoutChallengeResponse(
+    const verification = await verifyRevealProofResponse(
       new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ verificationId: prepared.verificationId }),
       }),
       PUBLIC_ID,
+      new NoopRevealProtection(),
       proofRepository,
       1_001,
     )

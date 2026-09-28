@@ -3,20 +3,17 @@ import { createFileRoute } from '@tanstack/react-router'
 import { createRequestContext } from '#onceveil-runtime-context'
 
 import { RevealProofStorageError } from '../adapters/d1-reveal-proof-repository'
-import { REVEAL_PROTECTION_ACTION } from '../core/reveal-protection'
 import { isValidSecretId } from '../core/secret'
 import {
   prepareRevealProofResponse,
   protectedRevealResponse,
   verifyRevealProofResponse,
-  verifyRevealProofWithoutChallengeResponse,
 } from '../runtime/reveal-protection-http'
 import {
-  createAltchaRevealChallenge,
-  getRevealChallengeVerifier,
+  assertRevealProtectionAvailable,
   getRevealProofRepository,
-  getRevealProtectionProvider,
-  getTurnstileSiteKey,
+  getRevealProtectionClientConfig,
+  getRevealProtectionVerifier,
   RevealProtectionUnavailableError,
 } from '../runtime/reveal-protection'
 import {
@@ -27,6 +24,8 @@ import {
 } from '../runtime/secret-repository'
 import { logRuntimeError } from '../runtime/safe-log'
 import { withSecretSecurityHeaders } from '../runtime/security-headers'
+
+const VERIFICATION_ID_PATTERN = /^[0-9a-f]{32}$/
 
 function jsonError(error: string, status: number): Response {
   return withSecretSecurityHeaders(Response.json({ error }, { status }))
@@ -41,40 +40,20 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
           return jsonError('not_found', 404)
         }
 
+        const verificationId = new URL(request.url).searchParams.get('verification')
+        if (!verificationId || !VERIFICATION_ID_PATTERN.test(verificationId)) {
+          return jsonError('invalid_verification', 400)
+        }
+
         try {
-          const provider = getRevealProtectionProvider(runtime)
-          if (provider === 'none') {
-            return withSecretSecurityHeaders(Response.json({ provider }, { status: 200 }))
+          await assertSecretDatabaseEnvironment(runtime)
+          const proofs = getRevealProofRepository(runtime)
+          if (!(await proofs.hasPendingVerification(params.id, verificationId, Date.now()))) {
+            return jsonError('verification_failed', 403)
           }
 
-          if (provider === 'altcha') {
-            const verificationId = new URL(request.url).searchParams.get('verification')
-            if (!verificationId || !/^[0-9a-f]{32}$/.test(verificationId)) {
-              return jsonError('invalid_verification', 400)
-            }
-
-            await assertSecretDatabaseEnvironment(runtime)
-            const proofs = getRevealProofRepository(runtime)
-            if (!(await proofs.hasPendingVerification(params.id, verificationId, Date.now()))) {
-              return jsonError('verification_failed', 403)
-            }
-
-            const challenge = await createAltchaRevealChallenge(runtime, params.id, verificationId)
-            return withSecretSecurityHeaders(
-              Response.json({ provider, challenge }, { status: 200 }),
-            )
-          }
-
-          return withSecretSecurityHeaders(
-            Response.json(
-              {
-                provider,
-                siteKey: getTurnstileSiteKey(runtime),
-                action: REVEAL_PROTECTION_ACTION,
-              },
-              { status: 200 },
-            ),
-          )
+          const config = await getRevealProtectionClientConfig(runtime, params.id, verificationId)
+          return withSecretSecurityHeaders(Response.json(config, { status: 200 }))
         } catch (error) {
           if (
             error instanceof SecretDatabaseUnavailableError ||
@@ -105,7 +84,7 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
 
         try {
           await assertSecretDatabaseEnvironment(runtime)
-          const provider = getRevealProtectionProvider(runtime)
+          assertRevealProtectionAvailable(runtime)
           const proofs = getRevealProofRepository(runtime)
 
           if (request.headers.get('X-Onceveil-Proof-Prepare') === '1') {
@@ -113,14 +92,12 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
           }
 
           if (request.headers.get('X-Onceveil-Proof-Request') === '1') {
-            return provider === 'none'
-              ? await verifyRevealProofWithoutChallengeResponse(request, params.id, proofs)
-              : await verifyRevealProofResponse(
-                  request,
-                  params.id,
-                  getRevealChallengeVerifier(runtime),
-                  proofs,
-                )
+            return await verifyRevealProofResponse(
+              request,
+              params.id,
+              getRevealProtectionVerifier(runtime),
+              proofs,
+            )
           }
 
           if (request.headers.get('X-Onceveil-Reveal') !== '1') {

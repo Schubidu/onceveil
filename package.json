@@ -35,9 +35,10 @@
   "dependencies": {
     "@tanstack/react-router": "1.170.39",
     "@tanstack/react-start": "1.168.58",
+    "altcha": "3.2.3",
+    "altcha-lib": "2.5.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "altcha-lib": "2.5.0"
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.13",
