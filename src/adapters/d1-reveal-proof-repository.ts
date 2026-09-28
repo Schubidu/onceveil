@@ -46,10 +46,7 @@ export class RevealProofStorageError extends Error {
 export class D1RevealProofRepository implements RevealProofRepository {
   constructor(private readonly db: D1DatabaseLike) {}
 
-  async matchesRevealAuthorization(
-    secretId: SecretId,
-    authorization: string,
-  ): Promise<boolean> {
+  async matchesRevealAuthorization(secretId: SecretId, authorization: string): Promise<boolean> {
     if (!isValidRevealAuthorization(authorization)) {
       return false
     }
