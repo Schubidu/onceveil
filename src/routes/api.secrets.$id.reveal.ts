@@ -53,6 +53,12 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
               return jsonError('invalid_verification', 400)
             }
 
+            await assertSecretDatabaseEnvironment(runtime)
+            const proofs = getRevealProofRepository(runtime)
+            if (!(await proofs.hasPendingVerification(params.id, verificationId, Date.now()))) {
+              return jsonError('verification_failed', 403)
+            }
+
             const challenge = await createAltchaRevealChallenge(runtime, params.id, verificationId)
             return withSecretSecurityHeaders(
               Response.json({ provider, challenge }, { status: 200 }),
@@ -70,7 +76,21 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
             ),
           )
         } catch (error) {
-          if (error instanceof RevealProtectionUnavailableError) {
+          if (
+            error instanceof SecretDatabaseUnavailableError ||
+            error instanceof RevealProtectionUnavailableError ||
+            error instanceof RevealProofStorageError
+          ) {
+            return jsonError('verification_unavailable', 503)
+          }
+
+          if (error instanceof SecretDatabaseEnvironmentError) {
+            logRuntimeError('secret database environment check failed', error, {
+              expected: error.expected,
+              diagnostic: error.actual.startsWith('query-error:')
+                ? 'query_error'
+                : 'environment_mismatch',
+            })
             return jsonError('verification_unavailable', 503)
           }
 
