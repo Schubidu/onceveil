@@ -64,7 +64,7 @@ describe('MCP browser handoff HTTP boundary', () => {
       const runtime = context(db)
       const nowMs = Date.now()
       const handoff = await createMcpHandoff(runtime, 'create', nowMs)
-      const token = tokenFrom(await mcpHandoffUrl(runtime, runtime.mcp.publicOrigin, handoff))
+      const token = tokenFrom(await mcpHandoffUrl(runtime, handoff))
 
       const pending = await mcpHandoffInfoResponse(
         request(handoff.flowId, token),
@@ -83,7 +83,7 @@ describe('MCP browser handoff HTTP boundary', () => {
       )
       expect(wrong.status).toBe(404)
 
-      const encrypted = await encryptedShareForCreate('browser-only owner capability')
+      const encrypted = await encryptedShareForCreate('browser-only owner capability', undefined)
       const created = await createSecretResponse(
         new Request('https://onceveil.test/api/secrets', {
           method: 'POST',
@@ -145,7 +145,7 @@ describe('MCP browser handoff HTTP boundary', () => {
     try {
       const runtime = context(db)
       const handoff = await createMcpHandoff(runtime, 'reveal', 1_000)
-      const token = tokenFrom(await mcpHandoffUrl(runtime, runtime.mcp.publicOrigin, handoff))
+      const token = tokenFrom(await mcpHandoffUrl(runtime, handoff))
 
       const info = await mcpHandoffInfoResponse(
         request(handoff.flowId, token),
