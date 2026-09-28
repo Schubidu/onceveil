@@ -8,6 +8,11 @@ export const SHARE_AAD_PREFIX = 'onceveil'
 const AES_GCM_NONCE_BYTES = 12
 const AES_GCM_TAG_BYTES = 16
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/
+const REVEAL_AUTHORIZATION_PATTERN = /^[0-9a-f]{64}$/
+
+export function isValidRevealAuthorization(value: string): boolean {
+  return REVEAL_AUTHORIZATION_PATTERN.test(value)
+}
 
 export interface EncryptedSecretPayload {
   contextId: SecretId
