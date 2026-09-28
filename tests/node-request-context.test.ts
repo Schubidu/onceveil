@@ -7,7 +7,19 @@ describe('Node reveal protection configuration', () => {
     expect(nodeRevealProtection('none')).toEqual({ provider: 'none' })
   })
 
-  it.each([undefined, '', 'turnstile', 'NONE', 'none '])('fails closed for %s', (value) => {
-    expect(nodeRevealProtection(value)).toEqual({ provider: 'unavailable' })
+  it('enables ALTCHA only with a valid explicit HMAC secret', () => {
+    const hmacSecret = 'a'.repeat(32)
+    expect(nodeRevealProtection('altcha', hmacSecret)).toEqual({
+      provider: 'altcha',
+      hmacSecret,
+    })
+    expect(nodeRevealProtection('altcha', 'too-short')).toEqual({ provider: 'unavailable' })
   })
+
+  it.each([undefined, '', 'turnstile', 'altcha', 'NONE', 'none '])(
+    'fails closed for %s without valid configuration',
+    (value) => {
+      expect(nodeRevealProtection(value)).toEqual({ provider: 'unavailable' })
+    },
+  )
 })
