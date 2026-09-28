@@ -26,8 +26,14 @@ export const DEFAULT_BRANDING: BrandingConfig = {
 const MAX_NAME_LENGTH = 80
 const MAX_ASSET_PATH_LENGTH = 2_048
 const ACCENT_PATTERN = /^#[0-9a-fA-F]{6}$/
-const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/
 const MARKUP_CHARACTERS = /[<>]/
+
+function hasControlCharacters(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.charCodeAt(0)
+    return code <= 31 || code === 127
+  })
+}
 const ASSET_BASE = 'https://onceveil.invalid'
 
 function safeName(value: unknown): string {
@@ -39,7 +45,7 @@ function safeName(value: unknown): string {
   if (
     normalized.length === 0 ||
     normalized.length > MAX_NAME_LENGTH ||
-    CONTROL_CHARACTERS.test(normalized) ||
+    hasControlCharacters(normalized) ||
     MARKUP_CHARACTERS.test(normalized)
   ) {
     return DEFAULT_BRANDING.name
