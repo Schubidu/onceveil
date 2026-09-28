@@ -50,6 +50,36 @@ export function altchaRevealProtectionConfiguration(
   return { hmacSecret: normalized }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isPayload(value: unknown): value is Payload {
+  if (!isRecord(value) || !isRecord(value.challenge) || !isRecord(value.solution)) {
+    return false
+  }
+
+  const parameters = value.challenge.parameters
+  if (!isRecord(parameters)) {
+    return false
+  }
+
+  return (
+    typeof parameters.algorithm === 'string' &&
+    typeof parameters.nonce === 'string' &&
+    typeof parameters.salt === 'string' &&
+    typeof parameters.cost === 'number' &&
+    Number.isFinite(parameters.cost) &&
+    typeof parameters.keyLength === 'number' &&
+    Number.isFinite(parameters.keyLength) &&
+    typeof parameters.keyPrefix === 'string' &&
+    (value.challenge.signature === undefined || typeof value.challenge.signature === 'string') &&
+    typeof value.solution.counter === 'number' &&
+    Number.isFinite(value.solution.counter) &&
+    typeof value.solution.derivedKey === 'string'
+  )
+}
+
 function decodePayload(token: string): Payload | undefined {
   const normalized = token.trim()
   if (normalized.length === 0 || normalized.length > MAX_TOKEN_LENGTH) {
@@ -60,21 +90,7 @@ function decodePayload(token: string): Payload | undefined {
     const decoded = atob(normalized)
     const bytes = Uint8Array.from(decoded, (character) => character.charCodeAt(0))
     const value: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
-    if (typeof value !== 'object' || value === null) {
-      return undefined
-    }
-
-    const candidate = value as Partial<Payload>
-    if (
-      typeof candidate.challenge !== 'object' ||
-      candidate.challenge === null ||
-      typeof candidate.solution !== 'object' ||
-      candidate.solution === null
-    ) {
-      return undefined
-    }
-
-    return candidate as Payload
+    return isPayload(value) ? value : undefined
   } catch {
     return undefined
   }
