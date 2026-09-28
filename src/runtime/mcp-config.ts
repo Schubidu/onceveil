@@ -45,7 +45,7 @@ function validPublicOrigin(value: string | undefined): string | undefined {
   }
 }
 
-function validAuthToken(value: string | undefined): value is string {
+export function isValidMcpAuthToken(value: string | undefined): value is string {
   return (
     typeof value === 'string' &&
     value.length >= MIN_AUTH_TOKEN_LENGTH &&
@@ -68,7 +68,7 @@ export function resolveMcpRuntime(
 
   const publicOrigin = validPublicOrigin(environment.publicOrigin)
   if (
-    !validAuthToken(environment.authToken) ||
+    !isValidMcpAuthToken(environment.authToken) ||
     !HEX_KEY_PATTERN.test(environment.storageKey ?? '') ||
     !publicOrigin
   ) {
