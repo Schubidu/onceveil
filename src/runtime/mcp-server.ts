@@ -156,7 +156,7 @@ export async function buildOnceveilMcpServer(context: OnceveilRequestContext): P
     {
       title: 'Create one-time secret',
       description:
-        'Open a secure browser handoff where the user enters and encrypts a secret. Secret text and share capabilities are never returned to MCP.',
+        'Open a secure browser handoff where the user enters and encrypts a secret. URL elicitation carries only a short-lived browser-transition capability; secret text and share capabilities are never returned to MCP.',
       inputSchema: z.object({}),
       annotations: {
         readOnlyHint: false,
@@ -173,7 +173,7 @@ export async function buildOnceveilMcpServer(context: OnceveilRequestContext): P
     {
       title: 'Reveal one-time secret',
       description:
-        'Open a secure browser handoff where the user pastes a Onceveil share link and completes the protected reveal. Plaintext and ciphertext are never returned to MCP.',
+        'Open a secure browser handoff where the user pastes a Onceveil share link and completes the protected reveal. URL elicitation carries only a short-lived browser-transition capability; plaintext, ciphertext, and the share link are never returned to MCP.',
       inputSchema: z.object({}),
       annotations: {
         readOnlyHint: false,
