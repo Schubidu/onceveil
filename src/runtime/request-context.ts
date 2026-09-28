@@ -24,6 +24,7 @@ export type McpRuntime =
       status: 'enabled'
       authToken: string
       storageKey: Uint8Array
+      publicOrigin: string
     }
   | {
       status: 'disabled'
