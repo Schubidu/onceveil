@@ -6,16 +6,11 @@ import {
   type McpHandoffAction,
   type McpHandoffRecord,
 } from '../core/mcp-handoff'
-import {
-  hashOwnerCapability,
-  isValidOwnerCapability,
-  type OwnerCapabilityHash,
-} from '../core/owner-capability'
+import type { OwnerCapabilityHash } from '../core/owner-capability'
 import type { SecretId, SecretStatus } from '../core/secret'
 import {
   hashMcpHandoffToken,
   mcpHandoffTokenAad,
-  mcpOwnerCapabilityAad,
   openMcpValue,
   sealMcpValue,
 } from './mcp-crypto'
@@ -101,44 +96,23 @@ export async function getMcpHandoff(
   return getMcpHandoffRepository(context).get(flowId)
 }
 
-async function ownerHashForRecord(
+function ownerHashForRecord(
   context: OnceveilRequestContext,
   record: McpHandoffRecord,
-): Promise<{ secretId: SecretId; ownerKeyHash: OwnerCapabilityHash } | undefined> {
-  const mcp = enabledMcp(context)
+): { secretId: SecretId; ownerKeyHash: OwnerCapabilityHash } | undefined {
+  enabledMcp(context)
   if (
     record.action !== 'create' ||
     record.state !== 'COMPLETED' ||
     !record.secretId ||
-    !record.ownerKeyHash ||
-    !record.ownerCapability
+    !record.ownerKeyHash
   ) {
-    return undefined
-  }
-
-  let capability: string
-  try {
-    capability = await openMcpValue(
-      record.ownerCapability,
-      mcp.storageKey,
-      mcpOwnerCapabilityAad(record.flowId, record.secretId),
-    )
-  } catch {
-    return undefined
-  }
-
-  if (!isValidOwnerCapability(capability)) {
-    return undefined
-  }
-
-  const ownerKeyHash = await hashOwnerCapability(capability)
-  if (ownerKeyHash !== record.ownerKeyHash) {
     return undefined
   }
 
   return {
     secretId: record.secretId,
-    ownerKeyHash,
+    ownerKeyHash: record.ownerKeyHash,
   }
 }
 
@@ -147,7 +121,7 @@ export async function getMcpManagedSecretStatus(
   record: McpHandoffRecord,
   nowMs = Date.now(),
 ): Promise<SecretStatus | undefined> {
-  const authorization = await ownerHashForRecord(context, record)
+  const authorization = ownerHashForRecord(context, record)
   if (!authorization) {
     return undefined
   }
@@ -164,7 +138,7 @@ export async function revokeMcpManagedSecret(
   record: McpHandoffRecord,
   nowMs = Date.now(),
 ): Promise<SecretStatus | undefined> {
-  const authorization = await ownerHashForRecord(context, record)
+  const authorization = ownerHashForRecord(context, record)
   if (!authorization) {
     return undefined
   }
