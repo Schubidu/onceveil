@@ -20,6 +20,8 @@ MCP does **not** receive or return:
 - AES decryption keys or complete anonymous share URLs;
 - raw owner capabilities or owner links.
 
+The deliberate exception is the URL-elicitation handoff token. MCP serializes the browser URL in the `input_required` response, so the MCP client/tool infrastructure can see this short-lived transition capability. It does not reveal, decrypt, revoke, or manage an existing secret by itself; it only authorizes entry into one pending create or reveal handoff. It is 256-bit random, action-bound, expires after ten minutes, and is not copied into normal tool `content`, `structuredContent`, or `requestState`.
+
 The browser performs secret encryption before the encrypted payload is sent to Onceveil. The create handoff returns the recipient share link and owner link only inside that browser context.
 
 For reveal, the browser receives the complete share URL directly from the user and then continues to the normal protected `/s/:id#...` flow. Completing the MCP handoff does not consume the secret, create a reveal proof, or bypass Turnstile/ALTCHA/noop provider semantics.
@@ -37,18 +39,18 @@ A `flowId` is correlation metadata, not a standalone owner or reveal capability.
 
 ## Browser handoff capability
 
-URL elicitation carries a short-lived browser handoff URL. Its capability token lives in the URL fragment, is copied into memory by the handoff page, and is immediately removed from browser history.
+URL elicitation carries a short-lived browser handoff URL. Its capability token lives in the URL fragment, is therefore visible to the MCP client as part of the elicitation URL, is copied into memory by the handoff page, and is immediately removed from browser history.
 
 The server stores only:
 
 - the SHA-256 hash of the browser handoff token;
-- an AES-GCM-encrypted copy of that token so an unfinished URL elicitation can be retried;
+- while the handoff is pending, an AES-GCM-encrypted copy of that token so an unfinished URL elicitation can be retried;
 - handoff state and expiry;
 - after browser creation completes, the server-issued secret ID and the already-existing owner capability hash.
 
 The raw owner capability never enters the MCP server. It remains in the browser-only owner link.
 
-Handoff tokens expire after ten minutes and are action-bound. Completion is one-way and retry-safe.
+Handoff tokens expire after ten minutes and are action-bound. Completion is one-way and retry-safe. After successful completion, Onceveil discards the encrypted token copy and retains only the token hash needed to recognize an identical completion retry.
 
 ## Runtime configuration
 
