@@ -125,8 +125,8 @@ try {
   }
 
   const body = await response.text()
-  if (!body.includes('id="onceveil-title"')) {
-    throw new Error('Node server root did not render the Onceveil application')
+  if (!body.includes('id="product-title"')) {
+    throw new Error('Node server root did not render the application')
   }
 
   const csp = response.headers.get('content-security-policy') ?? ''
