@@ -39,6 +39,8 @@ export async function startRevealProtection(
   secretId: SecretId,
   callbacks: RevealProtectionCallbacks,
 ): Promise<() => void> {
+  let active = true
+
   if (!isRecord(config) || typeof config.provider !== 'string') {
     throw new Error('Reveal protection is unavailable')
   }
@@ -58,6 +60,10 @@ export async function startRevealProtection(
 
     const widget = document.createElement('altcha-widget')
     const verified = (event: Event) => {
+      if (!active) {
+        return
+      }
+
       const payload = (event as CustomEvent<{ payload?: unknown }>).detail?.payload
       if (typeof payload !== 'string') {
         callbacks.failed('Verification failed. Close this window and try again.')
@@ -67,6 +73,10 @@ export async function startRevealProtection(
       void callbacks.verified(payload)
     }
     const stateChanged = (event: Event) => {
+      if (!active) {
+        return
+      }
+
       const state = (event as CustomEvent<{ state?: unknown }>).detail?.state
       if (state === 'error' || state === 'expired') {
         callbacks.failed('Verification failed. Close this window and try again.')
@@ -81,7 +91,10 @@ export async function startRevealProtection(
     container.replaceChildren(widget)
     callbacks.status('Computing proof-of-work verification…')
 
-    return () => widget.remove()
+    return () => {
+      active = false
+      widget.remove()
+    }
   }
 
   if (
@@ -97,6 +110,10 @@ export async function startRevealProtection(
   script.async = true
   script.defer = true
   script.onload = () => {
+    if (!active) {
+      return
+    }
+
     if (!window.turnstile) {
       callbacks.failed('Verification failed to initialize.')
       return
@@ -107,13 +124,32 @@ export async function startRevealProtection(
       sitekey: config.siteKey as string,
       action: REVEAL_PROTECTION_ACTION,
       cData: secretId,
-      callback: (token) => void callbacks.verified(token),
-      'error-callback': () => callbacks.failed('Verification failed. Try again.'),
-      'expired-callback': () => callbacks.failed('Verification expired. Try again.'),
+      callback: (token) => {
+        if (active) {
+          void callbacks.verified(token)
+        }
+      },
+      'error-callback': () => {
+        if (active) {
+          callbacks.failed('Verification failed. Try again.')
+        }
+      },
+      'expired-callback': () => {
+        if (active) {
+          callbacks.failed('Verification expired. Try again.')
+        }
+      },
     })
   }
-  script.onerror = () => callbacks.failed('Verification failed to load.')
+  script.onerror = () => {
+    if (active) {
+      callbacks.failed('Verification failed to load.')
+    }
+  }
   document.head.append(script)
 
-  return () => script.remove()
+  return () => {
+    active = false
+    script.remove()
+  }
 }
