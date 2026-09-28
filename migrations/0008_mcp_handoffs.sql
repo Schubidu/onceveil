@@ -12,8 +12,6 @@ CREATE TABLE mcp_handoffs (
   completed_at_ms INTEGER,
   secret_id TEXT,
   owner_key_hash TEXT,
-  owner_capability_nonce TEXT,
-  owner_capability_ciphertext TEXT,
   CHECK (handoff_expires_at_ms > created_at_ms),
   CHECK (
     (state = 'PENDING' AND completed_at_ms IS NULL) OR
@@ -28,9 +26,7 @@ CREATE TABLE mcp_handoffs (
       secret_id NOT GLOB '*[^0-9a-f]*' AND
       owner_key_hash IS NOT NULL AND
       length(owner_key_hash) = 64 AND
-      owner_key_hash NOT GLOB '*[^0-9a-f]*' AND
-      owner_capability_nonce IS NOT NULL AND
-      owner_capability_ciphertext IS NOT NULL
+      owner_key_hash NOT GLOB '*[^0-9a-f]*'
     )
   )
 ) STRICT;
