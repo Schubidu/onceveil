@@ -18,6 +18,18 @@ CREATE TABLE mcp_handoffs (
     (state = 'COMPLETED' AND completed_at_ms IS NOT NULL)
   ),
   CHECK (
+    (
+      state = 'PENDING' AND
+      length(handoff_token_nonce) > 0 AND
+      length(handoff_token_ciphertext) > 0
+    ) OR
+    (
+      state = 'COMPLETED' AND
+      handoff_token_nonce = '' AND
+      handoff_token_ciphertext = ''
+    )
+  ),
+  CHECK (
     action = 'reveal' OR
     state = 'PENDING' OR
     (
