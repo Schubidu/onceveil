@@ -31,11 +31,16 @@ describe('MCP capability protection', () => {
     expect(first).toHaveLength(32)
   })
 
-  it('hashes handoff tokens without echoing them', async () => {
+  it('binds handoff token authorization to the storage key', async () => {
     const token = 'b'.repeat(64)
-    const hash = await hashMcpHandoffToken(token)
+    const otherKey = Uint8Array.from(KEY, (byte) => byte ^ 0xff)
+    const first = await hashMcpHandoffToken(token, KEY)
+    const second = await hashMcpHandoffToken(token, KEY)
+    const rotated = await hashMcpHandoffToken(token, otherKey)
 
-    expect(hash).toMatch(/^[0-9a-f]{64}$/)
-    expect(hash).not.toBe(token)
+    expect(first).toMatch(/^[0-9a-f]{64}$/)
+    expect(first).not.toBe(token)
+    expect(second).toBe(first)
+    expect(rotated).not.toBe(first)
   })
 })
