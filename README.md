@@ -14,11 +14,11 @@ The planned product supports two first-class deployment profiles:
 
 Reveal protection is selected explicitly at runtime and is not coupled to either platform.
 
-MCP support is planned with secure browser handoff so secret material does not enter model/tool context.
+MCP support uses a secure browser handoff so secret material does not enter model/tool context. See [docs/mcp.md](docs/mcp.md).
 
 ## Current status
 
-The application and Cloudflare runtime baseline, strict one-time lifecycle, browser-side encryption, D1-backed create/reveal flow, fail-closed Turnstile reveal protection, and separate owner status/revocation capabilities are implemented. Production and Preview use separate D1 databases. The portable Node/SQLite runtime, standalone Nitro production build, Docker Compose packaging, and self-hosted ALTCHA reveal protection are implemented; MCP is still pending.
+The application and Cloudflare runtime baseline, strict one-time lifecycle, browser-side encryption, D1-backed create/reveal flow, fail-closed reveal protection, separate owner status/revocation capabilities, portable Node/SQLite runtime, Docker packaging, deployment branding, and opt-in MCP secure browser handoff are implemented. Production and Preview use separate D1 databases.
 
 ## Development
 
