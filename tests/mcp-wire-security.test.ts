@@ -339,7 +339,13 @@ describe('MCP model-context boundary', () => {
           inputResponses: { browser: { action: 'accept' } },
         }),
       )
-      expect(response.status).toBe(400)
+      expect(response.status).toBe(200)
+      const rejected = (await response.json()) as {
+        error?: { code?: number; message?: string }
+      }
+      expect(rejected.error).toMatchObject({
+        code: -32602,
+      })
 
       const row = await db
         .prepare('SELECT state FROM mcp_handoffs WHERE flow_id = ?')
