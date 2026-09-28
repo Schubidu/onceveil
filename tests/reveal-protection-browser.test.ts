@@ -20,6 +20,19 @@ class FakeElement extends EventTarget {
   }
 }
 
+class FakeScript {
+  src = ''
+  async = false
+  defer = false
+  removed = false
+  onload?: () => void
+  onerror?: () => void
+
+  remove() {
+    this.removed = true
+  }
+}
+
 class FakeContainer {
   child?: FakeElement
 
@@ -103,6 +116,94 @@ describe('reveal protection browser providers', () => {
 
     expect(failed).toHaveBeenCalledWith('Verification failed. Close this window and try again.')
     expect(verified).not.toHaveBeenCalled()
+  })
+
+  it('ignores Turnstile loader and verification callbacks after cleanup', async () => {
+    const script = new FakeScript()
+    const render = vi.fn()
+    const verified = vi.fn()
+    const failed = vi.fn()
+    const status = vi.fn()
+
+    vi.stubGlobal('window', { turnstile: { render } })
+    vi.stubGlobal('document', {
+      createElement(tagName: string) {
+        expect(tagName).toBe('script')
+        return script
+      },
+      head: {
+        append(candidate: FakeScript) {
+          expect(candidate).toBe(script)
+        },
+      },
+    })
+
+    const cleanup = await startRevealProtection(
+      { provider: 'turnstile', siteKey: 'site-key', action: 'onceveil_reveal' },
+      {} as HTMLElement,
+      SECRET_ID,
+      { verified, failed, status },
+    )
+
+    cleanup()
+    script.onload?.()
+
+    expect(script.removed).toBe(true)
+    expect(render).not.toHaveBeenCalled()
+    expect(verified).not.toHaveBeenCalled()
+    expect(failed).not.toHaveBeenCalled()
+    expect(status).not.toHaveBeenCalled()
+  })
+
+  it('ignores Turnstile widget callbacks after cleanup', async () => {
+    const script = new FakeScript()
+    let renderedOptions:
+      | {
+          callback(token: string): void
+          'error-callback'(): void
+          'expired-callback'(): void
+        }
+      | undefined
+    const verified = vi.fn()
+    const failed = vi.fn()
+
+    vi.stubGlobal('window', {
+      turnstile: {
+        render(
+          _container: HTMLElement,
+          options: {
+            callback(token: string): void
+            'error-callback'(): void
+            'expired-callback'(): void
+          },
+        ) {
+          renderedOptions = options
+          return 'widget-id'
+        },
+      },
+    })
+    vi.stubGlobal('document', {
+      createElement() {
+        return script
+      },
+      head: { append() {} },
+    })
+
+    const cleanup = await startRevealProtection(
+      { provider: 'turnstile', siteKey: 'site-key', action: 'onceveil_reveal' },
+      {} as HTMLElement,
+      SECRET_ID,
+      { verified, failed, status: vi.fn() },
+    )
+
+    script.onload?.()
+    cleanup()
+    renderedOptions?.callback('late-token')
+    renderedOptions?.['error-callback']()
+    renderedOptions?.['expired-callback']()
+
+    expect(verified).not.toHaveBeenCalled()
+    expect(failed).not.toHaveBeenCalled()
   })
 
   it('rejects an ALTCHA verified event without a string payload', async () => {
