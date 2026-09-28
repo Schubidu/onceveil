@@ -18,6 +18,16 @@ interface CloudflareOnceveilEnv {
   TURNSTILE_SECRET_KEY?: string
 }
 
+export function getBrandingConfig() {
+  const runtime = env as CloudflareOnceveilEnv
+  return resolveBrandingConfig({
+    name: runtime.ONCEVEIL_BRAND_NAME,
+    logo: runtime.ONCEVEIL_BRAND_LOGO,
+    favicon: runtime.ONCEVEIL_BRAND_FAVICON,
+    accent: runtime.ONCEVEIL_BRAND_ACCENT,
+  })
+}
+
 export function createRequestContext(request: Request): OnceveilRequestContext {
   const runtime = env as CloudflareOnceveilEnv
   const databaseEnvironment = requiredRuntimeEnvironmentForRequest(request)
@@ -31,12 +41,7 @@ export function createRequestContext(request: Request): OnceveilRequestContext {
         })
 
   return {
-    branding: resolveBrandingConfig({
-      name: runtime.ONCEVEIL_BRAND_NAME,
-      logo: runtime.ONCEVEIL_BRAND_LOGO,
-      favicon: runtime.ONCEVEIL_BRAND_FAVICON,
-      accent: runtime.ONCEVEIL_BRAND_ACCENT,
-    }),
+    branding: getBrandingConfig(),
     secretDatabase: runtime.DB,
     databaseEnvironment,
     revealProtection,
