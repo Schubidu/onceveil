@@ -1,10 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { createRequestContext } from '#onceveil-runtime-context'
-import {
-  completeMcpHandoffResponse,
-  mcpHandoffInfoResponse,
-} from '../runtime/mcp-handoff-http'
+import { completeMcpHandoffResponse, mcpHandoffInfoResponse } from '../runtime/mcp-handoff-http'
 import { assertSecretDatabaseEnvironment } from '../runtime/secret-repository'
 
 function unavailable(): Response {
