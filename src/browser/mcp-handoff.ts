@@ -1,5 +1,5 @@
 import { isValidMcpHandoffToken, type McpHandoffToken } from '../core/mcp-handoff'
-import { isValidSecretId } from '../core/secret'
+import { isValidSecretId, type SecretId } from '../core/secret'
 import type { FragmentHistory, FragmentLocation } from './secret-crypto'
 import { revealAuthorizationFromFragment } from './secret-crypto'
 
@@ -29,7 +29,16 @@ export function takeMcpHandoffToken(
   return token
 }
 
-export function validOnceveilShareUrl(value: string, origin: string): string | undefined {
+export interface ParsedOnceveilShareUrl {
+  url: string
+  secretId: SecretId
+  revealAuthorization: string
+}
+
+export function parseOnceveilShareUrl(
+  value: string,
+  origin: string,
+): ParsedOnceveilShareUrl | undefined {
   let url: URL
   try {
     url = new URL(value)
@@ -57,11 +66,20 @@ export function validOnceveilShareUrl(value: string, origin: string): string | u
   }
 
   const fragment = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash
+  let revealAuthorization: string
   try {
-    revealAuthorizationFromFragment(fragment)
+    revealAuthorization = revealAuthorizationFromFragment(fragment)
   } catch {
     return undefined
   }
 
-  return url.toString()
+  return {
+    url: url.toString(),
+    secretId,
+    revealAuthorization,
+  }
+}
+
+export function validOnceveilShareUrl(value: string, origin: string): string | undefined {
+  return parseOnceveilShareUrl(value, origin)?.url
 }
