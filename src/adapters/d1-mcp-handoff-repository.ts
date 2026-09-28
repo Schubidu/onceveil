@@ -25,8 +25,6 @@ interface McpHandoffRow {
   completed_at_ms: number | null
   secret_id: string | null
   owner_key_hash: string | null
-  owner_capability_nonce: string | null
-  owner_capability_ciphertext: string | null
 }
 
 const SELECT_HANDOFF = [
@@ -41,9 +39,7 @@ const SELECT_HANDOFF = [
   '  handoff_expires_at_ms,',
   '  completed_at_ms,',
   '  secret_id,',
-  '  owner_key_hash,',
-  '  owner_capability_nonce,',
-  '  owner_capability_ciphertext',
+  '  owner_key_hash',
   'FROM mcp_handoffs',
 ].join('\n')
 
@@ -122,21 +118,10 @@ function toRecord(row: McpHandoffRow): McpHandoffRecord | undefined {
     record.ownerKeyHash = row.owner_key_hash
   }
 
-  if (row.owner_capability_nonce !== null || row.owner_capability_ciphertext !== null) {
-    const ownerCapability = sealedValue(
-      row.owner_capability_nonce,
-      row.owner_capability_ciphertext,
-    )
-    if (!ownerCapability) {
-      return undefined
-    }
-    record.ownerCapability = ownerCapability
-  }
-
   if (
     row.action === 'create' &&
     row.state === 'COMPLETED' &&
-    (!record.secretId || !record.ownerKeyHash || !record.ownerCapability)
+    (!record.secretId || !record.ownerKeyHash)
   ) {
     return undefined
   }
@@ -203,7 +188,6 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
     handoffTokenHash: string,
     secretId: import('../core/secret').SecretId,
     ownerKeyHash: import('../core/owner-capability').OwnerCapabilityHash,
-    ownerCapability: SealedMcpValue,
     nowMs: number,
   ): Promise<CompleteMcpHandoffResult> {
     const session = this.db.withSession('first-primary')
@@ -211,21 +195,11 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
       session
         .prepare(
           "UPDATE mcp_handoffs SET " +
-            "state = 'COMPLETED', completed_at_ms = ?, secret_id = ?, owner_key_hash = ?, " +
-            'owner_capability_nonce = ?, owner_capability_ciphertext = ? ' +
+            "state = 'COMPLETED', completed_at_ms = ?, secret_id = ?, owner_key_hash = ? " +
             "WHERE flow_id = ? AND action = 'create' AND state = 'PENDING' " +
             'AND handoff_token_hash = ? AND handoff_expires_at_ms > ?',
         )
-        .bind(
-          nowMs,
-          secretId,
-          ownerKeyHash,
-          ownerCapability.nonce,
-          ownerCapability.ciphertext,
-          flowId,
-          handoffTokenHash,
-          nowMs,
-        ),
+        .bind(nowMs, secretId, ownerKeyHash, flowId, handoffTokenHash, nowMs),
       session
         .prepare(
           SELECT_HANDOFF +
