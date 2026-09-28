@@ -18,6 +18,7 @@ interface DatabaseState {
   environmentTable?: boolean
   secretsTable?: boolean
   revealProofsTable?: boolean
+  mcpHandoffsTable?: boolean
   marker?: string
   schemaError?: boolean
   databaseError?: boolean
@@ -50,13 +51,18 @@ function fakeDatabase(state: DatabaseState): D1DatabaseLike {
             return (state.revealProofsTable ? { present: 1 } : null) as Row | null
           }
 
+          if (query.includes("name = 'mcp_handoffs'")) {
+            return (state.mcpHandoffsTable !== false ? { present: 1 } : null) as Row | null
+          }
+
           if (query.includes('SELECT environment FROM onceveil_environment')) {
             return (state.marker ? { environment: state.marker } : null) as Row | null
           }
 
           if (
             query.includes('FROM secrets LIMIT 0') ||
-            query.includes('FROM reveal_proofs LIMIT 0')
+            query.includes('FROM reveal_proofs LIMIT 0') ||
+            query.includes('FROM mcp_handoffs LIMIT 0')
           ) {
             if (state.schemaError) {
               throw new Error('schema mismatch')
@@ -184,6 +190,7 @@ describe('runtime readiness', () => {
     const source = await readFile(path.resolve('scripts/d1-environment.mjs'), 'utf8')
 
     expect(source).toContain('owner_key_hash')
+    expect(source).toContain('mcp_handoffs')
   })
 
   it('reports unavailable when the database cannot be queried', async () => {
