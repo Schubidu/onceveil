@@ -171,7 +171,7 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
 
   async get(flowId: McpFlowId): Promise<McpHandoffRecord | undefined> {
     const row = await this.db
-      .prepare(SELECT_HANDOFF + ' WHERE flow_id = ? LIMIT 1')
+      .prepare(`${SELECT_HANDOFF} WHERE flow_id = ? LIMIT 1`)
       .bind(flowId)
       .first<McpHandoffRow>()
 
