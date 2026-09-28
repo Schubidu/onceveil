@@ -16,6 +16,7 @@ interface CloudflareOnceveilEnv {
   ONCEVEIL_MCP_ENABLED?: string
   ONCEVEIL_MCP_TOKEN?: string
   ONCEVEIL_MCP_STORAGE_KEY?: string
+  ONCEVEIL_MCP_PUBLIC_ORIGIN?: string
   ONCEVEIL_REVEAL_PROTECTION?: string
   ONCEVEIL_ALTCHA_SECRET?: string
   TURNSTILE_SITE_KEY?: string
@@ -51,6 +52,7 @@ export function createRequestContext(request: Request): OnceveilRequestContext {
     mcp: resolveMcpRuntime(runtime.ONCEVEIL_MCP_ENABLED, {
       authToken: runtime.ONCEVEIL_MCP_TOKEN,
       storageKey: runtime.ONCEVEIL_MCP_STORAGE_KEY,
+      publicOrigin: runtime.ONCEVEIL_MCP_PUBLIC_ORIGIN,
     }),
     revealProtection,
   }
