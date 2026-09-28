@@ -1,7 +1,6 @@
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 
-import { altchaRevealProtectionConfiguration } from '../adapters/altcha-reveal-protection'
 import { NodeSqliteDatabase } from '../adapters/node-sqlite-database'
 import { applySqliteMigrations } from '../adapters/sqlite-migrations'
 import type { OnceveilRequestContext, RevealProtectionRuntime } from './request-context'
@@ -48,22 +47,8 @@ function databaseForPath(configuredPath: string): NodeSqliteDatabase {
   return database
 }
 
-export function nodeRevealProtection(
-  value: string | undefined,
-  altchaHmacSecret?: string,
-): RevealProtectionRuntime {
-  if (value === 'none') {
-    return { provider: 'none' }
-  }
-
-  if (value === 'altcha') {
-    const configuration = altchaRevealProtectionConfiguration(altchaHmacSecret)
-    return configuration
-      ? { provider: 'altcha', ...configuration }
-      : { provider: 'unavailable' }
-  }
-
-  return { provider: 'unavailable' }
+export function nodeRevealProtection(value: string | undefined): RevealProtectionRuntime {
+  return value === 'none' ? { provider: 'none' } : { provider: 'unavailable' }
 }
 
 export function createRequestContext(_request: Request): OnceveilRequestContext {
@@ -78,9 +63,6 @@ export function createRequestContext(_request: Request): OnceveilRequestContext 
   return {
     secretDatabase,
     databaseEnvironment: 'markerless',
-    revealProtection: nodeRevealProtection(
-      process.env.ONCEVEIL_REVEAL_PROTECTION,
-      process.env.ONCEVEIL_ALTCHA_HMAC_SECRET,
-    ),
+    revealProtection: nodeRevealProtection(process.env.ONCEVEIL_REVEAL_PROTECTION),
   }
 }
