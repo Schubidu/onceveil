@@ -17,6 +17,8 @@ describe('sensitive browser security policy', () => {
     'https://onceveil.test/',
     'https://onceveil.test/api/secrets',
     `https://onceveil.test/api/secrets/${SECRET_ID}/reveal`,
+    `https://onceveil.test/api/mcp/handoffs/${SECRET_ID}`,
+    `https://onceveil.test/mcp/handoff/${SECRET_ID}`,
     `https://onceveil.test/o/${SECRET_ID}`,
     `https://onceveil.test/s/${SECRET_ID}`,
   ])('protects %s as a sensitive surface', (url) => {
@@ -42,8 +44,11 @@ describe('sensitive browser security policy', () => {
     const verification = new Request(
       `https://onceveil.test/s/${SECRET_ID}?verify=1&verification=${'a'.repeat(32)}`,
     )
+    const mcpHandoff = new Request(`https://onceveil.test/mcp/handoff/${SECRET_ID}`)
 
     expect(secretSurfacePolicy(normal, 'turnstile')).toBe('isolated')
+    expect(secretSurfacePolicy(mcpHandoff, 'turnstile')).toBe('isolated')
+    expect(secretSurfacePolicy(mcpHandoff, 'altcha')).toBe('isolated')
     expect(secretSurfacePolicy(malformed, 'turnstile')).toBe('isolated')
     expect(secretSurfacePolicy(verification, 'turnstile')).toBe('turnstile')
     expect(secretSurfacePolicy(verification, 'altcha')).toBe('altcha')
@@ -76,6 +81,11 @@ describe('safe runtime logging', () => {
     'src/routes/api.secrets.ts',
     'src/routes/api.secrets.$id.owner.ts',
     'src/routes/api.secrets.$id.reveal.ts',
+    'src/routes/api.mcp.handoffs.$flowId.ts',
+    'src/runtime/mcp-handoff-http.ts',
+    'src/runtime/mcp-http.ts',
+    'src/runtime/mcp-server.ts',
+    'src/runtime/mcp-service.ts',
     'src/adapters/turnstile-reveal-protection.ts',
   ])('%s cannot bypass the safe logging boundary', async (sourcePath) => {
     const source = await readFile(path.resolve(sourcePath), 'utf8')
