@@ -1,5 +1,6 @@
 import { createRequestContext } from '#onceveil-runtime-context'
 
+import { isValidMcpAuthToken } from './mcp-config'
 import { createOnceveilMcpHandler } from './mcp-server'
 import { assertSecretDatabaseEnvironment } from './secret-repository'
 
@@ -23,7 +24,10 @@ async function tokenMatches(expected: string, actual: string): Promise<boolean> 
 
 function bearerToken(request: Request): string | undefined {
   const authorization = request.headers.get('Authorization')
-  return authorization?.startsWith('Bearer ') ? authorization.slice('Bearer '.length) : undefined
+  const token = authorization?.startsWith('Bearer ')
+    ? authorization.slice('Bearer '.length)
+    : undefined
+  return isValidMcpAuthToken(token) ? token : undefined
 }
 
 function protectedResponse(response: Response): Response {
