@@ -43,14 +43,14 @@ URL elicitation carries a short-lived browser handoff URL. Its capability token 
 
 The server stores only:
 
-- the SHA-256 hash of the browser handoff token;
+- an HMAC-SHA-256 authorization fingerprint of the browser handoff token, keyed from the current MCP storage key;
 - while the handoff is pending, an AES-GCM-encrypted copy of that token so an unfinished URL elicitation can be retried;
 - handoff state and expiry;
 - after browser creation completes, the server-issued secret ID and the already-existing owner capability hash.
 
 The raw owner capability never enters the MCP server. It remains in the browser-only owner link.
 
-Handoff tokens expire after ten minutes and are action-bound. Completion is one-way and retry-safe. After successful completion, Onceveil discards the encrypted token copy and retains only the token hash needed to recognize an identical completion retry.
+Handoff tokens expire after ten minutes and are action-bound. Completion is one-way and retry-safe. After successful completion, Onceveil discards the encrypted token copy and temporarily retains only the keyed fingerprint needed to recognize an identical completion retry. After the handoff window expires, stale pending/reveal rows are pruned and completed-create mappings scrub the transition fingerprint while retaining only the management mapping required for `status`/`revoke`.
 
 ## Runtime configuration
 
@@ -65,7 +65,7 @@ MCP requires all four settings below. Partial or malformed enabled configuration
 
 The public origin must use HTTPS. HTTP is accepted only for loopback development origins such as `http://127.0.0.1:3000`. Userinfo, paths, queries, and fragments are rejected.
 
-Changing `ONCEVEIL_MCP_STORAGE_KEY` invalidates unfinished handoffs because their encrypted browser tokens and request state can no longer be opened/verified. Treat storage-key rotation as an operation that intentionally cancels active MCP handoffs.
+Changing `ONCEVEIL_MCP_STORAGE_KEY` invalidates active handoffs: request state no longer verifies, encrypted retry tokens can no longer be opened, and already-issued browser handoff tokens no longer match their keyed authorization fingerprint. Treat storage-key rotation as an intentional cancellation of active MCP handoffs.
 
 Changing `ONCEVEIL_MCP_TOKEN` changes who may call `/mcp` but does not reveal or decrypt stored secret payloads.
 
