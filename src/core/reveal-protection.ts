@@ -5,21 +5,21 @@ export const REVEAL_PROOF_TTL_MS = 60_000
 export const REVEAL_VERIFICATION_TTL_MS = 5 * 60_000
 export const MAX_ACTIVE_REVEAL_PROOFS_PER_SECRET = 3
 
-export interface RevealChallengeContext {
-  token: string
+export interface RevealProtectionContext {
+  token?: string
   secretId: SecretId
   verificationId: string
   hostname: string
   remoteIp?: string
 }
 
-export type RevealChallengeResult =
+export type RevealProtectionResult =
   | { kind: 'verified' }
   | { kind: 'invalid' }
   | { kind: 'unavailable' }
 
-export interface RevealChallengeVerifier {
-  verify(context: RevealChallengeContext): Promise<RevealChallengeResult>
+export interface RevealProtectionVerifier {
+  verify(context: RevealProtectionContext): Promise<RevealProtectionResult>
 }
 
 export interface RevealProof {
