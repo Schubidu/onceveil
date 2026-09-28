@@ -72,10 +72,12 @@ describe('MCP handoff repository', () => {
       await expect(repository.completeReveal(record.flowId, TOKEN_HASH, 1_501)).resolves.toBe(
         'replayed',
       )
-      await expect(repository.get(record.flowId)).resolves.toMatchObject({
+      const completed = await repository.get(record.flowId)
+      expect(completed).toMatchObject({
         state: 'COMPLETED',
         completedAtMs: 1_500,
       })
+      expect(completed?.handoffToken).toBeUndefined()
     } finally {
       db.close()
     }
@@ -113,7 +115,7 @@ describe('MCP handoff repository', () => {
       expect(stored).toEqual({
         secret_id: SECRET_ID,
         owner_key_hash: OWNER_HASH,
-        handoff_token_ciphertext: SEALED_TOKEN.ciphertext,
+        handoff_token_ciphertext: '',
       })
     } finally {
       db.close()
