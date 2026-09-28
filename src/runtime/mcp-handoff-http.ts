@@ -61,6 +61,9 @@ export async function mcpHandoffInfoResponse(
   if (!authorized) {
     return json({ error: 'not_found' }, 404)
   }
+  if (authorized.record.state !== 'PENDING') {
+    return json({ error: 'completed' }, 410)
+  }
 
   return json(
     {
