@@ -77,8 +77,13 @@ export async function checkSecretDatabaseReadiness(
         "SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'reveal_proofs'",
       )
       .first<PresentRow>()
+    const mcpHandoffsTable = await database
+      .prepare(
+        "SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'mcp_handoffs'",
+      )
+      .first<PresentRow>()
 
-    if (!secretsTable || !revealProofsTable) {
+    if (!secretsTable || !revealProofsTable || !mcpHandoffsTable) {
       return { status: 'not_ready', database: 'migration_required' }
     }
 
@@ -115,6 +120,11 @@ export async function checkSecretDatabaseReadiness(
       await database
         .prepare(
           'SELECT proof_hash, verification_id, secret_id, issued_at_ms, expires_at_ms, verified_at_ms, consumed_at_ms FROM reveal_proofs LIMIT 0',
+        )
+        .first()
+      await database
+        .prepare(
+          'SELECT flow_id, action, state, handoff_token_hash, handoff_token_nonce, handoff_token_ciphertext, created_at_ms, handoff_expires_at_ms, completed_at_ms, secret_id, owner_key_hash FROM mcp_handoffs LIMIT 0',
         )
         .first()
     } catch {
