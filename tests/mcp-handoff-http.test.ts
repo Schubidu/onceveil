@@ -137,6 +137,41 @@ describe('MCP browser handoff HTTP boundary', () => {
     }
   })
 
+  it('revokes issued browser handoff tokens when the storage key rotates', async () => {
+    const db = database()
+    try {
+      const runtime = context(db)
+      const nowMs = Date.now()
+      const handoff = await createMcpHandoff(runtime, 'reveal', nowMs)
+      const token = tokenFrom(await mcpHandoffUrl(runtime, handoff))
+
+      const beforeRotation = await mcpHandoffInfoResponse(
+        request(handoff.flowId, token),
+        handoff.flowId,
+        runtime,
+        nowMs + 1,
+      )
+      expect(beforeRotation.status).toBe(200)
+
+      const rotated: OnceveilRequestContext = {
+        ...runtime,
+        mcp: {
+          ...runtime.mcp,
+          storageKey: Uint8Array.from(STORAGE_KEY, (byte) => byte ^ 0xff),
+        },
+      }
+      const afterRotation = await mcpHandoffInfoResponse(
+        request(handoff.flowId, token),
+        handoff.flowId,
+        rotated,
+        nowMs + 2,
+      )
+      expect(afterRotation.status).toBe(404)
+    } finally {
+      db.close()
+    }
+  })
+
   it('rejects expired browser capabilities without changing handoff state', async () => {
     const db = database()
     try {
