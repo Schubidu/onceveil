@@ -6,6 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "preview_urls": true,
   "vars": {
+    "ONCEVEIL_REVEAL_PROTECTION": "turnstile",
     "TURNSTILE_SITE_KEY": "0x4AAAAAAFEfxfEZ8ZH4YiZn"
   },
   "d1_databases": [
@@ -18,6 +19,7 @@
   ],
   "previews": {
     "vars": {
+      "ONCEVEIL_REVEAL_PROTECTION": "turnstile",
       "TURNSTILE_SITE_KEY": "0x4AAAAAAFEfxfEZ8ZH4YiZn"
     },
     "d1_databases": [
