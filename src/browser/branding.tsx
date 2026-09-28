@@ -1,10 +1,6 @@
 import { createContext, type ReactNode, useContext, useEffect, useState } from 'react'
 
-import {
-  DEFAULT_BRANDING,
-  parseBrandingConfig,
-  type BrandingConfig,
-} from '../core/branding'
+import { DEFAULT_BRANDING, parseBrandingConfig, type BrandingConfig } from '../core/branding'
 
 const BrandingContext = createContext<BrandingConfig>(DEFAULT_BRANDING)
 const MANAGED_FAVICON_ID = 'onceveil-brand-favicon'
