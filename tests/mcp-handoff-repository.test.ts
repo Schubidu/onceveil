@@ -155,6 +155,7 @@ describe('MCP handoff repository', () => {
         state: 'COMPLETED',
         secretId: SECRET_ID,
         ownerKeyHash: OWNER_HASH,
+        handoffTokenHash: '0'.repeat(64),
       })
       await expect(repository.get(fresh.flowId)).resolves.toMatchObject({
         state: 'PENDING',
