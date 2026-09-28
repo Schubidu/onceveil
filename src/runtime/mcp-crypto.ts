@@ -84,10 +84,7 @@ async function handoffAuthorizationKey(storageKey: Uint8Array): Promise<CryptoKe
   )
 }
 
-export async function hashMcpHandoffToken(
-  token: string,
-  storageKey: Uint8Array,
-): Promise<string> {
+export async function hashMcpHandoffToken(token: string, storageKey: Uint8Array): Promise<string> {
   const signature = await crypto.subtle.sign(
     'HMAC',
     await handoffAuthorizationKey(storageKey),
