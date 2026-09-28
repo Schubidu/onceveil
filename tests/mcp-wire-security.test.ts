@@ -123,7 +123,7 @@ describe('MCP model-context boundary', () => {
       expect(typeof requestState).toBe('string')
       expect(String(requestState)).not.toContain(token)
 
-      const pending = await encryptedShareForCreate(MODEL_SECRET)
+      const pending = await encryptedShareForCreate(MODEL_SECRET, undefined)
       const nowMs = Date.now()
       const create = await createSecretResponse(
         new Request('https://onceveil.test/api/secrets', {
@@ -251,7 +251,7 @@ describe('MCP model-context boundary', () => {
     const handler = await createOnceveilMcpHandler(runtime)
 
     try {
-      const pending = await encryptedShareForCreate('still protected')
+      const pending = await encryptedShareForCreate('still protected', undefined)
       const nowMs = Date.now()
       const secrets = new D1SecretRepository(db)
       const create = await createSecretResponse(
