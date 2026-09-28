@@ -268,7 +268,6 @@ export async function buildOnceveilMcpServer(context: OnceveilRequestContext): P
 
 export async function createOnceveilMcpHandler(context: OnceveilRequestContext) {
   return createMcpHandler(() => buildOnceveilMcpServer(context), {
-    responseMode: 'json',
     legacy: 'reject',
   })
 }
