@@ -47,6 +47,7 @@ describe('Turnstile reveal challenge verifier', () => {
       verifier.verify({
         token: 'turnstile-token',
         secretId: SECRET_ID,
+        verificationId: 'a'.repeat(32),
         hostname: 'ots.schult.dev',
       }),
     ).resolves.toEqual({ kind: 'verified' })
@@ -73,6 +74,7 @@ describe('Turnstile reveal challenge verifier', () => {
       verifier.verify({
         token: 'turnstile-token',
         secretId: SECRET_ID,
+        verificationId: 'a'.repeat(32),
         hostname: 'ots.schult.dev',
         remoteIp: '203.0.113.7',
       }),
@@ -107,6 +109,7 @@ describe('Turnstile reveal challenge verifier', () => {
       verifier.verify({
         token: 'turnstile-token',
         secretId: SECRET_ID,
+        verificationId: 'a'.repeat(32),
         hostname: 'ots.schult.dev',
       }),
     ).resolves.toEqual({ kind: 'invalid' })
@@ -135,6 +138,7 @@ describe('Turnstile reveal challenge verifier', () => {
       verifier.verify({
         token: 'turnstile-token',
         secretId: SECRET_ID,
+        verificationId: 'a'.repeat(32),
         hostname: 'ots.schult.dev',
       }),
     ).resolves.toEqual({ kind: 'unavailable' })
@@ -151,6 +155,7 @@ describe('Turnstile reveal challenge verifier', () => {
       verifier.verify({
         token: 'turnstile-token',
         secretId: SECRET_ID,
+        verificationId: 'a'.repeat(32),
         hostname: 'ots.schult.dev',
       }),
     ).resolves.toEqual({ kind: 'unavailable' })
@@ -164,6 +169,7 @@ describe('Turnstile reveal challenge verifier', () => {
       verifier.verify({
         token: 'turnstile-token',
         secretId: SECRET_ID,
+        verificationId: 'a'.repeat(32),
         hostname: 'ots.schult.dev',
       }),
     ).resolves.toEqual({ kind: 'unavailable' })

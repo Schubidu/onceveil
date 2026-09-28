@@ -2,8 +2,11 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
+import { solveChallenge } from 'altcha-lib'
+import { deriveKey } from 'altcha-lib/algorithms/web/pbkdf2'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { AltchaRevealProtection } from '../src/adapters/altcha-reveal-protection'
 import { D1RevealProofRepository } from '../src/adapters/d1-reveal-proof-repository'
 import { D1SecretRepository, type D1DatabaseLike } from '../src/adapters/d1-secret-repository'
 import { decryptSecret, encryptSecret } from '../src/browser/secret-crypto'
@@ -670,6 +673,68 @@ describe('D1 one-time HTTP flow', () => {
     expect(replay.status).toBe(403)
   })
 
+  it('binds a solved ALTCHA challenge to one prepared proof transition', async () => {
+    const nowMs = Date.now()
+    await storeTestSecret('altcha protected reveal', nowMs)
+    const prepared = await prepareProof(PUBLIC_ID, nowMs + 1)
+    const altcha = new AltchaRevealProtection('s'.repeat(32), {
+      cost: 1,
+      counterMin: 1,
+      counterMax: 2,
+    })
+    const challenge = await altcha.createChallenge(PUBLIC_ID, prepared.verificationId, nowMs + 2)
+    const solution = await solveChallenge({
+      challenge,
+      deriveKey,
+      timeout: 5_000,
+    })
+    if (!solution) {
+      throw new Error('ALTCHA integration challenge was not solved')
+    }
+
+    const token = btoa(JSON.stringify({ challenge, solution }))
+    const verificationRequest = () =>
+      new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          verificationId: prepared.verificationId,
+        }),
+      })
+
+    const verified = await verifyRevealProofResponse(
+      verificationRequest(),
+      PUBLIC_ID,
+      altcha,
+      proofRepository,
+      nowMs + 3,
+    )
+    expect(verified.status).toBe(200)
+
+    const replayed = await verifyRevealProofResponse(
+      verificationRequest(),
+      PUBLIC_ID,
+      altcha,
+      proofRepository,
+      nowMs + 4,
+    )
+    expect(replayed.status).toBe(403)
+
+    const revealed = await protectedRevealResponse(
+      new Request(`https://onceveil.test/api/secrets/${PUBLIC_ID}/reveal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proof: prepared.value }),
+      }),
+      PUBLIC_ID,
+      proofRepository,
+      repository,
+      nowMs + 5,
+    )
+    expect(revealed.status).toBe(200)
+  })
+
   it('can verify a prepared proof without an external challenge in explicit none mode', async () => {
     await storeTestSecret('trusted network proof')
     const prepared = await prepareProof(PUBLIC_ID, 1_000)
@@ -706,6 +771,23 @@ describe('D1 one-time HTTP flow', () => {
       count: number
     }
     expect(count.count).toBe(1)
+  })
+
+  it('recognizes only live pending verification ids', async () => {
+    await storeTestSecret('pending verification lookup')
+    const proof = await prepareProof(PUBLIC_ID, 1_000)
+
+    await expect(
+      proofRepository.hasPendingVerification(PUBLIC_ID, proof.verificationId, 1_001),
+    ).resolves.toBe(true)
+    await expect(
+      proofRepository.hasPendingVerification(PUBLIC_ID, '0'.repeat(32), 1_001),
+    ).resolves.toBe(false)
+
+    await expect(proofRepository.verify(PUBLIC_ID, proof.verificationId, 1_002)).resolves.toBe(true)
+    await expect(
+      proofRepository.hasPendingVerification(PUBLIC_ID, proof.verificationId, 1_003),
+    ).resolves.toBe(false)
   })
 
   it('keeps the proof unusable until its matching verification is completed', async () => {

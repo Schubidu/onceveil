@@ -8,6 +8,7 @@ export const MAX_ACTIVE_REVEAL_PROOFS_PER_SECRET = 3
 export interface RevealChallengeContext {
   token: string
   secretId: SecretId
+  verificationId: string
   hostname: string
   remoteIp?: string
 }
@@ -34,6 +35,11 @@ export interface RevealProofRepository {
     verificationId: string,
     nowMs: number,
   ): Promise<RevealProof | undefined>
+  hasPendingVerification(
+    secretId: SecretId,
+    verificationId: string,
+    nowMs: number,
+  ): Promise<boolean>
   verify(secretId: SecretId, verificationId: string, nowMs: number): Promise<boolean>
   consume(secretId: SecretId, proof: string, nowMs: number): Promise<boolean>
 }

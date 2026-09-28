@@ -12,6 +12,7 @@ import {
   verifyRevealProofWithoutChallengeResponse,
 } from '../runtime/reveal-protection-http'
 import {
+  createAltchaRevealChallenge,
   getRevealChallengeVerifier,
   getRevealProofRepository,
   getRevealProtectionProvider,
@@ -46,6 +47,24 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
             return withSecretSecurityHeaders(Response.json({ provider }, { status: 200 }))
           }
 
+          if (provider === 'altcha') {
+            const verificationId = new URL(request.url).searchParams.get('verification')
+            if (!verificationId || !/^[0-9a-f]{32}$/.test(verificationId)) {
+              return jsonError('invalid_verification', 400)
+            }
+
+            await assertSecretDatabaseEnvironment(runtime)
+            const proofs = getRevealProofRepository(runtime)
+            if (!(await proofs.hasPendingVerification(params.id, verificationId, Date.now()))) {
+              return jsonError('verification_failed', 403)
+            }
+
+            const challenge = await createAltchaRevealChallenge(runtime, params.id, verificationId)
+            return withSecretSecurityHeaders(
+              Response.json({ provider, challenge }, { status: 200 }),
+            )
+          }
+
           return withSecretSecurityHeaders(
             Response.json(
               {
@@ -57,7 +76,21 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
             ),
           )
         } catch (error) {
-          if (error instanceof RevealProtectionUnavailableError) {
+          if (
+            error instanceof SecretDatabaseUnavailableError ||
+            error instanceof RevealProtectionUnavailableError ||
+            error instanceof RevealProofStorageError
+          ) {
+            return jsonError('verification_unavailable', 503)
+          }
+
+          if (error instanceof SecretDatabaseEnvironmentError) {
+            logRuntimeError('secret database environment check failed', error, {
+              expected: error.expected,
+              diagnostic: error.actual.startsWith('query-error:')
+                ? 'query_error'
+                : 'environment_mismatch',
+            })
             return jsonError('verification_unavailable', 503)
           }
 
@@ -80,14 +113,14 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
           }
 
           if (request.headers.get('X-Onceveil-Proof-Request') === '1') {
-            return provider === 'turnstile'
-              ? await verifyRevealProofResponse(
+            return provider === 'none'
+              ? await verifyRevealProofWithoutChallengeResponse(request, params.id, proofs)
+              : await verifyRevealProofResponse(
                   request,
                   params.id,
                   getRevealChallengeVerifier(runtime),
                   proofs,
                 )
-              : await verifyRevealProofWithoutChallengeResponse(request, params.id, proofs)
           }
 
           if (request.headers.get('X-Onceveil-Reveal') !== '1') {
