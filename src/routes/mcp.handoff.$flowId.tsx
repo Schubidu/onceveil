@@ -31,7 +31,7 @@ export const Route = createFileRoute('/mcp/handoff/$flowId')({
 
 function McpBrowserHandoff() {
   const { flowId } = Route.useParams()
-  const token = useRef<McpHandoffToken>()
+  const token = useRef<McpHandoffToken | undefined>(undefined)
   const [action, setAction] = useState<McpHandoffAction>()
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string>()
