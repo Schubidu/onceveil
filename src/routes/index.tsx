@@ -1,13 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
+import { BrandHeading } from '../browser/branding'
 import { ownerPath } from '../browser/owner-capability'
 import { sharePath } from '../browser/secret-crypto'
 import {
   encryptedShareForCreate,
   type PendingEncryptedCreate,
 } from '../browser/secret-create-retry'
-import { PROJECT_NAME, PROJECT_TAGLINE } from '../core/project'
+import { PROJECT_TAGLINE } from '../core/project'
 import { isValidSecretId } from '../core/secret'
 
 export const Route = createFileRoute('/')({
@@ -120,9 +121,9 @@ function Home() {
 
   return (
     <main className="shell">
-      <section className="card" aria-labelledby="onceveil-title">
+      <section className="card" aria-labelledby="product-title">
         <p className="eyebrow">Open source · early development</p>
-        <h1 id="onceveil-title">{PROJECT_NAME}</h1>
+        <BrandHeading id="product-title" />
         <p className="tagline">{PROJECT_TAGLINE}</p>
 
         {!shareUrl && !ownerUrl ? (
