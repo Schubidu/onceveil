@@ -49,6 +49,12 @@ describe('MCP browser handoff boundary', () => {
     expect(validOnceveilShareUrl(url, 'https://other.example')).toBeUndefined()
     expect(
       validOnceveilShareUrl(
+        `https://user:pass@onceveil.example/s/${id}#${encrypted.fragment}`,
+        'https://onceveil.example',
+      ),
+    ).toBeUndefined()
+    expect(
+      validOnceveilShareUrl(
         `https://onceveil.example/s/${id}?leak=1#${encrypted.fragment}`,
         'https://onceveil.example',
       ),
