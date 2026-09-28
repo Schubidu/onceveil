@@ -39,7 +39,7 @@ interface SiteverifyResponse {
   'error-codes'?: unknown
 }
 
-export class TurnstileRevealProtectionVerifier implements RevealProtectionVerifier {
+export class TurnstileRevealProtection implements RevealProtectionVerifier {
   constructor(
     private readonly secretKey: string,
     private readonly fetchImpl: typeof fetch = fetch,
