@@ -20,8 +20,6 @@ export class RevealProtectionUnavailableError extends Error {
   }
 }
 
-export type RevealProtectionProvider = 'turnstile' | 'altcha' | 'noop'
-
 export type RevealProtectionClientConfig =
   | {
       provider: 'turnstile'
@@ -44,10 +42,8 @@ function configuredProtection(context: OnceveilRequestContext) {
   return context.revealProtection
 }
 
-export function getRevealProtectionProvider(
-  context: OnceveilRequestContext,
-): RevealProtectionProvider {
-  return configuredProtection(context).provider
+export function assertRevealProtectionAvailable(context: OnceveilRequestContext): void {
+  configuredProtection(context)
 }
 
 export async function getRevealProtectionClientConfig(
