@@ -1,12 +1,17 @@
 import { env } from 'cloudflare:workers'
 
 import type { D1DatabaseLike } from '../adapters/d1-secret-repository'
+import { resolveBrandingConfig } from '../core/branding'
 import { requiredRuntimeEnvironmentForRequest } from './readiness'
 import type { OnceveilRequestContext } from './request-context'
 import { resolveRevealProtectionRuntime } from './reveal-protection-config'
 
 interface CloudflareOnceveilEnv {
   DB?: D1DatabaseLike
+  ONCEVEIL_BRAND_NAME?: string
+  ONCEVEIL_BRAND_LOGO?: string
+  ONCEVEIL_BRAND_FAVICON?: string
+  ONCEVEIL_BRAND_ACCENT?: string
   ONCEVEIL_REVEAL_PROTECTION?: string
   ONCEVEIL_ALTCHA_SECRET?: string
   TURNSTILE_SITE_KEY?: string
@@ -26,6 +31,12 @@ export function createRequestContext(request: Request): OnceveilRequestContext {
         })
 
   return {
+    branding: resolveBrandingConfig({
+      name: runtime.ONCEVEIL_BRAND_NAME,
+      logo: runtime.ONCEVEIL_BRAND_LOGO,
+      favicon: runtime.ONCEVEIL_BRAND_FAVICON,
+      accent: runtime.ONCEVEIL_BRAND_ACCENT,
+    }),
     secretDatabase: runtime.DB,
     databaseEnvironment,
     revealProtection,
