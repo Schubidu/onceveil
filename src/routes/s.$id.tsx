@@ -252,6 +252,7 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
     let active = true
     let started = false
     let script: HTMLScriptElement | undefined
+    let altchaWidget: HTMLElement | undefined
     const broadcast = new BroadcastChannel(`onceveil-reveal-${verificationId}`)
 
     function failVerification(message: string) {
@@ -293,7 +294,12 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
 
     async function start() {
       try {
-        const response = await fetch(`/api/secrets/${encodeURIComponent(id)}/reveal`, {
+        const configUrl = new URL(
+          `/api/secrets/${encodeURIComponent(id)}/reveal`,
+          window.location.origin,
+        )
+        configUrl.searchParams.set('verification', verificationId)
+        const response = await fetch(configUrl, {
           headers: { 'X-Onceveil-Proof-Config': '1' },
         })
         const config = (await response.json().catch(() => undefined)) as
@@ -307,6 +313,44 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
         if (config?.provider === 'none') {
           setStatus('No interactive verification is required. Returning to the secret…')
           await completeVerification()
+          return
+        }
+
+        if (config?.provider === 'altcha') {
+          if (typeof config.challenge !== 'object' || config.challenge === null) {
+            throw new Error('Reveal protection is unavailable')
+          }
+
+          await import('altcha')
+          if (!active || !containerRef.current) {
+            return
+          }
+
+          const widget = document.createElement('altcha-widget')
+          const verified = (event: Event) => {
+            const payload = (event as CustomEvent<{ payload?: unknown }>).detail?.payload
+            if (typeof payload !== 'string') {
+              failVerification('Verification failed. Close this window and try again.')
+              return
+            }
+
+            void completeVerification(payload)
+          }
+          const stateChanged = (event: Event) => {
+            const state = (event as CustomEvent<{ state?: unknown }>).detail?.state
+            if (state === 'error' || state === 'expired') {
+              failVerification('Verification failed. Close this window and try again.')
+            }
+          }
+
+          widget.setAttribute('challenge', JSON.stringify(config.challenge))
+          widget.setAttribute('auto', 'onload')
+          widget.setAttribute('type', 'checkbox')
+          widget.addEventListener('verified', verified)
+          widget.addEventListener('statechange', stateChanged)
+          containerRef.current.replaceChildren(widget)
+          altchaWidget = widget
+          setStatus('Computing proof-of-work verification…')
           return
         }
 
@@ -367,6 +411,7 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
     return () => {
       active = false
       script?.remove()
+      altchaWidget?.remove()
       broadcast.close()
     }
   }, [id, verificationId])
