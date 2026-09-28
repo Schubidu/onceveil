@@ -22,7 +22,7 @@ export interface McpHandoffRecord {
   action: McpHandoffAction
   state: McpHandoffState
   handoffTokenHash: string
-  handoffToken: SealedMcpValue
+  handoffToken?: SealedMcpValue
   createdAtMs: number
   handoffExpiresAtMs: number
   completedAtMs?: number
