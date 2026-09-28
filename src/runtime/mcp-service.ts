@@ -8,12 +8,7 @@ import {
 } from '../core/mcp-handoff'
 import type { OwnerCapabilityHash } from '../core/owner-capability'
 import type { SecretId, SecretStatus } from '../core/secret'
-import {
-  hashMcpHandoffToken,
-  mcpHandoffTokenAad,
-  openMcpValue,
-  sealMcpValue,
-} from './mcp-crypto'
+import { hashMcpHandoffToken, mcpHandoffTokenAad, openMcpValue, sealMcpValue } from './mcp-crypto'
 import { getMcpHandoffRepository } from './mcp-repository'
 import type { OnceveilRequestContext } from './request-context'
 import { getSecretRepository } from './secret-repository'
@@ -55,11 +50,7 @@ export async function createMcpHandoff(
       action,
       state: 'PENDING',
       handoffTokenHash: await hashMcpHandoffToken(token),
-      handoffToken: await sealMcpValue(
-        token,
-        mcp.storageKey,
-        mcpHandoffTokenAad(flowId, action),
-      ),
+      handoffToken: await sealMcpValue(token, mcp.storageKey, mcpHandoffTokenAad(flowId, action)),
       createdAtMs: nowMs,
       handoffExpiresAtMs: nowMs + MCP_HANDOFF_TTL_MS,
     }
@@ -143,11 +134,7 @@ export async function revokeMcpManagedSecret(
   }
 
   const repository = getSecretRepository(context)
-  const result = await repository.revoke(
-    authorization.secretId,
-    authorization.ownerKeyHash,
-    nowMs,
-  )
+  const result = await repository.revoke(authorization.secretId, authorization.ownerKeyHash, nowMs)
   if (result.kind === 'not_found') {
     return undefined
   }
