@@ -135,9 +135,9 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
   async create(record: McpHandoffRecord): Promise<boolean> {
     const result = await this.db
       .prepare(
-        "INSERT OR IGNORE INTO mcp_handoffs (" +
-          "flow_id, action, state, handoff_token_hash, handoff_token_nonce, " +
-          "handoff_token_ciphertext, created_at_ms, handoff_expires_at_ms" +
+        'INSERT OR IGNORE INTO mcp_handoffs (' +
+          'flow_id, action, state, handoff_token_hash, handoff_token_nonce, ' +
+          'handoff_token_ciphertext, created_at_ms, handoff_expires_at_ms' +
           ") VALUES (?, ?, 'PENDING', ?, ?, ?, ?, ?)",
       )
       .bind(
@@ -194,7 +194,7 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
     const results = await session.batch([
       session
         .prepare(
-          "UPDATE mcp_handoffs SET " +
+          'UPDATE mcp_handoffs SET ' +
             "state = 'COMPLETED', completed_at_ms = ?, secret_id = ?, owner_key_hash = ? " +
             "WHERE flow_id = ? AND action = 'create' AND state = 'PENDING' " +
             'AND handoff_token_hash = ? AND handoff_expires_at_ms > ?',
