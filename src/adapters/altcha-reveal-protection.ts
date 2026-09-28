@@ -10,9 +10,9 @@ import { deriveKey } from 'altcha-lib/algorithms/web/pbkdf2'
 import {
   REVEAL_PROTECTION_ACTION,
   REVEAL_VERIFICATION_TTL_MS,
-  type RevealChallengeContext,
-  type RevealChallengeResult,
-  type RevealChallengeVerifier,
+  type RevealProtectionContext,
+  type RevealProtectionResult,
+  type RevealProtectionVerifier,
 } from '../core/reveal-protection'
 import type { SecretId } from '../core/secret'
 
@@ -91,7 +91,10 @@ function isPayload(value: unknown): value is Payload {
   )
 }
 
-function decodePayload(token: string): Payload | undefined {
+function decodePayload(token: string | undefined): Payload | undefined {
+  if (token === undefined) {
+    return undefined
+  }
   const normalized = token.trim()
   if (normalized.length === 0 || normalized.length > MAX_TOKEN_LENGTH) {
     return undefined
@@ -120,7 +123,7 @@ function challengeMatchesContext(
   )
 }
 
-export class AltchaRevealProtection implements RevealChallengeVerifier {
+export class AltchaRevealProtection implements RevealProtectionVerifier {
   constructor(
     private readonly hmacSecret: string,
     private readonly settings: AltchaChallengeSettings = DEFAULT_SETTINGS,
@@ -147,7 +150,7 @@ export class AltchaRevealProtection implements RevealChallengeVerifier {
     })
   }
 
-  async verify(context: RevealChallengeContext): Promise<RevealChallengeResult> {
+  async verify(context: RevealProtectionContext): Promise<RevealProtectionResult> {
     const payload = decodePayload(context.token)
     if (!payload) {
       return { kind: 'invalid' }
