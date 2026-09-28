@@ -8,35 +8,13 @@ import {
   revealAuthorizationFromFragment,
   takeShareFragment,
 } from '../browser/secret-crypto'
+import { startRevealProtection } from '../browser/reveal-protection'
 import {
   discardRevealVerificationFragment,
   requestRevealProof,
   revealVerificationId,
 } from '../browser/reveal-verification'
-import { REVEAL_PROTECTION_ACTION } from '../core/reveal-protection'
 import { isValidSecretId, type SecretId } from '../core/secret'
-
-const TURNSTILE_SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
-
-interface TurnstileApi {
-  render(
-    container: HTMLElement,
-    options: {
-      sitekey: string
-      action: string
-      cData: string
-      callback(token: string): void
-      'error-callback'(): void
-      'expired-callback'(): void
-    },
-  ): string
-}
-
-declare global {
-  interface Window {
-    turnstile?: TurnstileApi
-  }
-}
 
 export const Route = createFileRoute('/s/$id')({
   server: {
@@ -251,8 +229,7 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
   useEffect(() => {
     let active = true
     let started = false
-    let script: HTMLScriptElement | undefined
-    let verificationWidget: HTMLElement | undefined
+    let stopProtection: (() => void) | undefined
     const broadcast = new BroadcastChannel(`onceveil-reveal-${verificationId}`)
 
     function failVerification(message: string) {
@@ -306,84 +283,25 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
           | Record<string, unknown>
           | undefined
 
-        if (!active || !response.ok) {
+        if (!active || !response.ok || !containerRef.current) {
           throw new Error('Reveal protection is unavailable')
         }
 
-        if (config?.provider === 'none') {
-          setStatus('No interactive verification is required. Returning to the secret…')
-          await completeVerification()
+        const stop = await startRevealProtection(config, containerRef.current, id, {
+          verified: completeVerification,
+          failed: failVerification,
+          status(message) {
+            if (active) {
+              setStatus(message)
+            }
+          },
+        })
+        if (!active) {
+          stop()
           return
         }
 
-        if (config?.provider === 'altcha') {
-          if (typeof config.challenge !== 'object' || config.challenge === null) {
-            throw new Error('Reveal protection is unavailable')
-          }
-
-          await import('altcha')
-          if (!active || !containerRef.current) {
-            return
-          }
-
-          const widget = document.createElement('altcha-widget')
-          const verified = (event: Event) => {
-            const payload = (event as CustomEvent<{ payload?: unknown }>).detail?.payload
-            if (typeof payload !== 'string') {
-              failVerification('Verification failed. Close this window and try again.')
-              return
-            }
-
-            void completeVerification(payload)
-          }
-          const stateChanged = (event: Event) => {
-            const state = (event as CustomEvent<{ state?: unknown }>).detail?.state
-            if (state === 'error' || state === 'expired') {
-              failVerification('Verification failed. Close this window and try again.')
-            }
-          }
-
-          widget.setAttribute('challenge', JSON.stringify(config.challenge))
-          widget.setAttribute('auto', 'onload')
-          widget.setAttribute('type', 'checkbox')
-          widget.addEventListener('verified', verified)
-          widget.addEventListener('statechange', stateChanged)
-          containerRef.current.replaceChildren(widget)
-          verificationWidget = widget
-          setStatus('Computing proof-of-work verification…')
-          return
-        }
-
-        if (
-          config?.provider !== 'turnstile' ||
-          typeof config.siteKey !== 'string' ||
-          config.action !== REVEAL_PROTECTION_ACTION
-        ) {
-          throw new Error('Reveal protection is unavailable')
-        }
-
-        script = document.createElement('script')
-        script.src = TURNSTILE_SCRIPT_URL
-        script.async = true
-        script.defer = true
-        script.onload = () => {
-          if (!active || !containerRef.current || !window.turnstile) {
-            failVerification('Verification failed to initialize.')
-            return
-          }
-
-          setStatus('Complete the verification to continue.')
-          window.turnstile.render(containerRef.current, {
-            sitekey: config.siteKey as string,
-            action: REVEAL_PROTECTION_ACTION,
-            cData: id,
-            callback: (token) => void completeVerification(token),
-            'error-callback': () => failVerification('Verification failed. Try again.'),
-            'expired-callback': () => failVerification('Verification expired. Try again.'),
-          })
-        }
-        script.onerror = () => failVerification('Verification failed to load.')
-        document.head.append(script)
+        stopProtection = stop
       } catch {
         failVerification('Verification is unavailable.')
       }
@@ -410,8 +328,7 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
 
     return () => {
       active = false
-      script?.remove()
-      verificationWidget?.remove()
+      stopProtection?.()
       broadcast.close()
     }
   }, [id, verificationId])
