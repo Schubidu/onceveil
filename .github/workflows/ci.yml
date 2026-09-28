@@ -51,5 +51,8 @@ jobs:
           node-version: 24
           package-manager-cache: false
 
+      - name: Install Docker acceptance dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
       - name: Validate Docker runtime
         run: npm run check:docker-runtime
