@@ -28,7 +28,6 @@ export interface McpHandoffRecord {
   completedAtMs?: number
   secretId?: SecretId
   ownerKeyHash?: OwnerCapabilityHash
-  ownerCapability?: SealedMcpValue
 }
 
 export type CompleteMcpHandoffResult = 'completed' | 'replayed' | 'unavailable'
@@ -46,7 +45,6 @@ export interface McpHandoffRepository {
     handoffTokenHash: string,
     secretId: SecretId,
     ownerKeyHash: OwnerCapabilityHash,
-    ownerCapability: SealedMcpValue,
     nowMs: number,
   ): Promise<CompleteMcpHandoffResult>
   completeReveal(
