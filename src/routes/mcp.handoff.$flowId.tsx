@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { BrandHeading } from '../browser/branding'
 import { validOnceveilShareUrl, takeMcpHandoffToken } from '../browser/mcp-handoff'
@@ -100,7 +100,7 @@ function HandoffFrame({
   status,
   error,
 }: Readonly<{
-  children?: React.ReactNode
+  children?: ReactNode
   status?: string
   error?: string
 }>) {
