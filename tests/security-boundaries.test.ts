@@ -70,6 +70,19 @@ describe('sensitive browser security policy', () => {
     expect(selfHostedCsp).toContain("worker-src 'none'")
     expect(selfHostedCsp).not.toContain('challenges.cloudflare.com')
   })
+  it('clears MCP browser handoff capabilities and sensitive state across page lifecycle', async () => {
+    const source = await readFile(path.resolve('src/routes/mcp.handoff.$flowId.tsx'), 'utf8')
+
+    expect(source).toContain("window.addEventListener('pagehide', clearSensitiveState)")
+    expect(source).toContain("window.addEventListener('pageshow', clearRestoredState)")
+    expect(source).toContain('token.current = undefined')
+    expect(source).toContain("setSecret('')")
+    expect(source).toContain('setPending(undefined)')
+    expect(source).toContain('setCreated(undefined)')
+    expect(source).toContain("setShareUrl('')")
+    expect(source).toContain('generation.current += 1')
+    expect(source).toContain('generation.current !== currentGeneration')
+  })
 })
 
 describe('safe runtime logging', () => {
