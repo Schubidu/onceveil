@@ -83,7 +83,8 @@ function safeAccent(value: unknown): string {
 }
 
 export function parseBrandingConfig(value: unknown): BrandingConfig {
-  const input = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
+  const input =
+    typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
   const theme =
     typeof input.theme === 'object' && input.theme !== null
       ? (input.theme as Record<string, unknown>)
