@@ -121,6 +121,7 @@ export async function verifyRevealProofResponse(
   const verification = await verifier.verify({
     token,
     secretId,
+    verificationId,
     hostname: new URL(request.url).hostname,
     remoteIp: request.headers.get('CF-Connecting-IP') ?? undefined,
   })
