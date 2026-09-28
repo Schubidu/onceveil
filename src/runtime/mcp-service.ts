@@ -49,7 +49,7 @@ export async function createMcpHandoff(
       flowId,
       action,
       state: 'PENDING',
-      handoffTokenHash: await hashMcpHandoffToken(token),
+      handoffTokenHash: await hashMcpHandoffToken(token, mcp.storageKey),
       handoffToken: await sealMcpValue(token, mcp.storageKey, mcpHandoffTokenAad(flowId, action)),
       createdAtMs: nowMs,
       handoffExpiresAtMs: nowMs + MCP_HANDOFF_TTL_MS,
