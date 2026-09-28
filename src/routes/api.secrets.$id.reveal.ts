@@ -12,6 +12,7 @@ import {
 import {
   getRevealProofRepository,
   getRevealProtectionClientConfig,
+  getRevealProtectionProvider,
   getRevealProtectionVerifier,
   RevealProtectionUnavailableError,
 } from '../runtime/reveal-protection'
@@ -83,6 +84,7 @@ export const Route = createFileRoute('/api/secrets/$id/reveal')({
 
         try {
           await assertSecretDatabaseEnvironment(runtime)
+          getRevealProtectionProvider(runtime)
           const proofs = getRevealProofRepository(runtime)
 
           if (request.headers.get('X-Onceveil-Proof-Prepare') === '1') {
