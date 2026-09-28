@@ -1,7 +1,4 @@
-import {
-  isValidMcpHandoffToken,
-  type McpHandoffToken,
-} from '../core/mcp-handoff'
+import { isValidMcpHandoffToken, type McpHandoffToken } from '../core/mcp-handoff'
 import { isValidSecretId } from '../core/secret'
 import type { FragmentHistory, FragmentLocation } from './secret-crypto'
 import { revealAuthorizationFromFragment } from './secret-crypto'
