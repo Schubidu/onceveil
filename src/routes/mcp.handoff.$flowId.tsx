@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { BrandHeading } from '../browser/branding'
-import { validOnceveilShareUrl, takeMcpHandoffToken } from '../browser/mcp-handoff'
+import { parseOnceveilShareUrl, takeMcpHandoffToken } from '../browser/mcp-handoff'
 import { ownerPath } from '../browser/owner-capability'
 import { sharePath } from '../browser/secret-crypto'
 import {
@@ -287,7 +287,7 @@ function RevealHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpH
       return
     }
 
-    const target = validOnceveilShareUrl(shareUrl, window.location.origin)
+    const target = parseOnceveilShareUrl(shareUrl, window.location.origin)
     if (!target) {
       setError('Paste a valid share link for this Onceveil deployment.')
       return
@@ -298,13 +298,20 @@ function RevealHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpH
     try {
       const response = await fetch(`/api/mcp/handoffs/${encodeURIComponent(flowId)}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          secretId: target.secretId,
+          revealAuthorization: target.revealAuthorization,
+        }),
       })
       if (!response.ok) {
         throw new Error('handoff_failed')
       }
 
-      window.location.assign(target)
+      window.location.assign(target.url)
     } catch {
       setError('The browser handoff could not be finalized. Try again.')
       setOpening(false)
