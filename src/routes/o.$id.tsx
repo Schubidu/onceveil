@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 
+import { BrandHeading } from '../browser/branding'
 import { takeOwnerCapability } from '../browser/owner-capability'
 import type { OwnerCapability } from '../core/owner-capability'
 import { isValidSecretId, type SecretState } from '../core/secret'
@@ -136,7 +137,7 @@ function OwnerSecret() {
     <main className="shell">
       <section className="card" aria-labelledby="owner-title">
         <p className="eyebrow">Secret owner</p>
-        <h1 id="owner-title">Onceveil</h1>
+        <BrandHeading id="owner-title" />
 
         {!ready ? <p className="status">Loading secret status…</p> : null}
 
