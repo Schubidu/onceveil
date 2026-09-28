@@ -28,6 +28,8 @@ describe('MCP runtime configuration', () => {
   it.each([
     {},
     { authToken: 'short', storageKey: STORAGE_KEY, publicOrigin: 'https://secrets.example' },
+    { authToken: 'x'.repeat(513), storageKey: STORAGE_KEY, publicOrigin: 'https://secrets.example' },
+    { authToken: ` ${TOKEN}`, storageKey: STORAGE_KEY, publicOrigin: 'https://secrets.example' },
     { authToken: TOKEN, storageKey: '00', publicOrigin: 'https://secrets.example' },
     { authToken: TOKEN, storageKey: STORAGE_KEY, publicOrigin: 'http://secrets.example' },
     { authToken: TOKEN, storageKey: STORAGE_KEY, publicOrigin: 'https://secrets.example/path' },
