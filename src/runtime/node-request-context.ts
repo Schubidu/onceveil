@@ -75,6 +75,7 @@ export function createRequestContext(_request: Request): OnceveilRequestContext 
     mcp: resolveMcpRuntime(process.env.ONCEVEIL_MCP_ENABLED, {
       authToken: process.env.ONCEVEIL_MCP_TOKEN,
       storageKey: process.env.ONCEVEIL_MCP_STORAGE_KEY,
+      publicOrigin: process.env.ONCEVEIL_MCP_PUBLIC_ORIGIN,
     }),
     revealProtection: resolveRevealProtectionRuntime(process.env.ONCEVEIL_REVEAL_PROTECTION, {
       altchaSecret: process.env.ONCEVEIL_ALTCHA_SECRET,
