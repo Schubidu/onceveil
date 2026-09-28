@@ -67,18 +67,19 @@ async function handoffTool(
 ): Promise<CallToolResult | InputRequiredResult> {
   try {
     const state = ctx.mcpReq.requestState<HandoffRequestState>()
-    let record: McpHandoffRecord
+    let record: McpHandoffRecord | undefined
 
     if (state) {
       if (state.action !== action || !isValidMcpFlowId(state.flowId)) {
         return toolError('The browser handoff state is invalid.')
       }
       record = await getMcpHandoff(context, state.flowId)
-      if (!record || record.action !== action) {
-        return toolError('The browser handoff is no longer available.')
-      }
     } else {
       record = await createMcpHandoff(context, action)
+    }
+
+    if (!record || record.action !== action) {
+      return toolError('The browser handoff is no longer available.')
     }
 
     if (record.state === 'COMPLETED') {
@@ -116,7 +117,7 @@ async function handoffTool(
       })
     }
 
-    const url = await mcpHandoffUrl(context, context.mcp.status === 'enabled' ? context.mcp.publicOrigin : '', record)
+    const url = await mcpHandoffUrl(context, record)
     return inputRequired({
       inputRequests: {
         browser: inputRequired.elicitUrl({
