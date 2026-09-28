@@ -14,8 +14,7 @@ import { isValidSecretId, type SecretId } from '../core/secret'
 
 interface CreatedSecret {
   id: SecretId
-  fragment: string
-  ownerCapability: string
+  ownerKeyHash: string
   shareUrl: string
   ownerUrl: string
 }
@@ -146,7 +145,7 @@ function CreateHandoff({
       },
       body: JSON.stringify({
         secretId: value.id,
-        ownerCapability: value.ownerCapability,
+        ownerKeyHash: value.ownerKeyHash,
       }),
     })
 
@@ -191,8 +190,7 @@ function CreateHandoff({
 
       const value: CreatedSecret = {
         id: body.id,
-        fragment: encrypted.encrypted.fragment,
-        ownerCapability: encrypted.ownerCapability,
+        ownerKeyHash: encrypted.ownerCapabilityHash,
         shareUrl: `${window.location.origin}${sharePath(body.id, encrypted.encrypted.fragment)}`,
         ownerUrl: `${window.location.origin}${ownerPath(body.id, encrypted.ownerCapability)}`,
       }
