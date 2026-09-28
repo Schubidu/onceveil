@@ -137,6 +137,24 @@ describe('runtime readiness', () => {
     })
   })
 
+  it('reports migration_required when the MCP handoff migration is missing', async () => {
+    await expect(
+      checkSecretDatabaseReadiness(
+        fakeDatabase({
+          environmentTable: true,
+          secretsTable: true,
+          revealProofsTable: true,
+          mcpHandoffsTable: false,
+          marker: 'preview',
+        }),
+        'preview',
+      ),
+    ).resolves.toEqual({
+      status: 'not_ready',
+      database: 'migration_required',
+    })
+  })
+
   it('reports migration_required when required tables are missing', async () => {
     await expect(
       checkSecretDatabaseReadiness(
