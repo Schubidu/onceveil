@@ -3,6 +3,7 @@ import path from 'node:path'
 
 import { NodeSqliteDatabase } from '../adapters/node-sqlite-database'
 import { applySqliteMigrations } from '../adapters/sqlite-migrations'
+import { resolveBrandingConfig } from '../core/branding'
 import type { OnceveilRequestContext } from './request-context'
 import { resolveRevealProtectionRuntime } from './reveal-protection-config'
 
@@ -58,6 +59,12 @@ export function createRequestContext(_request: Request): OnceveilRequestContext 
   }
 
   return {
+    branding: resolveBrandingConfig({
+      name: process.env.ONCEVEIL_BRAND_NAME,
+      logo: process.env.ONCEVEIL_BRAND_LOGO,
+      favicon: process.env.ONCEVEIL_BRAND_FAVICON,
+      accent: process.env.ONCEVEIL_BRAND_ACCENT,
+    }),
     secretDatabase,
     databaseEnvironment: 'markerless',
     revealProtection: resolveRevealProtectionRuntime(process.env.ONCEVEIL_REVEAL_PROTECTION, {
