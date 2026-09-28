@@ -99,7 +99,7 @@ function fragmentToken(url: URL): string {
 }
 
 describe('MCP model-context boundary', () => {
-  it('keeps create capabilities out of model-visible results and manages by flow id only', async () => {
+  it('limits MCP-visible capability material to the short-lived URL-elicitation handoff token', async () => {
     const db = database()
     const runtime = context(db)
     const handler = await createOnceveilMcpHandler(runtime)
@@ -122,6 +122,9 @@ describe('MCP model-context boundary', () => {
       const requestState = first.requestState
       expect(typeof requestState).toBe('string')
       expect(String(requestState)).not.toContain(token)
+
+      const { inputRequests: _inputRequests, ...firstWithoutElicitation } = first
+      expect(JSON.stringify(firstWithoutElicitation)).not.toContain(token)
 
       const pending = await encryptedShareForCreate(MODEL_SECRET, undefined)
       const nowMs = Date.now()
@@ -215,13 +218,15 @@ describe('MCP model-context boundary', () => {
 
       const storedHandoff = await db
         .prepare(
-          'SELECT handoff_token_hash, handoff_token_ciphertext, owner_key_hash FROM mcp_handoffs WHERE flow_id = ?',
+          'SELECT handoff_token_hash, handoff_token_nonce, handoff_token_ciphertext, owner_key_hash FROM mcp_handoffs WHERE flow_id = ?',
         )
         .bind(flowId)
         .first<Record<string, unknown>>()
       const stored = JSON.stringify(storedHandoff)
       expect(stored).not.toContain(token)
       expect(stored).not.toContain(pending.ownerCapability)
+      expect(storedHandoff?.handoff_token_nonce).toBe('')
+      expect(storedHandoff?.handoff_token_ciphertext).toBe('')
 
       const logged = JSON.stringify(spies.flatMap((spy) => spy.mock.calls))
       for (const sensitive of [
