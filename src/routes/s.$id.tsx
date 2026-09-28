@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 
+import { BrandHeading } from '../browser/branding'
 import {
   decryptSecret,
   InvalidShareCapabilityError,
@@ -175,7 +176,7 @@ function SecretReveal({ id }: { id: SecretId }) {
     <main className="shell">
       <section className="card" aria-labelledby="secret-title">
         <p className="eyebrow">One-time secret</p>
-        <h1 id="secret-title">Onceveil</h1>
+        <BrandHeading id="secret-title" />
 
         {plaintext !== undefined ? (
           <div className="secret-result">
@@ -337,7 +338,7 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
     <main className="shell">
       <section className="card" aria-labelledby="verify-title">
         <p className="eyebrow">Reveal verification</p>
-        <h1 id="verify-title">Onceveil</h1>
+        <BrandHeading id="verify-title" />
         <p className="status">{status}</p>
         <div ref={containerRef} />
         {error ? (
