@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as ReadyRouteImport } from './routes/ready'
+import { Route as ApiMcpHandoffsFlowIdRouteImport } from './routes/api.mcp.handoffs.$flowId'
 import { Route as ApiSecretsRouteImport } from './routes/api.secrets'
+import { Route as McpHandoffFlowIdRouteImport } from './routes/mcp.handoff.$flowId'
 import { Route as OIdRouteImport } from './routes/o.$id'
 import { Route as SIdRouteImport } from './routes/s.$id'
 import { Route as ApiSecretsIdOwnerRouteImport } from './routes/api.secrets.$id.owner'
@@ -33,9 +35,19 @@ const ReadyRoute = ReadyRouteImport.update({
   path: '/ready',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMcpHandoffsFlowIdRoute = ApiMcpHandoffsFlowIdRouteImport.update({
+  id: '/api/mcp/handoffs/$flowId',
+  path: '/api/mcp/handoffs/$flowId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSecretsRoute = ApiSecretsRouteImport.update({
   id: '/api/secrets',
   path: '/api/secrets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpHandoffFlowIdRoute = McpHandoffFlowIdRouteImport.update({
+  id: '/mcp/handoff/$flowId',
+  path: '/mcp/handoff/$flowId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OIdRoute = OIdRouteImport.update({
@@ -63,7 +75,9 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
   '/ready': typeof ReadyRoute
+  '/api/mcp/handoffs/$flowId': typeof ApiMcpHandoffsFlowIdRoute
   '/api/secrets': typeof ApiSecretsRouteWithChildren
+  '/mcp/handoff/$flowId': typeof McpHandoffFlowIdRoute
   '/o/$id': typeof OIdRoute
   '/s/$id': typeof SIdRoute
   '/api/secrets/$id/owner': typeof ApiSecretsIdOwnerRoute
@@ -73,7 +87,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
   '/ready': typeof ReadyRoute
+  '/api/mcp/handoffs/$flowId': typeof ApiMcpHandoffsFlowIdRoute
   '/api/secrets': typeof ApiSecretsRouteWithChildren
+  '/mcp/handoff/$flowId': typeof McpHandoffFlowIdRoute
   '/o/$id': typeof OIdRoute
   '/s/$id': typeof SIdRoute
   '/api/secrets/$id/owner': typeof ApiSecretsIdOwnerRoute
@@ -84,7 +100,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/health': typeof HealthRoute
   '/ready': typeof ReadyRoute
+  '/api/mcp/handoffs/$flowId': typeof ApiMcpHandoffsFlowIdRoute
   '/api/secrets': typeof ApiSecretsRouteWithChildren
+  '/mcp/handoff/$flowId': typeof McpHandoffFlowIdRoute
   '/o/$id': typeof OIdRoute
   '/s/$id': typeof SIdRoute
   '/api/secrets/$id/owner': typeof ApiSecretsIdOwnerRoute
@@ -96,7 +114,9 @@ export interface FileRouteTypes {
     | '/'
     | '/health'
     | '/ready'
+    | '/api/mcp/handoffs/$flowId'
     | '/api/secrets'
+    | '/mcp/handoff/$flowId'
     | '/o/$id'
     | '/s/$id'
     | '/api/secrets/$id/owner'
@@ -106,7 +126,9 @@ export interface FileRouteTypes {
     | '/'
     | '/health'
     | '/ready'
+    | '/api/mcp/handoffs/$flowId'
     | '/api/secrets'
+    | '/mcp/handoff/$flowId'
     | '/o/$id'
     | '/s/$id'
     | '/api/secrets/$id/owner'
@@ -116,7 +138,9 @@ export interface FileRouteTypes {
     | '/'
     | '/health'
     | '/ready'
+    | '/api/mcp/handoffs/$flowId'
     | '/api/secrets'
+    | '/mcp/handoff/$flowId'
     | '/o/$id'
     | '/s/$id'
     | '/api/secrets/$id/owner'
@@ -127,7 +151,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HealthRoute: typeof HealthRoute
   ReadyRoute: typeof ReadyRoute
+  ApiMcpHandoffsFlowIdRoute: typeof ApiMcpHandoffsFlowIdRoute
   ApiSecretsRoute: typeof ApiSecretsRouteWithChildren
+  McpHandoffFlowIdRoute: typeof McpHandoffFlowIdRoute
   OIdRoute: typeof OIdRoute
   SIdRoute: typeof SIdRoute
 }
@@ -155,11 +181,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReadyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/mcp/handoffs/$flowId': {
+      id: '/api/mcp/handoffs/$flowId'
+      path: '/api/mcp/handoffs/$flowId'
+      fullPath: '/api/mcp/handoffs/$flowId'
+      preLoaderRoute: typeof ApiMcpHandoffsFlowIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/secrets': {
       id: '/api/secrets'
       path: '/api/secrets'
       fullPath: '/api/secrets'
       preLoaderRoute: typeof ApiSecretsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp/handoff/$flowId': {
+      id: '/mcp/handoff/$flowId'
+      path: '/mcp/handoff/$flowId'
+      fullPath: '/mcp/handoff/$flowId'
+      preLoaderRoute: typeof McpHandoffFlowIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/o/$id': {
@@ -211,7 +251,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HealthRoute: HealthRoute,
   ReadyRoute: ReadyRoute,
+  ApiMcpHandoffsFlowIdRoute: ApiMcpHandoffsFlowIdRoute,
   ApiSecretsRoute: ApiSecretsRouteWithChildren,
+  McpHandoffFlowIdRoute: McpHandoffFlowIdRoute,
   OIdRoute: OIdRoute,
   SIdRoute: SIdRoute,
 }
