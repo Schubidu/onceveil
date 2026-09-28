@@ -46,7 +46,7 @@ export function parseOnceveilShareUrl(
     return undefined
   }
 
-  if (url.origin !== origin || url.search !== '') {
+  if (url.origin !== origin || url.username || url.password || url.search !== '') {
     return undefined
   }
 
