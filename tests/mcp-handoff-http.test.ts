@@ -153,10 +153,15 @@ describe('MCP browser handoff HTTP boundary', () => {
       )
       expect(beforeRotation.status).toBe(200)
 
+      if (runtime.mcp.status !== 'enabled') {
+        throw new Error('test MCP runtime must be enabled')
+      }
       const rotated: OnceveilRequestContext = {
         ...runtime,
         mcp: {
-          ...runtime.mcp,
+          status: 'enabled',
+          authToken: runtime.mcp.authToken,
+          publicOrigin: runtime.mcp.publicOrigin,
           storageKey: Uint8Array.from(STORAGE_KEY, (byte) => byte ^ 0xff),
         },
       }
