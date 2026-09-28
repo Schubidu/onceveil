@@ -16,6 +16,10 @@ const composeEnv = {
   COMPOSE_PROJECT_NAME: projectName,
   ONCEVEIL_BIND_ADDRESS: '127.0.0.1',
   ONCEVEIL_PORT: String(port),
+  ONCEVEIL_BRAND_NAME: 'CI Vault',
+  ONCEVEIL_BRAND_LOGO: '/branding/ci-logo.svg',
+  ONCEVEIL_BRAND_FAVICON: '/branding/ci-favicon.svg',
+  ONCEVEIL_BRAND_ACCENT: '#6E56CF',
   ONCEVEIL_REVEAL_PROTECTION: 'altcha',
   ONCEVEIL_ALTCHA_SECRET: altchaSecret,
 }
@@ -143,6 +147,23 @@ async function postJson(pathname, body, headers = {}) {
     },
     body: JSON.stringify(body),
   })
+}
+
+async function assertBrandingConfiguration() {
+  const response = await fetch(origin, {
+    headers: { Connection: 'close' },
+  })
+  const html = await response.text()
+  if (
+    !response.ok ||
+    !html.includes('<title>CI Vault</title>') ||
+    !html.includes('>CI Vault</h1>') ||
+    !html.includes('src="/branding/ci-logo.svg"') ||
+    !html.includes('href="/branding/ci-favicon.svg"') ||
+    !html.includes('--brand-accent:#6E56CF')
+  ) {
+    throw new Error(`SSR branding configuration failed: ${response.status}`)
+  }
 }
 
 async function createPersistedSecret() {
@@ -275,6 +296,7 @@ try {
   await compose(['up', '--build', '-d', 'onceveil'])
   const firstContainer = await waitUntilHealthy()
   await assertNonRoot()
+  await assertBrandingConfiguration()
 
   const secret = await createPersistedSecret()
 
@@ -287,7 +309,7 @@ try {
   await assertNonRoot()
   await revealPersistedSecret(secret)
 
-  console.log('Docker Compose ALTCHA, persistence and one-time reveal check passed')
+  console.log('Docker Compose branding, ALTCHA, persistence and one-time reveal check passed')
 } finally {
   await compose(['down', '-v', '--remove-orphans']).catch(() => undefined)
 }
