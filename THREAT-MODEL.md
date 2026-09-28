@@ -1,6 +1,6 @@
 # Onceveil threat model
 
-This document defines the security guarantees and explicit non-guarantees for the current Onceveil foundations. Recipient authentication, portable deployment, and MCP integration remain separate implementation slices.
+This document defines the security guarantees and explicit non-guarantees for the current Onceveil foundations. Recipient authentication remains outside the current implementation.
 
 ## Security invariants
 
@@ -9,7 +9,7 @@ This document defines the security guarantees and explicit non-guarantees for th
 3. **Consumption is final.** If the winning client or network fails after the server commits `CONSUMED`, the secret is lost. Onceveil does not use a lease/acknowledgement protocol.
 4. **The service does not receive plaintext or encryption keys.** Browser crypto encrypts before upload and decrypts only after retrieval.
 5. **Configured reveal protection fails closed.** A missing, invalid, or unavailable protection provider must not silently degrade to unprotected reveal.
-6. **MCP does not carry secret material.** Later MCP tools may orchestrate secure browser handoff, status, and revocation, but not plaintext, decryption keys, ciphertext bodies intended for the recipient, or complete anonymous share URLs.
+6. **MCP does not carry secret material.** MCP tools orchestrate secure browser handoff, status, and revocation, but not plaintext, decryption keys, ciphertext bodies intended for the recipient, raw owner capabilities, or complete anonymous share URLs.
 
 ## Lifecycle
 
@@ -101,6 +101,20 @@ The server validates Turnstile through Siteverify and requires the expected acti
 Invalid, missing, expired, replayed, or differently bound proofs cannot reach the secret consume. Provider outage, missing configuration, or proof-storage failure also fails closed and leaves the secret `AVAILABLE`. Onceveil does not treat Turnstile as recipient authentication or cryptographic proof of humanity.
 
 Proof consumption and secret consumption are intentionally sequential rather than a cross-table lease protocol. A proof may therefore be spent by an infrastructure failure immediately before secret consume; the secret remains available and the recipient must verify again.
+
+## MCP secure browser handoff
+
+The MCP endpoint is opt-in and authenticated independently from anonymous recipient links. A correlation-only `flowId` is not sufficient to call status or revoke; the caller must also authenticate to the deployment MCP endpoint.
+
+Secret creation uses URL elicitation to move secret entry into a browser context. The browser encrypts before upload using the same client-side crypto path as the normal web UI. The MCP result contains only lifecycle/correlation metadata and never the plaintext, decryption fragment, owner capability, ciphertext intended for the recipient, or complete recipient/owner links.
+
+Reveal uses URL elicitation to move the complete recipient share link into the browser. The MCP handoff merely transfers the user into the normal protected reveal surface. Completing the handoff does not prepare a reveal proof and does not consume the secret, so MCP retry/failure cannot bypass the configured Turnstile, ALTCHA, or explicit trusted-network provider contract.
+
+The browser handoff itself uses a separate 256-bit short-lived capability in the URL fragment. The browser removes it from history immediately. Persistence stores its SHA-256 hash for authorization and an AES-GCM-encrypted copy only so an unfinished multi-round-trip elicitation can be retried. The encrypted token is bound to the handoff action and flow identifier. Handoff completion is terminal and retry-safe.
+
+For MCP-created secrets the browser sends only the existing owner capability hash when it completes the handoff. The raw owner capability remains exclusively in the browser-generated owner link and is never stored by the MCP subsystem. Internal status/revoke operations reuse the existing repository authorization boundary with the stored owner hash.
+
+Multi-round-trip MCP `requestState` is HMAC-protected with a key derived independently from the MCP storage key and expires with the handoff window. Tampered or expired state fails before the tool handler can advance the flow.
 
 ## Browser and observability hardening
 
