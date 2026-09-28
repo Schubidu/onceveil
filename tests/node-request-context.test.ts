@@ -29,9 +29,9 @@ describe('reveal protection provider selection', () => {
       siteKey: 'site-key',
       secretKey: 'secret-key',
     })
-    expect(
-      resolveRevealProtectionRuntime('turnstile', { turnstileSiteKey: 'site-key' }),
-    ).toEqual({ provider: 'unavailable' })
+    expect(resolveRevealProtectionRuntime('turnstile', { turnstileSiteKey: 'site-key' })).toEqual({
+      provider: 'unavailable',
+    })
   })
 
   it.each([undefined, '', 'NONE', 'none ', 'unknown'])('fails closed for mode %s', (value) => {
