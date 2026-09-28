@@ -56,6 +56,8 @@ npm start
 
 By default SQLite is stored at `./data/onceveil.sqlite`; set `ONCEVEIL_SQLITE_PATH` to use another path. ALTCHA is the default self-hosted reveal protection; `none` remains an explicit trusted-network/VPN option. Docker Compose, persistent configuration, healthcheck, and reverse-proxy/TLS expectations are documented in [docs/self-hosting.md](docs/self-hosting.md).
 
+Deployment-level white-label branding is available through the same runtime configuration on Cloudflare and Node/Docker. See [docs/branding.md](docs/branding.md).
+
 ## Cloudflare deployment
 
 Onceveil uses **Cloudflare Workers Builds with the direct GitHub integration**. GitHub Actions validates the code but does not deploy it and receives no Cloudflare credentials.
