@@ -45,7 +45,17 @@ export function validOnceveilShareUrl(value: string, origin: string): string | u
   }
 
   const match = /^\/s\/([^/]+)$/.exec(url.pathname)
-  if (!match || !isValidSecretId(decodeURIComponent(match[1]))) {
+  if (!match) {
+    return undefined
+  }
+
+  let secretId: string
+  try {
+    secretId = decodeURIComponent(match[1])
+  } catch {
+    return undefined
+  }
+  if (!isValidSecretId(secretId)) {
     return undefined
   }
 
