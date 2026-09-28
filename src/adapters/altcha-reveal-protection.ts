@@ -125,25 +125,24 @@ export class AltchaRevealProtection implements RevealChallengeVerifier {
       return { kind: 'invalid' }
     }
 
-    let result
     try {
-      result = await verifySolution({
+      const result = await verifySolution({
         challenge: payload.challenge,
         solution: payload.solution,
         deriveKey,
         hmacSignatureSecret: this.hmacSecret,
       })
+
+      if (
+        !result.verified ||
+        !challengeMatchesContext(payload.challenge, context.secretId, context.verificationId)
+      ) {
+        return { kind: 'invalid' }
+      }
+
+      return { kind: 'verified' }
     } catch {
       return { kind: 'unavailable' }
     }
-
-    if (
-      !result.verified ||
-      !challengeMatchesContext(payload.challenge, context.secretId, context.verificationId)
-    ) {
-      return { kind: 'invalid' }
-    }
-
-    return { kind: 'verified' }
   }
 }
