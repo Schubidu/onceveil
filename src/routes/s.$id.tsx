@@ -252,7 +252,7 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
     let active = true
     let started = false
     let script: HTMLScriptElement | undefined
-    let altchaWidget: HTMLElement | undefined
+    let verificationWidget: HTMLElement | undefined
     const broadcast = new BroadcastChannel(`onceveil-reveal-${verificationId}`)
 
     function failVerification(message: string) {
@@ -349,7 +349,7 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
           widget.addEventListener('verified', verified)
           widget.addEventListener('statechange', stateChanged)
           containerRef.current.replaceChildren(widget)
-          altchaWidget = widget
+          verificationWidget = widget
           setStatus('Computing proof-of-work verification…')
           return
         }
@@ -411,7 +411,7 @@ function RevealVerification({ id, verificationId }: { id: SecretId; verification
     return () => {
       active = false
       script?.remove()
-      altchaWidget?.remove()
+      verificationWidget?.remove()
       broadcast.close()
     }
   }, [id, verificationId])
