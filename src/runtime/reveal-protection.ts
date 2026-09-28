@@ -1,13 +1,14 @@
-import {
-  AltchaRevealProtection,
-  type AltchaRevealProtectionConfiguration,
-} from '../adapters/altcha-reveal-protection'
+import type { Challenge } from 'altcha-lib'
+
+import { AltchaRevealProtection } from '../adapters/altcha-reveal-protection'
 import { D1RevealProofRepository } from '../adapters/d1-reveal-proof-repository'
+import { NoopRevealProtection } from '../adapters/noop-reveal-protection'
+import { TurnstileRevealProtection } from '../adapters/turnstile-reveal-protection'
 import {
-  TurnstileRevealChallengeVerifier,
-  type TurnstileRevealProtectionConfiguration,
-} from '../adapters/turnstile-reveal-protection'
-import type { RevealChallengeVerifier, RevealProofRepository } from '../core/reveal-protection'
+  REVEAL_PROTECTION_ACTION,
+  type RevealProofRepository,
+  type RevealProtectionVerifier,
+} from '../core/reveal-protection'
 import type { SecretId } from '../core/secret'
 import type { OnceveilRequestContext } from './request-context'
 import { getSecretDatabase } from './secret-repository'
@@ -19,6 +20,22 @@ export class RevealProtectionUnavailableError extends Error {
   }
 }
 
+export type RevealProtectionProvider = 'turnstile' | 'altcha' | 'noop'
+
+export type RevealProtectionClientConfig =
+  | {
+      provider: 'turnstile'
+      siteKey: string
+      action: typeof REVEAL_PROTECTION_ACTION
+    }
+  | {
+      provider: 'altcha'
+      challenge: Challenge
+    }
+  | {
+      provider: 'noop'
+    }
+
 function configuredProtection(context: OnceveilRequestContext) {
   if (context.revealProtection.provider === 'unavailable') {
     throw new RevealProtectionUnavailableError()
@@ -27,59 +44,52 @@ function configuredProtection(context: OnceveilRequestContext) {
   return context.revealProtection
 }
 
-function turnstileConfiguration(
-  context: OnceveilRequestContext,
-): TurnstileRevealProtectionConfiguration {
-  const protection = configuredProtection(context)
-  if (protection.provider !== 'turnstile') {
-    throw new RevealProtectionUnavailableError()
-  }
-
-  return protection
-}
-
-function altchaConfiguration(context: OnceveilRequestContext): AltchaRevealProtectionConfiguration {
-  const protection = configuredProtection(context)
-  if (protection.provider !== 'altcha') {
-    throw new RevealProtectionUnavailableError()
-  }
-
-  return protection
-}
-
 export function getRevealProtectionProvider(
   context: OnceveilRequestContext,
-): 'turnstile' | 'altcha' | 'none' {
+): RevealProtectionProvider {
   return configuredProtection(context).provider
 }
 
-export function getTurnstileSiteKey(context: OnceveilRequestContext): string {
-  return turnstileConfiguration(context).siteKey
-}
-
-export async function createAltchaRevealChallenge(
+export async function getRevealProtectionClientConfig(
   context: OnceveilRequestContext,
   secretId: SecretId,
   verificationId: string,
-) {
-  const protection = new AltchaRevealProtection(altchaConfiguration(context).hmacSecret)
-  return protection.createChallenge(secretId, verificationId)
-}
-
-export function getRevealChallengeVerifier(
-  context: OnceveilRequestContext,
-): RevealChallengeVerifier {
+): Promise<RevealProtectionClientConfig> {
   const protection = configuredProtection(context)
 
   if (protection.provider === 'turnstile') {
-    return new TurnstileRevealChallengeVerifier(protection.secretKey)
+    return {
+      provider: 'turnstile',
+      siteKey: protection.siteKey,
+      action: REVEAL_PROTECTION_ACTION,
+    }
+  }
+
+  if (protection.provider === 'altcha') {
+    const provider = new AltchaRevealProtection(protection.hmacSecret)
+    return {
+      provider: 'altcha',
+      challenge: await provider.createChallenge(secretId, verificationId),
+    }
+  }
+
+  return { provider: 'noop' }
+}
+
+export function getRevealProtectionVerifier(
+  context: OnceveilRequestContext,
+): RevealProtectionVerifier {
+  const protection = configuredProtection(context)
+
+  if (protection.provider === 'turnstile') {
+    return new TurnstileRevealProtection(protection.secretKey)
   }
 
   if (protection.provider === 'altcha') {
     return new AltchaRevealProtection(protection.hmacSecret)
   }
 
-  throw new RevealProtectionUnavailableError()
+  return new NoopRevealProtection()
 }
 
 export function getRevealProofRepository(context: OnceveilRequestContext): RevealProofRepository {
