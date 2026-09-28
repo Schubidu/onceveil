@@ -116,10 +116,7 @@ describe('ALTCHA reveal protection', () => {
       counterMax: 2,
     })
 
-    for (const malformedToken of [
-      'not-base64-json',
-      token({ challenge: {}, solution: {} }),
-    ]) {
+    for (const malformedToken of ['not-base64-json', token({ challenge: {}, solution: {} })]) {
       await expect(
         provider.verify({
           token: malformedToken,
