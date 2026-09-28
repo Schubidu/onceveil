@@ -140,10 +140,8 @@ describe('MCP model-context boundary', () => {
       )
       expect(create.status).toBe(201)
 
-      const shareUrl =
-        `https://onceveil.test/s/${SECRET_ID}#${pending.encrypted.fragment}`
-      const ownerUrl =
-        `https://onceveil.test/o/${SECRET_ID}#v1.${pending.ownerCapability}`
+      const shareUrl = `https://onceveil.test/s/${SECRET_ID}#${pending.encrypted.fragment}`
+      const ownerUrl = `https://onceveil.test/o/${SECRET_ID}#v1.${pending.ownerCapability}`
 
       const completed = await completeMcpHandoffResponse(
         new Request(`https://onceveil.test/api/mcp/handoffs/${flowId}`, {
@@ -165,12 +163,16 @@ describe('MCP model-context boundary', () => {
 
       const second = await result(
         await handler.fetch(
-          modernToolCall('create_secret_handoff', {}, {
-            requestState,
-            inputResponses: {
-              browser: { action: 'accept' },
+          modernToolCall(
+            'create_secret_handoff',
+            {},
+            {
+              requestState,
+              inputResponses: {
+                browser: { action: 'accept' },
+              },
             },
-          }),
+          ),
         ),
       )
       expect(second.resultType).toBe('complete')
@@ -194,17 +196,13 @@ describe('MCP model-context boundary', () => {
         expect(modelVisible).not.toContain(sensitive)
       }
 
-      const status = await result(
-        await handler.fetch(modernToolCall('secret_status', { flowId })),
-      )
+      const status = await result(await handler.fetch(modernToolCall('secret_status', { flowId })))
       expect(status.structuredContent).toMatchObject({
         flowId,
         state: 'AVAILABLE',
       })
 
-      const revoked = await result(
-        await handler.fetch(modernToolCall('revoke_secret', { flowId })),
-      )
+      const revoked = await result(await handler.fetch(modernToolCall('revoke_secret', { flowId })))
       expect(revoked.structuredContent).toMatchObject({
         flowId,
         state: 'REVOKED',
@@ -297,10 +295,14 @@ describe('MCP model-context boundary', () => {
 
       const finalResult = await result(
         await handler.fetch(
-          modernToolCall('reveal_secret_handoff', {}, {
-            requestState,
-            inputResponses: { browser: { action: 'accept' } },
-          }),
+          modernToolCall(
+            'reveal_secret_handoff',
+            {},
+            {
+              requestState,
+              inputResponses: { browser: { action: 'accept' } },
+            },
+          ),
         ),
       )
       expect(finalResult.structuredContent).toEqual({
@@ -334,10 +336,14 @@ describe('MCP model-context boundary', () => {
         requestState.slice(macStart + 1)
 
       const response = await handler.fetch(
-        modernToolCall('create_secret_handoff', {}, {
-          requestState: tampered,
-          inputResponses: { browser: { action: 'accept' } },
-        }),
+        modernToolCall(
+          'create_secret_handoff',
+          {},
+          {
+            requestState: tampered,
+            inputResponses: { browser: { action: 'accept' } },
+          },
+        ),
       )
       expect(response.status).toBe(200)
       const rejected = (await response.json()) as {
