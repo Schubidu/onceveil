@@ -1,5 +1,5 @@
 export type SecretSurfacePolicy = 'isolated' | 'turnstile' | 'altcha'
-export type RevealProtectionProvider = 'turnstile' | 'altcha' | 'none' | 'unavailable'
+export type RevealProtectionProvider = 'turnstile' | 'altcha' | 'noop' | 'unavailable'
 
 const VERIFICATION_ID_PATTERN = /^[0-9a-f]{32}$/
 
