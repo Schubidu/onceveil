@@ -73,8 +73,27 @@ export async function deriveMcpRequestStateKey(storageKey: Uint8Array): Promise<
   return deriveSubkey(storageKey, 'request-state')
 }
 
-export async function hashMcpHandoffToken(token: string): Promise<string> {
-  return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(token))))
+async function handoffAuthorizationKey(storageKey: Uint8Array): Promise<CryptoKey> {
+  const key = await deriveSubkey(storageKey, 'handoff-authorization')
+  return crypto.subtle.importKey(
+    'raw',
+    toArrayBuffer(key),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+}
+
+export async function hashMcpHandoffToken(
+  token: string,
+  storageKey: Uint8Array,
+): Promise<string> {
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    await handoffAuthorizationKey(storageKey),
+    toArrayBuffer(encoder.encode(token)),
+  )
+  return hex(new Uint8Array(signature))
 }
 
 export async function sealMcpValue(
