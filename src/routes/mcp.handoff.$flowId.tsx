@@ -46,6 +46,23 @@ function McpBrowserHandoff() {
       return
     }
 
+    function clearSensitiveState() {
+      active = false
+      token.current = undefined
+      setAction(undefined)
+      setError(undefined)
+      setReady(true)
+    }
+
+    function clearRestoredState(event: PageTransitionEvent) {
+      if (event.persisted) {
+        clearSensitiveState()
+      }
+    }
+
+    window.addEventListener('pagehide', clearSensitiveState)
+    window.addEventListener('pageshow', clearRestoredState)
+
     void fetch(`/api/mcp/handoffs/${encodeURIComponent(flowId)}`, {
       headers: { Authorization: `Bearer ${handoffToken}` },
     })
@@ -77,6 +94,8 @@ function McpBrowserHandoff() {
     return () => {
       active = false
       token.current = undefined
+      window.removeEventListener('pagehide', clearSensitiveState)
+      window.removeEventListener('pageshow', clearRestoredState)
     }
   }, [flowId])
 
@@ -122,6 +141,7 @@ function HandoffFrame({
 }
 
 function CreateHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpHandoffToken }>) {
+  const generation = useRef(0)
   const [secret, setSecret] = useState('')
   const [pending, setPending] = useState<PendingEncryptedCreate>()
   const [created, setCreated] = useState<CreatedSecret>()
@@ -130,7 +150,41 @@ function CreateHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpH
   const [copied, setCopied] = useState<'share' | 'owner'>()
   const [error, setError] = useState<string>()
 
-  async function completeHandoff(value: CreatedSecret): Promise<boolean> {
+  useEffect(() => {
+    function clearSensitiveState() {
+      generation.current += 1
+      setSecret('')
+      setPending(undefined)
+      setCreated(undefined)
+      setCreating(false)
+      setCompleted(false)
+      setCopied(undefined)
+      setError(undefined)
+    }
+
+    function clearRestoredState(event: PageTransitionEvent) {
+      if (event.persisted) {
+        clearSensitiveState()
+      }
+    }
+
+    window.addEventListener('pagehide', clearSensitiveState)
+    window.addEventListener('pageshow', clearRestoredState)
+
+    return () => {
+      generation.current += 1
+      window.removeEventListener('pagehide', clearSensitiveState)
+      window.removeEventListener('pageshow', clearRestoredState)
+    }
+  }, [])
+
+  async function completeHandoff(
+    value: CreatedSecret,
+    currentGeneration = generation.current,
+  ): Promise<boolean> {
+    if (generation.current !== currentGeneration) {
+      return false
+    }
     const response = await fetch(`/api/mcp/handoffs/${encodeURIComponent(flowId)}`, {
       method: 'POST',
       headers: {
@@ -142,6 +196,10 @@ function CreateHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpH
         ownerKeyHash: value.ownerKeyHash,
       }),
     })
+
+    if (generation.current !== currentGeneration) {
+      return false
+    }
 
     if (!response.ok) {
       setError(
@@ -160,11 +218,15 @@ function CreateHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpH
       return
     }
 
+    const currentGeneration = generation.current
     setCreating(true)
     setError(undefined)
 
     try {
       const encrypted = await encryptedShareForCreate(secret, pending)
+      if (generation.current !== currentGeneration) {
+        return
+      }
       setPending(encrypted)
 
       const response = await fetch('/api/secrets', {
@@ -178,6 +240,9 @@ function CreateHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpH
       const body = (await response.json().catch(() => undefined)) as
         | Record<string, unknown>
         | undefined
+      if (generation.current !== currentGeneration) {
+        return
+      }
       if (!response.ok || typeof body?.id !== 'string' || !isValidSecretId(body.id)) {
         throw new Error('create_failed')
       }
@@ -191,21 +256,31 @@ function CreateHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpH
       setCreated(value)
       setSecret('')
       setPending(undefined)
-      await completeHandoff(value)
+      await completeHandoff(value, currentGeneration)
     } catch {
-      setError('The encrypted secret could not be created. You can retry safely.')
+      if (generation.current === currentGeneration) {
+        setError('The encrypted secret could not be created. You can retry safely.')
+      }
     } finally {
-      setCreating(false)
+      if (generation.current === currentGeneration) {
+        setCreating(false)
+      }
     }
   }
 
   async function copy(kind: 'share' | 'owner', value: string) {
+    const currentGeneration = generation.current
     try {
       await navigator.clipboard.writeText(value)
+      if (generation.current !== currentGeneration) {
+        return
+      }
       setCopied(kind)
       setError(undefined)
     } catch {
-      setError('The link could not be copied.')
+      if (generation.current === currentGeneration) {
+        setError('The link could not be copied.')
+      }
     }
   }
 
@@ -278,9 +353,34 @@ function CreateHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpH
 }
 
 function RevealHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpHandoffToken }>) {
+  const generation = useRef(0)
   const [shareUrl, setShareUrl] = useState('')
   const [opening, setOpening] = useState(false)
   const [error, setError] = useState<string>()
+
+  useEffect(() => {
+    function clearSensitiveState() {
+      generation.current += 1
+      setShareUrl('')
+      setOpening(false)
+      setError(undefined)
+    }
+
+    function clearRestoredState(event: PageTransitionEvent) {
+      if (event.persisted) {
+        clearSensitiveState()
+      }
+    }
+
+    window.addEventListener('pagehide', clearSensitiveState)
+    window.addEventListener('pageshow', clearRestoredState)
+
+    return () => {
+      generation.current += 1
+      window.removeEventListener('pagehide', clearSensitiveState)
+      window.removeEventListener('pageshow', clearRestoredState)
+    }
+  }, [])
 
   async function openReveal() {
     if (!shareUrl || opening) {
@@ -293,6 +393,7 @@ function RevealHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpH
       return
     }
 
+    const currentGeneration = generation.current
     setOpening(true)
     setError(undefined)
     try {
@@ -307,14 +408,19 @@ function RevealHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpH
           revealAuthorization: target.revealAuthorization,
         }),
       })
+      if (generation.current !== currentGeneration) {
+        return
+      }
       if (!response.ok) {
         throw new Error('handoff_failed')
       }
 
       window.location.assign(target.url)
     } catch {
-      setError('The browser handoff could not be finalized. Try again.')
-      setOpening(false)
+      if (generation.current === currentGeneration) {
+        setError('The browser handoff could not be finalized. Try again.')
+        setOpening(false)
+      }
     }
   }
 
