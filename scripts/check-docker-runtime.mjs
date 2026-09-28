@@ -324,7 +324,9 @@ try {
   await assertNonRoot()
   await revealPersistedSecret(secret)
 
-  console.log('Docker Compose branding, MCP opt-in, ALTCHA, persistence and one-time reveal check passed')
+  console.log(
+    'Docker Compose branding, MCP opt-in, ALTCHA, persistence and one-time reveal check passed',
+  )
 } finally {
   await compose(['down', '-v', '--remove-orphans']).catch(() => undefined)
 }
