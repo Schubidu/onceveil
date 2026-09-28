@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { D1SecretRepository } from '../src/adapters/d1-secret-repository'
 import { NodeSqliteDatabase } from '../src/adapters/node-sqlite-database'
 import { applySqliteMigrations } from '../src/adapters/sqlite-migrations'
+import { revealAuthorizationFromFragment } from '../src/browser/secret-crypto'
 import { encryptedShareForCreate } from '../src/browser/secret-create-retry'
 import { DEFAULT_BRANDING } from '../src/core/branding'
 import type { SecretId } from '../src/core/secret'
@@ -278,7 +279,7 @@ describe('MCP model-context boundary', () => {
       const flowId = handoffUrl.pathname.split('/').at(-1) ?? ''
       const requestState = first.requestState
 
-      const completed = await completeMcpHandoffResponse(
+      const tokenOnly = await completeMcpHandoffResponse(
         new Request(`https://onceveil.test/api/mcp/handoffs/${flowId}`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
@@ -286,6 +287,30 @@ describe('MCP model-context boundary', () => {
         flowId,
         runtime,
         nowMs + 1,
+      )
+      expect(tokenOnly.status).toBe(400)
+
+      const stillPending = await db
+        .prepare('SELECT state FROM mcp_handoffs WHERE flow_id = ?')
+        .bind(flowId)
+        .first<{ state: string }>()
+      expect(stillPending?.state).toBe('PENDING')
+
+      const completed = await completeMcpHandoffResponse(
+        new Request(`https://onceveil.test/api/mcp/handoffs/${flowId}`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            secretId: SECRET_ID,
+            revealAuthorization: revealAuthorizationFromFragment(pending.encrypted.fragment),
+          }),
+        }),
+        flowId,
+        runtime,
+        nowMs + 2,
       )
       expect(completed.status).toBe(200)
 
