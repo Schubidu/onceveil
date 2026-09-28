@@ -89,7 +89,7 @@ function toRecord(row: McpHandoffRow): McpHandoffRecord | undefined {
   }
 
   const handoffToken = sealedValue(row.handoff_token_nonce, row.handoff_token_ciphertext)
-  if (!handoffToken) {
+  if (row.state === 'PENDING' && !handoffToken) {
     return undefined
   }
 
@@ -98,7 +98,7 @@ function toRecord(row: McpHandoffRow): McpHandoffRecord | undefined {
     action: row.action,
     state: row.state,
     handoffTokenHash: row.handoff_token_hash,
-    handoffToken,
+    ...(handoffToken ? { handoffToken } : {}),
     createdAtMs: row.created_at_ms,
     handoffExpiresAtMs: row.handoff_expires_at_ms,
     ...(row.completed_at_ms === null ? {} : { completedAtMs: row.completed_at_ms }),
@@ -133,6 +133,10 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
   constructor(private readonly db: D1DatabaseLike) {}
 
   async create(record: McpHandoffRecord): Promise<boolean> {
+    if (!record.handoffToken) {
+      return false
+    }
+
     const result = await this.db
       .prepare(
         'INSERT OR IGNORE INTO mcp_handoffs (' +
@@ -195,7 +199,8 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
       session
         .prepare(
           'UPDATE mcp_handoffs SET ' +
-            "state = 'COMPLETED', completed_at_ms = ?, secret_id = ?, owner_key_hash = ? " +
+            "state = 'COMPLETED', completed_at_ms = ?, secret_id = ?, owner_key_hash = ?, " +
+            "handoff_token_nonce = '', handoff_token_ciphertext = '' " +
             "WHERE flow_id = ? AND action = 'create' AND state = 'PENDING' " +
             'AND handoff_token_hash = ? AND handoff_expires_at_ms > ?',
         )
@@ -230,7 +235,8 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
     const results = await session.batch([
       session
         .prepare(
-          "UPDATE mcp_handoffs SET state = 'COMPLETED', completed_at_ms = ? " +
+          "UPDATE mcp_handoffs SET state = 'COMPLETED', completed_at_ms = ?, " +
+            "handoff_token_nonce = '', handoff_token_ciphertext = '' " +
             "WHERE flow_id = ? AND action = 'reveal' AND state = 'PENDING' " +
             'AND handoff_token_hash = ? AND handoff_expires_at_ms > ?',
         )
