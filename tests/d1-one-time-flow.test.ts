@@ -773,6 +773,25 @@ describe('D1 one-time HTTP flow', () => {
     expect(count.count).toBe(1)
   })
 
+  it('recognizes only live pending verification ids', async () => {
+    await storeTestSecret('pending verification lookup')
+    const proof = await prepareProof(PUBLIC_ID, 1_000)
+
+    await expect(
+      proofRepository.hasPendingVerification(PUBLIC_ID, proof.verificationId, 1_001),
+    ).resolves.toBe(true)
+    await expect(
+      proofRepository.hasPendingVerification(PUBLIC_ID, '0'.repeat(32), 1_001),
+    ).resolves.toBe(false)
+
+    await expect(proofRepository.verify(PUBLIC_ID, proof.verificationId, 1_002)).resolves.toBe(
+      true,
+    )
+    await expect(
+      proofRepository.hasPendingVerification(PUBLIC_ID, proof.verificationId, 1_003),
+    ).resolves.toBe(false)
+  })
+
   it('keeps the proof unusable until its matching verification is completed', async () => {
     await storeTestSecret('pending proof')
     const proof = await prepareProof(PUBLIC_ID, 1_000)
