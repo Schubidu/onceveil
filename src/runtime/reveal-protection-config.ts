@@ -21,9 +21,7 @@ export function resolveRevealProtectionRuntime(
       environment.turnstileSiteKey,
       environment.turnstileSecretKey,
     )
-    return configuration
-      ? { provider: 'turnstile', ...configuration }
-      : { provider: 'unavailable' }
+    return configuration ? { provider: 'turnstile', ...configuration } : { provider: 'unavailable' }
   }
 
   if (value === 'altcha') {
