@@ -784,9 +784,7 @@ describe('D1 one-time HTTP flow', () => {
       proofRepository.hasPendingVerification(PUBLIC_ID, '0'.repeat(32), 1_001),
     ).resolves.toBe(false)
 
-    await expect(proofRepository.verify(PUBLIC_ID, proof.verificationId, 1_002)).resolves.toBe(
-      true,
-    )
+    await expect(proofRepository.verify(PUBLIC_ID, proof.verificationId, 1_002)).resolves.toBe(true)
     await expect(
       proofRepository.hasPendingVerification(PUBLIC_ID, proof.verificationId, 1_003),
     ).resolves.toBe(false)
