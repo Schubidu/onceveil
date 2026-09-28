@@ -122,6 +122,48 @@ describe('MCP handoff repository', () => {
     }
   })
 
+  it('prunes expired transition rows but keeps completed create management mappings', async () => {
+    const db = database()
+    try {
+      const repository = new D1McpHandoffRepository(db)
+      const expiredPendingCreate = pending('6'.repeat(32), 'create')
+      const completedReveal = pending('7'.repeat(32), 'reveal')
+      const completedCreate = pending('8'.repeat(32), 'create')
+
+      await repository.create(expiredPendingCreate)
+      await repository.create(completedReveal)
+      await repository.create(completedCreate)
+      await repository.completeReveal(completedReveal.flowId, TOKEN_HASH, 1_500)
+      await repository.completeCreate(
+        completedCreate.flowId,
+        TOKEN_HASH,
+        SECRET_ID,
+        OWNER_HASH,
+        1_500,
+      )
+
+      const fresh: McpHandoffRecord = {
+        ...pending('9'.repeat(32), 'reveal'),
+        createdAtMs: 2_001,
+        handoffExpiresAtMs: 3_001,
+      }
+      await expect(repository.create(fresh)).resolves.toBe(true)
+
+      await expect(repository.get(expiredPendingCreate.flowId)).resolves.toBeUndefined()
+      await expect(repository.get(completedReveal.flowId)).resolves.toBeUndefined()
+      await expect(repository.get(completedCreate.flowId)).resolves.toMatchObject({
+        state: 'COMPLETED',
+        secretId: SECRET_ID,
+        ownerKeyHash: OWNER_HASH,
+      })
+      await expect(repository.get(fresh.flowId)).resolves.toMatchObject({
+        state: 'PENDING',
+      })
+    } finally {
+      db.close()
+    }
+  })
+
   it('cannot complete an expired or wrongly authorized handoff', async () => {
     const db = database()
     try {
