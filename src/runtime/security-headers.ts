@@ -1,5 +1,7 @@
+import type { RevealProtectionRuntime } from './request-context'
+
 export type SecretSurfacePolicy = 'isolated' | 'turnstile' | 'altcha'
-export type RevealProtectionProvider = 'turnstile' | 'altcha' | 'noop' | 'unavailable'
+export type RevealProtectionProvider = RevealProtectionRuntime['provider']
 
 const VERIFICATION_ID_PATTERN = /^[0-9a-f]{32}$/
 
