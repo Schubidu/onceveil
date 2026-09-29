@@ -46,8 +46,12 @@ export class RevealProofStorageError extends Error {
 export class D1RevealProofRepository implements RevealProofRepository {
   constructor(private readonly db: D1DatabaseLike) {}
 
-  async matchesRevealAuthorization(secretId: SecretId, authorization: string): Promise<boolean> {
-    if (!isValidRevealAuthorization(authorization)) {
+  async matchesRevealAuthorization(
+    secretId: SecretId,
+    authorization: string,
+    nowMs: number,
+  ): Promise<boolean> {
+    if (!isValidRevealAuthorization(authorization) || !Number.isSafeInteger(nowMs)) {
       return false
     }
 
@@ -60,9 +64,11 @@ export class D1RevealProofRepository implements RevealProofRepository {
            FROM secrets
            WHERE id = ?
              AND replay_key = ?
+             AND state = 'AVAILABLE'
+             AND expires_at_ms > ?
            LIMIT 1`,
         )
-        .bind(secretId, authorization)
+        .bind(secretId, authorization, nowMs)
         .first<{ authorized: number }>()
 
       return row?.authorized === 1
