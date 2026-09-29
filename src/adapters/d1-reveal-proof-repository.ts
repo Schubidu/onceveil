@@ -51,8 +51,10 @@ export class D1RevealProofRepository implements RevealProofRepository {
       return false
     }
 
+    const session = this.db.withSession('first-primary')
+
     try {
-      const row = await this.db
+      const row = await session
         .prepare(
           `SELECT 1 AS authorized
            FROM secrets
