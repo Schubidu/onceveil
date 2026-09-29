@@ -85,7 +85,7 @@ async function handoffTool(
           return toolError('The managed secret is unavailable.')
         }
 
-        return textResult('Secret creation completed in the browser.', {
+        return textResult('Secret creation handoff completed.', {
           flowId: record.flowId,
           state: status.state,
           expiresAtMs: status.expiresAtMs,
@@ -93,7 +93,7 @@ async function handoffTool(
       }
 
       return textResult(
-        'Reveal handoff completed in the browser. No secret data was returned to MCP.',
+        'Reveal handoff completed. No secret data was returned to MCP.',
         {
           flowId: record.flowId,
           handoff: 'completed',
