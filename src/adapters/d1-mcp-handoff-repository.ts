@@ -185,7 +185,8 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
   }
 
   async get(flowId: McpFlowId): Promise<McpHandoffRecord | undefined> {
-    const row = await this.db
+    const session = this.db.withSession('first-primary')
+    const row = await session
       .prepare(`${SELECT_HANDOFF} WHERE flow_id = ? LIMIT 1`)
       .bind(flowId)
       .first<McpHandoffRow>()
@@ -202,7 +203,8 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
       return undefined
     }
 
-    const row = await this.db
+    const session = this.db.withSession('first-primary')
+    const row = await session
       .prepare(
         SELECT_HANDOFF +
           ' WHERE flow_id = ? AND handoff_token_hash = ? AND handoff_expires_at_ms > ? LIMIT 1',
