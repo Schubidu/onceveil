@@ -51,6 +51,7 @@ export interface McpHandoffRepository {
     flowId: McpFlowId,
     handoffTokenHash: string,
     secretId: SecretId,
+    revealAuthorization: string,
     nowMs: number,
   ): Promise<CompleteMcpHandoffResult>
 }
