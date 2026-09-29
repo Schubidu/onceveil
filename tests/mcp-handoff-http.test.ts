@@ -18,6 +18,7 @@ import { createSecretResponse } from '../src/runtime/secret-http'
 
 const STORAGE_KEY = Uint8Array.from({ length: 32 }, (_, index) => 255 - index)
 const SECRET_ID = 'e'.repeat(32) as SecretId
+const SECOND_SECRET_ID = 'd'.repeat(32) as SecretId
 
 function database(): NodeSqliteDatabase {
   const db = new NodeSqliteDatabase(':memory:')
@@ -211,8 +212,41 @@ describe('MCP browser handoff HTTP boundary', () => {
       )
       expect(completed.status).toBe(200)
 
+      const secondEncrypted = await encryptedShareForCreate('different share', undefined)
+      const secondCreated = await createSecretResponse(
+        new Request('https://onceveil.test/api/secrets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            payload: secondEncrypted.encrypted.payload,
+            ownerKeyHash: secondEncrypted.ownerCapabilityHash,
+          }),
+        }),
+        secrets,
+        nowMs + 4,
+        () => SECOND_SECRET_ID,
+      )
+      expect(secondCreated.status).toBe(201)
+
+      const mismatchedRetry = await completeMcpHandoffResponse(
+        request(handoff.flowId, token, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            secretId: SECOND_SECRET_ID,
+            revealAuthorization: revealAuthorizationFromFragment(
+              secondEncrypted.encrypted.fragment,
+            ),
+          }),
+        }),
+        handoff.flowId,
+        runtime,
+        nowMs + 5,
+      )
+      expect(mismatchedRetry.status).toBe(404)
+
       await expect(
-        secrets.getStatus(SECRET_ID, encrypted.ownerCapabilityHash, nowMs + 4),
+        secrets.getStatus(SECRET_ID, encrypted.ownerCapabilityHash, nowMs + 6),
       ).resolves.toMatchObject({ state: 'AVAILABLE' })
       const proofCount = await db
         .prepare('SELECT COUNT(*) AS count FROM reveal_proofs')
