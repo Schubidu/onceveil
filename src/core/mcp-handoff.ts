@@ -50,6 +50,7 @@ export interface McpHandoffRepository {
   completeReveal(
     flowId: McpFlowId,
     handoffTokenHash: string,
+    secretId: SecretId,
     nowMs: number,
   ): Promise<CompleteMcpHandoffResult>
 }
