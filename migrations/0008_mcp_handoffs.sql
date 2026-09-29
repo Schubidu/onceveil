@@ -30,15 +30,28 @@ CREATE TABLE mcp_handoffs (
     )
   ),
   CHECK (
-    action = 'reveal' OR
-    state = 'PENDING' OR
     (
+      state = 'PENDING' AND
+      secret_id IS NULL AND
+      owner_key_hash IS NULL
+    ) OR
+    (
+      state = 'COMPLETED' AND
+      action = 'create' AND
       secret_id IS NOT NULL AND
       length(secret_id) = 32 AND
       secret_id NOT GLOB '*[^0-9a-f]*' AND
       owner_key_hash IS NOT NULL AND
       length(owner_key_hash) = 64 AND
       owner_key_hash NOT GLOB '*[^0-9a-f]*'
+    ) OR
+    (
+      state = 'COMPLETED' AND
+      action = 'reveal' AND
+      secret_id IS NOT NULL AND
+      length(secret_id) = 32 AND
+      secret_id NOT GLOB '*[^0-9a-f]*' AND
+      owner_key_hash IS NULL
     )
   )
 ) STRICT;
