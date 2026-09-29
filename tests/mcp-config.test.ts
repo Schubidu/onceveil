@@ -34,6 +34,16 @@ describe('MCP runtime configuration', () => {
       publicOrigin: 'https://secrets.example',
     },
     { authToken: ` ${TOKEN}`, storageKey: STORAGE_KEY, publicOrigin: 'https://secrets.example' },
+    {
+      authToken: `prefix\nsuffix${TOKEN}`,
+      storageKey: STORAGE_KEY,
+      publicOrigin: 'https://secrets.example',
+    },
+    {
+      authToken: TOKEN,
+      storageKey: STORAGE_KEY,
+      publicOrigin: 'https://secrets.example\n.evil.example',
+    },
     { authToken: TOKEN, storageKey: '00', publicOrigin: 'https://secrets.example' },
     { authToken: TOKEN, storageKey: STORAGE_KEY, publicOrigin: 'http://secrets.example' },
     { authToken: TOKEN, storageKey: STORAGE_KEY, publicOrigin: 'https://secrets.example/path' },
