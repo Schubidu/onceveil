@@ -4,7 +4,6 @@ import { isValidRevealAuthorization } from '../core/share-capability'
 import { isValidSecretId } from '../core/secret'
 import { hashMcpHandoffToken } from './mcp-crypto'
 import { getMcpHandoffRepository } from './mcp-repository'
-import { matchesRevealAuthorization } from './reveal-protection'
 import type { OnceveilRequestContext } from './request-context'
 import { getSecretRepository } from './secret-repository'
 
@@ -164,14 +163,11 @@ export async function completeMcpHandoffResponse(
       return json({ error: 'invalid_request' }, 400)
     }
 
-    if (!(await matchesRevealAuthorization(context, secretId, revealAuthorization, nowMs))) {
-      return json({ error: 'not_found' }, 404)
-    }
-
     const result = await getMcpHandoffRepository(context).completeReveal(
       authorized.record.flowId,
       authorized.tokenHash,
       secretId,
+      revealAuthorization,
       nowMs,
     )
     return result === 'unavailable'
