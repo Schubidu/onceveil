@@ -171,6 +171,7 @@ export async function completeMcpHandoffResponse(
     const result = await getMcpHandoffRepository(context).completeReveal(
       authorized.record.flowId,
       authorized.tokenHash,
+      secretId,
       nowMs,
     )
     return result === 'unavailable'
