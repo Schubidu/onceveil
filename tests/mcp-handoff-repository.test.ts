@@ -66,16 +66,25 @@ describe('MCP handoff repository', () => {
       const record = pending('2'.repeat(32), 'reveal')
       await repository.create(record)
 
-      await expect(repository.completeReveal(record.flowId, TOKEN_HASH, 1_500)).resolves.toBe(
-        'completed',
-      )
-      await expect(repository.completeReveal(record.flowId, TOKEN_HASH, 1_501)).resolves.toBe(
-        'replayed',
-      )
+      await expect(
+        repository.completeReveal(record.flowId, TOKEN_HASH, SECRET_ID, 1_500),
+      ).resolves.toBe('completed')
+      await expect(
+        repository.completeReveal(record.flowId, TOKEN_HASH, SECRET_ID, 1_501),
+      ).resolves.toBe('replayed')
+      await expect(
+        repository.completeReveal(
+          record.flowId,
+          TOKEN_HASH,
+          'd'.repeat(32) as SecretId,
+          1_502,
+        ),
+      ).resolves.toBe('unavailable')
       const completed = await repository.get(record.flowId)
       expect(completed).toMatchObject({
         state: 'COMPLETED',
         completedAtMs: 1_500,
+        secretId: SECRET_ID,
       })
       expect(completed?.handoffToken).toBeUndefined()
     } finally {
@@ -133,7 +142,7 @@ describe('MCP handoff repository', () => {
       await repository.create(expiredPendingCreate)
       await repository.create(completedReveal)
       await repository.create(completedCreate)
-      await repository.completeReveal(completedReveal.flowId, TOKEN_HASH, 1_500)
+      await repository.completeReveal(completedReveal.flowId, TOKEN_HASH, SECRET_ID, 1_500)
       await repository.completeCreate(
         completedCreate.flowId,
         TOKEN_HASH,
@@ -165,6 +174,21 @@ describe('MCP handoff repository', () => {
     }
   })
 
+  it('indexes handoff expiry for bounded cleanup', async () => {
+    const db = database()
+    try {
+      const index = await db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'mcp_handoffs_expiry_idx'",
+        )
+        .first<{ name: string }>()
+
+      expect(index?.name).toBe('mcp_handoffs_expiry_idx')
+    } finally {
+      db.close()
+    }
+  })
+
   it('cannot complete an expired or wrongly authorized handoff', async () => {
     const db = database()
     try {
@@ -174,9 +198,9 @@ describe('MCP handoff repository', () => {
       await repository.create(reveal)
       await repository.create(create)
 
-      await expect(repository.completeReveal(reveal.flowId, TOKEN_HASH, 2_000)).resolves.toBe(
-        'unavailable',
-      )
+      await expect(
+        repository.completeReveal(reveal.flowId, TOKEN_HASH, SECRET_ID, 2_000),
+      ).resolves.toBe('unavailable')
       await expect(
         repository.completeCreate(create.flowId, '0'.repeat(64), SECRET_ID, OWNER_HASH, 1_500),
       ).resolves.toBe('unavailable')
