@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
 import { D1McpHandoffRepository } from '../src/adapters/d1-mcp-handoff-repository'
+import { D1SecretRepository } from '../src/adapters/d1-secret-repository'
 import { NodeSqliteDatabase } from '../src/adapters/node-sqlite-database'
 import { applySqliteMigrations } from '../src/adapters/sqlite-migrations'
+import { revealAuthorizationFromFragment } from '../src/browser/secret-crypto'
+import { encryptedShareForCreate } from '../src/browser/secret-create-retry'
 import type { McpFlowId, McpHandoffRecord, SealedMcpValue } from '../src/core/mcp-handoff'
 import type { OwnerCapabilityHash } from '../src/core/owner-capability'
 import type { SecretId } from '../src/core/secret'
+import { createSecretResponse } from '../src/runtime/secret-http'
 
 const TOKEN_HASH = 'a'.repeat(64)
 const OWNER_HASH = 'b'.repeat(64) as OwnerCapabilityHash
@@ -19,6 +23,33 @@ function database(): NodeSqliteDatabase {
   const db = new NodeSqliteDatabase(':memory:')
   applySqliteMigrations(db)
   return db
+}
+
+async function createAvailableSecret(
+  db: NodeSqliteDatabase,
+  id: SecretId = SECRET_ID,
+  nowMs = 1_000,
+) {
+  const encrypted = await encryptedShareForCreate('repository reveal target', undefined)
+  const response = await createSecretResponse(
+    new Request('https://onceveil.test/api/secrets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        payload: encrypted.encrypted.payload,
+        ownerKeyHash: encrypted.ownerCapabilityHash,
+      }),
+    }),
+    new D1SecretRepository(db),
+    nowMs,
+    () => id,
+  )
+  expect(response.status).toBe(201)
+
+  return {
+    revealAuthorization: revealAuthorizationFromFragment(encrypted.encrypted.fragment),
+    ownerKeyHash: encrypted.ownerCapabilityHash,
+  }
 }
 
 function pending(flowId: string, action: 'create' | 'reveal'): McpHandoffRecord {
@@ -65,15 +96,34 @@ describe('MCP handoff repository', () => {
       const repository = new D1McpHandoffRepository(db)
       const record = pending('2'.repeat(32), 'reveal')
       await repository.create(record)
+      const target = await createAvailableSecret(db)
 
       await expect(
-        repository.completeReveal(record.flowId, TOKEN_HASH, SECRET_ID, 1_500),
+        repository.completeReveal(
+          record.flowId,
+          TOKEN_HASH,
+          SECRET_ID,
+          target.revealAuthorization,
+          1_500,
+        ),
       ).resolves.toBe('completed')
       await expect(
-        repository.completeReveal(record.flowId, TOKEN_HASH, SECRET_ID, 1_501),
+        repository.completeReveal(
+          record.flowId,
+          TOKEN_HASH,
+          SECRET_ID,
+          target.revealAuthorization,
+          1_501,
+        ),
       ).resolves.toBe('replayed')
       await expect(
-        repository.completeReveal(record.flowId, TOKEN_HASH, 'd'.repeat(32) as SecretId, 1_502),
+        repository.completeReveal(
+          record.flowId,
+          TOKEN_HASH,
+          'd'.repeat(32) as SecretId,
+          target.revealAuthorization,
+          1_502,
+        ),
       ).resolves.toBe('unavailable')
       const completed = await repository.get(record.flowId)
       expect(completed).toMatchObject({
@@ -137,7 +187,14 @@ describe('MCP handoff repository', () => {
       await repository.create(expiredPendingCreate)
       await repository.create(completedReveal)
       await repository.create(completedCreate)
-      await repository.completeReveal(completedReveal.flowId, TOKEN_HASH, SECRET_ID, 1_500)
+      const target = await createAvailableSecret(db)
+      await repository.completeReveal(
+        completedReveal.flowId,
+        TOKEN_HASH,
+        SECRET_ID,
+        target.revealAuthorization,
+        1_500,
+      )
       await repository.completeCreate(
         completedCreate.flowId,
         TOKEN_HASH,
@@ -169,6 +226,36 @@ describe('MCP handoff repository', () => {
     }
   })
 
+  it('atomically refuses reveal completion after the target leaves AVAILABLE', async () => {
+    const db = database()
+    try {
+      const repository = new D1McpHandoffRepository(db)
+      const secrets = new D1SecretRepository(db)
+      const record = pending('a'.repeat(32), 'reveal')
+      await repository.create(record)
+      const target = await createAvailableSecret(db)
+
+      await expect(secrets.revoke(SECRET_ID, target.ownerKeyHash, 1_400)).resolves.toMatchObject({
+        kind: 'revoked',
+      })
+      await expect(
+        repository.completeReveal(
+          record.flowId,
+          TOKEN_HASH,
+          SECRET_ID,
+          target.revealAuthorization,
+          1_500,
+        ),
+      ).resolves.toBe('unavailable')
+
+      await expect(repository.get(record.flowId)).resolves.toMatchObject({
+        state: 'PENDING',
+      })
+    } finally {
+      db.close()
+    }
+  })
+
   it('indexes handoff expiry for bounded cleanup', async () => {
     const db = database()
     try {
@@ -192,9 +279,16 @@ describe('MCP handoff repository', () => {
       const create = pending('5'.repeat(32), 'create')
       await repository.create(reveal)
       await repository.create(create)
+      const target = await createAvailableSecret(db)
 
       await expect(
-        repository.completeReveal(reveal.flowId, TOKEN_HASH, SECRET_ID, 2_000),
+        repository.completeReveal(
+          reveal.flowId,
+          TOKEN_HASH,
+          SECRET_ID,
+          target.revealAuthorization,
+          2_000,
+        ),
       ).resolves.toBe('unavailable')
       await expect(
         repository.completeCreate(create.flowId, '0'.repeat(64), SECRET_ID, OWNER_HASH, 1_500),
