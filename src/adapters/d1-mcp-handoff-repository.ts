@@ -120,12 +120,20 @@ function toRecord(row: McpHandoffRow): McpHandoffRecord | undefined {
     record.ownerKeyHash = row.owner_key_hash
   }
 
-  if (
-    row.action === 'create' &&
-    row.state === 'COMPLETED' &&
-    (!record.secretId || !record.ownerKeyHash)
-  ) {
+  if (row.state === 'PENDING' && (record.secretId || record.ownerKeyHash)) {
     return undefined
+  }
+
+  if (row.state === 'COMPLETED') {
+    if (!record.secretId) {
+      return undefined
+    }
+    if (row.action === 'create' && !record.ownerKeyHash) {
+      return undefined
+    }
+    if (row.action === 'reveal' && record.ownerKeyHash) {
+      return undefined
+    }
   }
 
   return record
@@ -257,18 +265,19 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
   async completeReveal(
     flowId: McpFlowId,
     handoffTokenHash: string,
+    secretId: import('../core/secret').SecretId,
     nowMs: number,
   ): Promise<CompleteMcpHandoffResult> {
     const session = this.db.withSession('first-primary')
     const results = await session.batch([
       session
         .prepare(
-          "UPDATE mcp_handoffs SET state = 'COMPLETED', completed_at_ms = ?, " +
+          "UPDATE mcp_handoffs SET state = 'COMPLETED', completed_at_ms = ?, secret_id = ?, " +
             "handoff_token_nonce = '', handoff_token_ciphertext = '' " +
             "WHERE flow_id = ? AND action = 'reveal' AND state = 'PENDING' " +
             'AND handoff_token_hash = ? AND handoff_expires_at_ms > ?',
         )
-        .bind(nowMs, flowId, handoffTokenHash, nowMs),
+        .bind(nowMs, secretId, flowId, handoffTokenHash, nowMs),
       session
         .prepare(
           SELECT_HANDOFF +
@@ -283,6 +292,8 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
 
     const row = results[1]?.results[0] as unknown as McpHandoffRow | undefined
     const existing = row ? toRecord(row) : undefined
-    return existing?.state === 'COMPLETED' ? 'replayed' : 'unavailable'
+    return existing?.state === 'COMPLETED' && existing.secretId === secretId
+      ? 'replayed'
+      : 'unavailable'
   }
 }
