@@ -46,3 +46,6 @@ CREATE TABLE mcp_handoffs (
 CREATE INDEX mcp_handoffs_secret_id_idx
   ON mcp_handoffs(secret_id)
   WHERE secret_id IS NOT NULL;
+
+CREATE INDEX mcp_handoffs_expiry_idx
+  ON mcp_handoffs(handoff_expires_at_ms);
