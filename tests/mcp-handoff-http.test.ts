@@ -257,6 +257,67 @@ describe('MCP browser handoff HTTP boundary', () => {
     }
   })
 
+  it.each(['revoked', 'expired'] as const)(
+    'refuses to complete a reveal handoff for a %s secret',
+    async (terminalState) => {
+      const db = database()
+      try {
+        const runtime = context(db)
+        const nowMs = Date.now()
+        const encrypted = await encryptedShareForCreate('lifecycle protected', undefined)
+        const secrets = new D1SecretRepository(db)
+        const created = await createSecretResponse(
+          new Request('https://onceveil.test/api/secrets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              payload: encrypted.encrypted.payload,
+              ownerKeyHash: encrypted.ownerCapabilityHash,
+              ...(terminalState === 'expired' ? { ttlMs: 1_000 } : {}),
+            }),
+          }),
+          secrets,
+          nowMs,
+          () => SECRET_ID,
+        )
+        expect(created.status).toBe(201)
+
+        const handoff = await createMcpHandoff(runtime, 'reveal', nowMs)
+        const token = tokenFrom(await mcpHandoffUrl(runtime, handoff))
+
+        const completionTime = terminalState === 'expired' ? nowMs + 1_000 : nowMs + 2
+        if (terminalState === 'revoked') {
+          await expect(
+            secrets.revoke(SECRET_ID, encrypted.ownerCapabilityHash, nowMs + 1),
+          ).resolves.toMatchObject({ kind: 'revoked' })
+        }
+
+        const response = await completeMcpHandoffResponse(
+          request(handoff.flowId, token, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              secretId: SECRET_ID,
+              revealAuthorization: revealAuthorizationFromFragment(encrypted.encrypted.fragment),
+            }),
+          }),
+          handoff.flowId,
+          runtime,
+          completionTime,
+        )
+        expect(response.status).toBe(404)
+
+        const row = await db
+          .prepare('SELECT state FROM mcp_handoffs WHERE flow_id = ?')
+          .bind(handoff.flowId)
+          .first<{ state: string }>()
+        expect(row?.state).toBe('PENDING')
+      } finally {
+        db.close()
+      }
+    },
+  )
+
   it.each(['create', 'reveal'] as const)(
     'rejects oversized %s completion bodies before JSON parsing',
     async (action) => {
