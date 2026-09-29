@@ -164,7 +164,7 @@ export async function completeMcpHandoffResponse(
       return json({ error: 'invalid_request' }, 400)
     }
 
-    if (!(await matchesRevealAuthorization(context, secretId, revealAuthorization))) {
+    if (!(await matchesRevealAuthorization(context, secretId, revealAuthorization, nowMs))) {
       return json({ error: 'not_found' }, 404)
     }
 
