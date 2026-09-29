@@ -11,6 +11,7 @@ import {
   type SealedMcpValue,
 } from '../core/mcp-handoff'
 import { isValidOwnerCapabilityHash } from '../core/owner-capability'
+import { isValidRevealAuthorization } from '../core/share-capability'
 import { isValidSecretId } from '../core/secret'
 
 interface McpHandoffRow {
@@ -266,8 +267,13 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
     flowId: McpFlowId,
     handoffTokenHash: string,
     secretId: import('../core/secret').SecretId,
+    revealAuthorization: string,
     nowMs: number,
   ): Promise<CompleteMcpHandoffResult> {
+    if (!isValidRevealAuthorization(revealAuthorization) || !Number.isSafeInteger(nowMs)) {
+      return 'unavailable'
+    }
+
     const session = this.db.withSession('first-primary')
     const results = await session.batch([
       session
@@ -275,9 +281,22 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
           "UPDATE mcp_handoffs SET state = 'COMPLETED', completed_at_ms = ?, secret_id = ?, " +
             "handoff_token_nonce = '', handoff_token_ciphertext = '' " +
             "WHERE flow_id = ? AND action = 'reveal' AND state = 'PENDING' " +
-            'AND handoff_token_hash = ? AND handoff_expires_at_ms > ?',
+            'AND handoff_token_hash = ? AND handoff_expires_at_ms > ? ' +
+            'AND EXISTS (' +
+            'SELECT 1 FROM secrets ' +
+            "WHERE id = ? AND replay_key = ? AND state = 'AVAILABLE' AND expires_at_ms > ?" +
+            ')',
         )
-        .bind(nowMs, secretId, flowId, handoffTokenHash, nowMs),
+        .bind(
+          nowMs,
+          secretId,
+          flowId,
+          handoffTokenHash,
+          nowMs,
+          secretId,
+          revealAuthorization,
+          nowMs,
+        ),
       session
         .prepare(
           SELECT_HANDOFF +
