@@ -73,12 +73,7 @@ describe('MCP handoff repository', () => {
         repository.completeReveal(record.flowId, TOKEN_HASH, SECRET_ID, 1_501),
       ).resolves.toBe('replayed')
       await expect(
-        repository.completeReveal(
-          record.flowId,
-          TOKEN_HASH,
-          'd'.repeat(32) as SecretId,
-          1_502,
-        ),
+        repository.completeReveal(record.flowId, TOKEN_HASH, 'd'.repeat(32) as SecretId, 1_502),
       ).resolves.toBe('unavailable')
       const completed = await repository.get(record.flowId)
       expect(completed).toMatchObject({
