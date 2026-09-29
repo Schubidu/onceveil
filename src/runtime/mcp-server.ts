@@ -92,13 +92,10 @@ async function handoffTool(
         })
       }
 
-      return textResult(
-        'Reveal handoff completed. No secret data was returned to MCP.',
-        {
-          flowId: record.flowId,
-          handoff: 'completed',
-        },
-      )
+      return textResult('Reveal handoff completed. No secret data was returned to MCP.', {
+        flowId: record.flowId,
+        handoff: 'completed',
+      })
     }
 
     if (Date.now() >= record.handoffExpiresAtMs) {
