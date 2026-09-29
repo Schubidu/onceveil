@@ -46,37 +46,6 @@ export class RevealProofStorageError extends Error {
 export class D1RevealProofRepository implements RevealProofRepository {
   constructor(private readonly db: D1DatabaseLike) {}
 
-  async matchesRevealAuthorization(
-    secretId: SecretId,
-    authorization: string,
-    nowMs: number,
-  ): Promise<boolean> {
-    if (!isValidRevealAuthorization(authorization) || !Number.isSafeInteger(nowMs)) {
-      return false
-    }
-
-    const session = this.db.withSession('first-primary')
-
-    try {
-      const row = await session
-        .prepare(
-          `SELECT 1 AS authorized
-           FROM secrets
-           WHERE id = ?
-             AND replay_key = ?
-             AND state = 'AVAILABLE'
-             AND expires_at_ms > ?
-           LIMIT 1`,
-        )
-        .bind(secretId, authorization, nowMs)
-        .first<{ authorized: number }>()
-
-      return row?.authorized === 1
-    } catch {
-      throw new RevealProofStorageError()
-    }
-  }
-
   async prepare(
     secretId: SecretId,
     authorization: string,
