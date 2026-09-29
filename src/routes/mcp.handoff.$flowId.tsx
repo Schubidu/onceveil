@@ -185,17 +185,27 @@ function CreateHandoff({ flowId, token }: Readonly<{ flowId: string; token: McpH
     if (generation.current !== currentGeneration) {
       return false
     }
-    const response = await fetch(`/api/mcp/handoffs/${encodeURIComponent(flowId)}`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        secretId: value.id,
-        ownerKeyHash: value.ownerKeyHash,
-      }),
-    })
+    let response: Response
+    try {
+      response = await fetch(`/api/mcp/handoffs/${encodeURIComponent(flowId)}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          secretId: value.id,
+          ownerKeyHash: value.ownerKeyHash,
+        }),
+      })
+    } catch {
+      if (generation.current === currentGeneration) {
+        setError(
+          'The secret was created, but the MCP handoff could not be finalized. Keep both links and retry the handoff.',
+        )
+      }
+      return false
+    }
 
     if (generation.current !== currentGeneration) {
       return false
