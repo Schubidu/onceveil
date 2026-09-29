@@ -28,7 +28,7 @@ Create completion is deliberately **not** treated as cryptographic browser attes
 
 For reveal, the browser receives the complete share URL directly from the user and then continues to the normal protected `/s/:id#...` flow. The MCP-visible transition token alone is not sufficient to complete this handoff: the browser must additionally present the share's `secretId` and non-decrypting reveal authorization extracted from the pasted URL. Onceveil checks that pair against the stored replay key before marking the handoff complete. The AES key and complete share URL never leave the browser.
 
-This completion check does not consume the secret, create a reveal proof, or bypass Turnstile/ALTCHA/noop provider semantics. It only proves that the browser possessed a valid Onceveil share capability before the MCP flow may report browser handoff completion.
+This completion check does not consume the secret, create a reveal proof, or bypass Turnstile/ALTCHA/noop provider semantics. It proves only that the completion caller possessed a valid Onceveil share capability before the MCP flow may report the handoff complete; it is not browser attestation.
 
 ## Tools
 
