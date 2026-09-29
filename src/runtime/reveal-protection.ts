@@ -92,15 +92,3 @@ export function getRevealProofRepository(context: OnceveilRequestContext): Revea
   return new D1RevealProofRepository(getSecretDatabase(context))
 }
 
-export function matchesRevealAuthorization(
-  context: OnceveilRequestContext,
-  secretId: SecretId,
-  authorization: string,
-  nowMs: number,
-): Promise<boolean> {
-  return new D1RevealProofRepository(getSecretDatabase(context)).matchesRevealAuthorization(
-    secretId,
-    authorization,
-    nowMs,
-  )
-}
