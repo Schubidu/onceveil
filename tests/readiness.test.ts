@@ -130,6 +130,16 @@ describe('runtime readiness', () => {
     )
   })
 
+  it('uses the deployment origin for a custom domain regardless of MCP state', () => {
+    expect(
+      requiredRuntimeEnvironmentForRequest(
+        new Request('https://secrets.example/ready'),
+        'production',
+        'https://secrets.example',
+      ),
+    ).toBe('production')
+  })
+
   it('reports ready only when the bound database has the expected schema and marker', async () => {
     await expect(
       checkSecretDatabaseReadiness(
