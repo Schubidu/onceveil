@@ -90,6 +90,21 @@ describe('MCP handoff repository', () => {
     }
   })
 
+  it('cancels a pending handoff by deleting its transition state', async () => {
+    const db = database()
+    try {
+      const repository = new D1McpHandoffRepository(db)
+      const pendingRecord = pending('4'.repeat(32), 'create')
+      await expect(repository.create(pendingRecord)).resolves.toBe(true)
+
+      await expect(repository.cancel(pendingRecord.flowId)).resolves.toBe(true)
+      await expect(repository.get(pendingRecord.flowId)).resolves.toBeUndefined()
+      await expect(repository.cancel(pendingRecord.flowId)).resolves.toBe(false)
+    } finally {
+      db.close()
+    }
+  })
+
   it('completes reveal once and treats an identical retry as replay', async () => {
     const db = database()
     try {
