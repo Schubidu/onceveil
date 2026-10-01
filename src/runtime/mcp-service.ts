@@ -90,6 +90,14 @@ export async function getMcpHandoff(
   return getMcpHandoffRepository(context).get(flowId)
 }
 
+export async function cancelMcpHandoff(
+  context: OnceveilRequestContext,
+  flowId: McpFlowId,
+): Promise<boolean> {
+  enabledMcp(context)
+  return getMcpHandoffRepository(context).cancel(flowId)
+}
+
 function ownerHashForRecord(
   context: OnceveilRequestContext,
   record: McpHandoffRecord,
