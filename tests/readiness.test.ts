@@ -125,9 +125,9 @@ describe('runtime readiness', () => {
         'https://secrets.example',
       ),
     ).toBe('unavailable')
-    expect(
-      requiredRuntimeEnvironmentForRequest(custom, 'invalid', 'https://secrets.example'),
-    ).toBe('unavailable')
+    expect(requiredRuntimeEnvironmentForRequest(custom, 'invalid', 'https://secrets.example')).toBe(
+      'unavailable',
+    )
   })
 
   it('reports ready only when the bound database has the expected schema and marker', async () => {
