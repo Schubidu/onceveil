@@ -224,6 +224,16 @@ export class D1McpHandoffRepository implements McpHandoffRepository {
     return row ? toRecord(row) : undefined
   }
 
+  async cancel(flowId: McpFlowId): Promise<boolean> {
+    const session = this.db.withSession('first-primary')
+    const result = await session
+      .prepare("DELETE FROM mcp_handoffs WHERE flow_id = ? AND state = 'PENDING'")
+      .bind(flowId)
+      .run()
+
+    return result.success && result.meta?.changes === 1
+  }
+
   async completeCreate(
     flowId: McpFlowId,
     handoffTokenHash: string,
