@@ -13,6 +13,7 @@ interface CloudflareOnceveilEnv {
   ONCEVEIL_BRAND_LOGO?: string
   ONCEVEIL_BRAND_FAVICON?: string
   ONCEVEIL_BRAND_ACCENT?: string
+  ONCEVEIL_ENVIRONMENT?: string
   ONCEVEIL_MCP_ENABLED?: string
   ONCEVEIL_MCP_TOKEN?: string
   ONCEVEIL_MCP_STORAGE_KEY?: string
@@ -35,7 +36,16 @@ export function getBrandingConfig() {
 
 export function createRequestContext(request: Request): OnceveilRequestContext {
   const runtime = env as CloudflareOnceveilEnv
-  const databaseEnvironment = requiredRuntimeEnvironmentForRequest(request)
+  const mcp = resolveMcpRuntime(runtime.ONCEVEIL_MCP_ENABLED, {
+    authToken: runtime.ONCEVEIL_MCP_TOKEN,
+    storageKey: runtime.ONCEVEIL_MCP_STORAGE_KEY,
+    publicOrigin: runtime.ONCEVEIL_MCP_PUBLIC_ORIGIN,
+  })
+  const databaseEnvironment = requiredRuntimeEnvironmentForRequest(
+    request,
+    runtime.ONCEVEIL_ENVIRONMENT,
+    mcp.status === 'enabled' ? mcp.publicOrigin : undefined,
+  )
   const revealProtection =
     databaseEnvironment === 'unavailable'
       ? { provider: 'unavailable' as const }
@@ -49,11 +59,7 @@ export function createRequestContext(request: Request): OnceveilRequestContext {
     branding: getBrandingConfig(),
     secretDatabase: runtime.DB,
     databaseEnvironment,
-    mcp: resolveMcpRuntime(runtime.ONCEVEIL_MCP_ENABLED, {
-      authToken: runtime.ONCEVEIL_MCP_TOKEN,
-      storageKey: runtime.ONCEVEIL_MCP_STORAGE_KEY,
-      publicOrigin: runtime.ONCEVEIL_MCP_PUBLIC_ORIGIN,
-    }),
+    mcp,
     revealProtection,
   }
 }
