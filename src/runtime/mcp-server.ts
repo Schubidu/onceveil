@@ -11,6 +11,7 @@ import * as z from 'zod/v4'
 import { isValidMcpFlowId, type McpHandoffAction, type McpHandoffRecord } from '../core/mcp-handoff'
 import { deriveMcpRequestStateKey } from './mcp-crypto'
 import {
+  cancelMcpHandoff,
   createMcpHandoff,
   getMcpHandoff,
   getMcpManagedSecretStatus,
@@ -104,6 +105,10 @@ async function handoffTool(
 
     const responseAction = elicitationAction(ctx)
     if (responseAction === 'decline' || responseAction === 'cancel') {
+      if (!(await cancelMcpHandoff(context, record.flowId))) {
+        return toolError('The browser handoff could not be cancelled because it already changed state.')
+      }
+
       return textResult('The browser handoff was cancelled.', {
         flowId: record.flowId,
         handoff: 'cancelled',
