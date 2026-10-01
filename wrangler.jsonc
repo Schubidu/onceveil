@@ -6,6 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "preview_urls": true,
   "vars": {
+    "ONCEVEIL_ENVIRONMENT": "production",
     "ONCEVEIL_MCP_ENABLED": "false",
     "ONCEVEIL_REVEAL_PROTECTION": "turnstile",
     "TURNSTILE_SITE_KEY": "0x4AAAAAAFEfxfEZ8ZH4YiZn"
@@ -20,6 +21,7 @@
   ],
   "previews": {
     "vars": {
+      "ONCEVEIL_ENVIRONMENT": "preview",
       "ONCEVEIL_MCP_ENABLED": "false",
       "ONCEVEIL_REVEAL_PROTECTION": "turnstile",
       "TURNSTILE_SITE_KEY": "0x4AAAAAAFEfxfEZ8ZH4YiZn"
