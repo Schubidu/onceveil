@@ -1,3 +1,4 @@
+import { resolvePublicOrigin } from './public-origin'
 import type { McpRuntime } from './request-context'
 
 export interface McpEnvironment {
@@ -29,32 +30,6 @@ function hexBytes(value: string): Uint8Array {
   return bytes
 }
 
-function validPublicOrigin(value: string | undefined): string | undefined {
-  if (!value || value.trim() !== value || hasAsciiControlCharacter(value)) {
-    return undefined
-  }
-
-  try {
-    const url = new URL(value)
-    const loopback =
-      url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]'
-    if (
-      (url.protocol !== 'https:' && !(loopback && url.protocol === 'http:')) ||
-      url.username ||
-      url.password ||
-      url.pathname !== '/' ||
-      url.search ||
-      url.hash
-    ) {
-      return undefined
-    }
-
-    return url.origin
-  } catch {
-    return undefined
-  }
-}
-
 export function isValidMcpAuthToken(value: string | undefined): value is string {
   return (
     typeof value === 'string' &&
@@ -77,7 +52,7 @@ export function resolveMcpRuntime(
     return { status: 'unavailable' }
   }
 
-  const publicOrigin = validPublicOrigin(environment.publicOrigin)
+  const publicOrigin = resolvePublicOrigin(environment.publicOrigin)
   if (
     !isValidMcpAuthToken(environment.authToken) ||
     !HEX_KEY_PATTERN.test(environment.storageKey ?? '') ||
