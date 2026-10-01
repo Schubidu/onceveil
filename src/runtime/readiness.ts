@@ -60,8 +60,34 @@ export function runtimeEnvironmentForRequest(request: Request): RuntimeEnvironme
 
 export function requiredRuntimeEnvironmentForRequest(
   request: Request,
+  configuredEnvironment?: string,
+  canonicalOrigin?: string,
 ): RuntimeEnvironment | 'unavailable' {
-  return runtimeEnvironmentForRequest(request) ?? 'unavailable'
+  const detected = runtimeEnvironmentForRequest(request)
+
+  if (configuredEnvironment === undefined) {
+    return detected ?? 'unavailable'
+  }
+
+  if (configuredEnvironment !== 'production' && configuredEnvironment !== 'preview') {
+    return 'unavailable'
+  }
+
+  if (detected) {
+    return detected === configuredEnvironment ? detected : 'unavailable'
+  }
+
+  if (!canonicalOrigin) {
+    return 'unavailable'
+  }
+
+  try {
+    return new URL(request.url).origin === new URL(canonicalOrigin).origin
+      ? configuredEnvironment
+      : 'unavailable'
+  } catch {
+    return 'unavailable'
+  }
 }
 
 export async function checkSecretDatabaseReadiness(
