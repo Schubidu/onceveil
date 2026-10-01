@@ -106,7 +106,9 @@ async function handoffTool(
     const responseAction = elicitationAction(ctx)
     if (responseAction === 'decline' || responseAction === 'cancel') {
       if (!(await cancelMcpHandoff(context, record.flowId))) {
-        return toolError('The browser handoff could not be cancelled because it already changed state.')
+        return toolError(
+          'The browser handoff could not be cancelled because it already changed state.',
+        )
       }
 
       return textResult('The browser handoff was cancelled.', {
