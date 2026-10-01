@@ -58,7 +58,7 @@ The handoff page treats browser lifecycle transitions as a security boundary: `p
 
 Browser completion request bodies are capped at 1 KiB and read with a bounded stream before JSON parsing. Oversized bodies fail with HTTP 413 and cannot advance the handoff.
 
-Handoff tokens expire after ten minutes and are action-bound. Completion is one-way and retry-safe. After successful completion, Onceveil discards the encrypted token copy and temporarily retains only the keyed fingerprint needed to recognize an identical completion retry. After the handoff window expires, stale pending/reveal rows are pruned and completed-create mappings scrub the transition fingerprint while retaining only the management mapping required for `status`/`revoke`.
+Handoff tokens expire after ten minutes and are action-bound. Completion is one-way and retry-safe. Cancelling or declining an MCP elicitation immediately deletes the pending handoff state, so the signed request state cannot resume that transition later. After successful completion, Onceveil discards the encrypted token copy and temporarily retains only the keyed fingerprint needed to recognize an identical completion retry. After the handoff window expires, stale pending/reveal rows are pruned and completed-create mappings scrub the transition fingerprint while retaining only the management mapping required for `status`/`revoke`.
 
 ## Runtime configuration
 
