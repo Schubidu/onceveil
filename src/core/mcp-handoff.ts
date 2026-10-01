@@ -40,6 +40,7 @@ export interface McpHandoffRepository {
     handoffTokenHash: string,
     nowMs: number,
   ): Promise<McpHandoffRecord | undefined>
+  cancel(flowId: McpFlowId): Promise<boolean>
   completeCreate(
     flowId: McpFlowId,
     handoffTokenHash: string,
