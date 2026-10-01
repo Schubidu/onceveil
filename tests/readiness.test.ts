@@ -18,6 +18,7 @@ interface DatabaseState {
   environmentTable?: boolean
   secretsTable?: boolean
   revealProofsTable?: boolean
+  mcpHandoffsTable?: boolean
   marker?: string
   schemaError?: boolean
   databaseError?: boolean
@@ -50,13 +51,18 @@ function fakeDatabase(state: DatabaseState): D1DatabaseLike {
             return (state.revealProofsTable ? { present: 1 } : null) as Row | null
           }
 
+          if (query.includes("name = 'mcp_handoffs'")) {
+            return (state.mcpHandoffsTable !== false ? { present: 1 } : null) as Row | null
+          }
+
           if (query.includes('SELECT environment FROM onceveil_environment')) {
             return (state.marker ? { environment: state.marker } : null) as Row | null
           }
 
           if (
             query.includes('FROM secrets LIMIT 0') ||
-            query.includes('FROM reveal_proofs LIMIT 0')
+            query.includes('FROM reveal_proofs LIMIT 0') ||
+            query.includes('FROM mcp_handoffs LIMIT 0')
           ) {
             if (state.schemaError) {
               throw new Error('schema mismatch')
@@ -99,6 +105,41 @@ describe('runtime readiness', () => {
     ).toBe('preview')
   })
 
+  it('accepts an exact configured custom origin without weakening environment isolation', () => {
+    const custom = new Request('https://secrets.example/api/mcp/handoffs/flow')
+
+    expect(
+      requiredRuntimeEnvironmentForRequest(custom, 'production', 'https://secrets.example'),
+    ).toBe('production')
+    expect(
+      requiredRuntimeEnvironmentForRequest(
+        new Request('https://other.example/api/mcp/handoffs/flow'),
+        'production',
+        'https://secrets.example',
+      ),
+    ).toBe('unavailable')
+    expect(
+      requiredRuntimeEnvironmentForRequest(
+        new Request('https://ots-preview.schult.dev/api/mcp/handoffs/flow'),
+        'production',
+        'https://secrets.example',
+      ),
+    ).toBe('unavailable')
+    expect(requiredRuntimeEnvironmentForRequest(custom, 'invalid', 'https://secrets.example')).toBe(
+      'unavailable',
+    )
+  })
+
+  it('uses the deployment origin for a custom domain regardless of MCP state', () => {
+    expect(
+      requiredRuntimeEnvironmentForRequest(
+        new Request('https://secrets.example/ready'),
+        'production',
+        'https://secrets.example',
+      ),
+    ).toBe('production')
+  })
+
   it('reports ready only when the bound database has the expected schema and marker', async () => {
     await expect(
       checkSecretDatabaseReadiness(
@@ -128,6 +169,24 @@ describe('runtime readiness', () => {
     ).resolves.toEqual({
       status: 'ready',
       database: 'ok',
+    })
+  })
+
+  it('reports migration_required when the MCP handoff migration is missing', async () => {
+    await expect(
+      checkSecretDatabaseReadiness(
+        fakeDatabase({
+          environmentTable: true,
+          secretsTable: true,
+          revealProofsTable: true,
+          mcpHandoffsTable: false,
+          marker: 'preview',
+        }),
+        'preview',
+      ),
+    ).resolves.toEqual({
+      status: 'not_ready',
+      database: 'migration_required',
     })
   })
 
@@ -184,6 +243,7 @@ describe('runtime readiness', () => {
     const source = await readFile(path.resolve('scripts/d1-environment.mjs'), 'utf8')
 
     expect(source).toContain('owner_key_hash')
+    expect(source).toContain('mcp_handoffs')
   })
 
   it('reports unavailable when the database cannot be queried', async () => {

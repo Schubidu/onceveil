@@ -9,6 +9,7 @@ const MIGRATIONS = [
   '0005_reveal_proof_verification.sql',
   '0006_expire_legacy_share_links.sql',
   '0007_owner_capability.sql',
+  '0008_mcp_handoffs.sql',
 ]
 
 export function applySqliteMigrations(database: { exec(sql: string): void }): void {

@@ -1,0 +1,70 @@
+import { resolvePublicOrigin } from './public-origin'
+import type { McpRuntime } from './request-context'
+
+export interface McpEnvironment {
+  enabled?: string
+  authToken?: string
+  storageKey?: string
+  publicOrigin?: string
+}
+
+const HEX_KEY_PATTERN = /^[0-9a-fA-F]{64}$/
+const MIN_AUTH_TOKEN_LENGTH = 32
+const MAX_AUTH_TOKEN_LENGTH = 512
+
+function hasAsciiControlCharacter(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index)
+    if (code <= 0x1f || code === 0x7f) {
+      return true
+    }
+  }
+  return false
+}
+
+function hexBytes(value: string): Uint8Array {
+  const bytes = new Uint8Array(value.length / 2)
+  for (let index = 0; index < bytes.length; index += 1) {
+    bytes[index] = Number.parseInt(value.slice(index * 2, index * 2 + 2), 16)
+  }
+  return bytes
+}
+
+export function isValidMcpAuthToken(value: string | undefined): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length >= MIN_AUTH_TOKEN_LENGTH &&
+    value.length <= MAX_AUTH_TOKEN_LENGTH &&
+    value.trim() === value &&
+    !hasAsciiControlCharacter(value)
+  )
+}
+
+export function resolveMcpRuntime(
+  enabled: string | undefined,
+  environment: McpEnvironment = {},
+): McpRuntime {
+  if (enabled === undefined || enabled === '' || enabled === 'false') {
+    return { status: 'disabled' }
+  }
+
+  if (enabled !== 'true') {
+    return { status: 'unavailable' }
+  }
+
+  const publicOrigin = resolvePublicOrigin(environment.publicOrigin)
+  if (
+    !isValidMcpAuthToken(environment.authToken) ||
+    !HEX_KEY_PATTERN.test(environment.storageKey ?? '') ||
+    !publicOrigin
+  ) {
+    return { status: 'unavailable' }
+  }
+
+  return {
+    status: 'enabled',
+    authToken: environment.authToken,
+    storageKey: hexBytes(environment.storageKey as string),
+    publicOrigin,
+  }
+}

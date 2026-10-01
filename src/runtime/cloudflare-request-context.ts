@@ -2,6 +2,8 @@ import { env } from 'cloudflare:workers'
 
 import type { D1DatabaseLike } from '../adapters/d1-secret-repository'
 import { resolveBrandingConfig } from '../core/branding'
+import { resolveMcpRuntime } from './mcp-config'
+import { resolvePublicOrigin } from './public-origin'
 import { requiredRuntimeEnvironmentForRequest } from './readiness'
 import type { OnceveilRequestContext } from './request-context'
 import { resolveRevealProtectionRuntime } from './reveal-protection-config'
@@ -12,6 +14,12 @@ interface CloudflareOnceveilEnv {
   ONCEVEIL_BRAND_LOGO?: string
   ONCEVEIL_BRAND_FAVICON?: string
   ONCEVEIL_BRAND_ACCENT?: string
+  ONCEVEIL_ENVIRONMENT?: string
+  ONCEVEIL_PUBLIC_ORIGIN?: string
+  ONCEVEIL_MCP_ENABLED?: string
+  ONCEVEIL_MCP_TOKEN?: string
+  ONCEVEIL_MCP_STORAGE_KEY?: string
+  ONCEVEIL_MCP_PUBLIC_ORIGIN?: string
   ONCEVEIL_REVEAL_PROTECTION?: string
   ONCEVEIL_ALTCHA_SECRET?: string
   TURNSTILE_SITE_KEY?: string
@@ -30,7 +38,19 @@ export function getBrandingConfig() {
 
 export function createRequestContext(request: Request): OnceveilRequestContext {
   const runtime = env as CloudflareOnceveilEnv
-  const databaseEnvironment = requiredRuntimeEnvironmentForRequest(request)
+  const deploymentOrigin = resolvePublicOrigin(
+    runtime.ONCEVEIL_PUBLIC_ORIGIN ?? runtime.ONCEVEIL_MCP_PUBLIC_ORIGIN,
+  )
+  const mcp = resolveMcpRuntime(runtime.ONCEVEIL_MCP_ENABLED, {
+    authToken: runtime.ONCEVEIL_MCP_TOKEN,
+    storageKey: runtime.ONCEVEIL_MCP_STORAGE_KEY,
+    publicOrigin: runtime.ONCEVEIL_MCP_PUBLIC_ORIGIN ?? deploymentOrigin,
+  })
+  const databaseEnvironment = requiredRuntimeEnvironmentForRequest(
+    request,
+    runtime.ONCEVEIL_ENVIRONMENT,
+    deploymentOrigin,
+  )
   const revealProtection =
     databaseEnvironment === 'unavailable'
       ? { provider: 'unavailable' as const }
@@ -44,6 +64,7 @@ export function createRequestContext(request: Request): OnceveilRequestContext {
     branding: getBrandingConfig(),
     secretDatabase: runtime.DB,
     databaseEnvironment,
+    mcp,
     revealProtection,
   }
 }

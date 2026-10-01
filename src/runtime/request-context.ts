@@ -19,11 +19,26 @@ export type RevealProtectionRuntime =
       provider: 'unavailable'
     }
 
+export type McpRuntime =
+  | {
+      status: 'enabled'
+      authToken: string
+      storageKey: Uint8Array
+      publicOrigin: string
+    }
+  | {
+      status: 'disabled'
+    }
+  | {
+      status: 'unavailable'
+    }
+
 export type DatabaseEnvironment = RuntimeEnvironment | 'markerless' | 'unavailable'
 
 export interface OnceveilRequestContext {
   branding: BrandingConfig
   secretDatabase?: D1DatabaseLike
   databaseEnvironment: DatabaseEnvironment
+  mcp: McpRuntime
   revealProtection: RevealProtectionRuntime
 }

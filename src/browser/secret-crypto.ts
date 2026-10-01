@@ -4,6 +4,7 @@ import {
   SHARE_PROTOCOL_VERSION,
   encryptedPayloadReplayKey,
   isEncryptedSecretPayload,
+  isValidRevealAuthorization,
   shareAssociatedData,
   type EncryptedSecretPayload,
 } from '../core/share-capability'
@@ -12,8 +13,6 @@ import { generateSecretId, type SecretId } from '../core/secret'
 const AES_KEY_BYTES = 32
 const AES_GCM_NONCE_BYTES = 12
 const AES_GCM_TAG_BITS = 128
-const REVEAL_AUTHORIZATION_PATTERN = /^[0-9a-f]{64}$/
-
 const encoder = new TextEncoder()
 const decoder = new TextDecoder('utf-8', { ignoreBOM: true })
 
@@ -113,7 +112,7 @@ function decodeFragment(fragment: string): {
     (!legacy &&
       (version !== SHARE_FRAGMENT_VERSION ||
         !revealAuthorization ||
-        !REVEAL_AUTHORIZATION_PATTERN.test(revealAuthorization))) ||
+        !isValidRevealAuthorization(revealAuthorization))) ||
     !encodedKey ||
     extra !== undefined
   ) {

@@ -9,6 +9,8 @@ const runtimeDirectory = path.join(directory, 'runtime')
 const databasePath = path.join(directory, 'onceveil.sqlite')
 const port = 31_000 + (process.pid % 1_000)
 const origin = `http://127.0.0.1:${port}`
+const mcpToken = 'node-smoke-mcp-token-0123456789abcdef'
+const mcpStorageKey = 'ab'.repeat(32)
 let logs = ''
 
 const runtimeEnvironment = { ...process.env }
@@ -25,6 +27,10 @@ const server = spawn(process.execPath, [path.join(runtimeDirectory, 'server/inde
     PORT: String(port),
     ONCEVEIL_SQLITE_PATH: databasePath,
     ONCEVEIL_REVEAL_PROTECTION: 'none',
+    ONCEVEIL_MCP_ENABLED: 'true',
+    ONCEVEIL_MCP_TOKEN: mcpToken,
+    ONCEVEIL_MCP_STORAGE_KEY: mcpStorageKey,
+    ONCEVEIL_MCP_PUBLIC_ORIGIN: origin,
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
@@ -43,6 +49,38 @@ function fetchLocal(pathname) {
     headers: {
       Connection: 'close',
     },
+  })
+}
+
+function mcpRequest(token) {
+  const protocolVersion = '2026-07-28'
+  return fetch(`${origin}/mcp`, {
+    method: 'POST',
+    headers: {
+      Authorization: token ? `Bearer ${token}` : '',
+      Connection: 'close',
+      'Content-Type': 'application/json',
+      Accept: 'application/json, text/event-stream',
+      'MCP-Protocol-Version': protocolVersion,
+      'Mcp-Method': 'tools/list',
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/list',
+      params: {
+        _meta: {
+          'io.modelcontextprotocol/protocolVersion': protocolVersion,
+          'io.modelcontextprotocol/clientInfo': {
+            name: 'onceveil-node-smoke',
+            version: '1.0.0',
+          },
+          'io.modelcontextprotocol/clientCapabilities': {
+            elicitation: { url: {} },
+          },
+        },
+      },
+    }),
   })
 }
 
@@ -134,7 +172,25 @@ try {
     throw new Error('Self-hosted none mode unexpectedly enables Turnstile CSP')
   }
 
-  console.log('Standalone Node production runtime smoke check passed')
+  const unauthenticatedMcp = await mcpRequest()
+  if (unauthenticatedMcp.status !== 401) {
+    throw new Error(`Unauthenticated MCP returned ${unauthenticatedMcp.status} instead of 401`)
+  }
+
+  const authenticatedMcp = await mcpRequest(mcpToken)
+  const mcpBody = await authenticatedMcp.text()
+  if (
+    authenticatedMcp.status !== 200 ||
+    !mcpBody.includes('create_secret_handoff') ||
+    !mcpBody.includes('reveal_secret_handoff') ||
+    !mcpBody.includes('secret_status') ||
+    !mcpBody.includes('revoke_secret') ||
+    mcpBody.includes(mcpToken)
+  ) {
+    throw new Error(`Authenticated MCP tool listing failed: ${authenticatedMcp.status} ${mcpBody}`)
+  }
+
+  console.log('Standalone Node production runtime and authenticated MCP smoke check passed')
 } finally {
   await stopServer()
   await rm(directory, { recursive: true, force: true })

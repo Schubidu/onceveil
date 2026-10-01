@@ -6,13 +6,13 @@ import {
   type RevealProof,
   type RevealProofRepository,
 } from '../core/reveal-protection'
+import { isValidRevealAuthorization } from '../core/share-capability'
 import type { SecretId } from '../core/secret'
 
 const PROOF_BYTES = 32
 const PROOF_ATTEMPTS = 3
 const PROOF_PATTERN = /^[A-Za-z0-9_-]{43}$/
 const VERIFICATION_PATTERN = /^[0-9a-f]{32}$/
-const AUTHORIZATION_PATTERN = /^[0-9a-f]{64}$/
 
 function encodeBase64Url(bytes: Uint8Array): string {
   let binary = ''
@@ -52,7 +52,7 @@ export class D1RevealProofRepository implements RevealProofRepository {
     verificationId: string,
     nowMs: number,
   ): Promise<RevealProof | undefined> {
-    if (!AUTHORIZATION_PATTERN.test(authorization) || !VERIFICATION_PATTERN.test(verificationId)) {
+    if (!isValidRevealAuthorization(authorization) || !VERIFICATION_PATTERN.test(verificationId)) {
       return undefined
     }
 

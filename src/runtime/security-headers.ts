@@ -66,6 +66,8 @@ export function isSecretSurface(request: Request): boolean {
     pathname === '/' ||
     pathname === '/api/secrets' ||
     pathname.startsWith('/api/secrets/') ||
+    pathname.startsWith('/api/mcp/handoffs/') ||
+    pathname.startsWith('/mcp/handoff/') ||
     pathname.startsWith('/o/') ||
     pathname.startsWith('/s/')
   )

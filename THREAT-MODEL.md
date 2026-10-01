@@ -1,6 +1,6 @@
 # Onceveil threat model
 
-This document defines the security guarantees and explicit non-guarantees for the current Onceveil foundations. Recipient authentication, portable deployment, and MCP integration remain separate implementation slices.
+This document defines the security guarantees and explicit non-guarantees for the current Onceveil foundations. Recipient authentication remains outside the current implementation.
 
 ## Security invariants
 
@@ -9,7 +9,7 @@ This document defines the security guarantees and explicit non-guarantees for th
 3. **Consumption is final.** If the winning client or network fails after the server commits `CONSUMED`, the secret is lost. Onceveil does not use a lease/acknowledgement protocol.
 4. **The service does not receive plaintext or encryption keys.** Browser crypto encrypts before upload and decrypts only after retrieval.
 5. **Configured reveal protection fails closed.** A missing, invalid, or unavailable protection provider must not silently degrade to unprotected reveal.
-6. **MCP does not carry secret material.** Later MCP tools may orchestrate secure browser handoff, status, and revocation, but not plaintext, decryption keys, ciphertext bodies intended for the recipient, or complete anonymous share URLs.
+6. **MCP does not carry secret material.** MCP tools orchestrate secure browser handoff, status, and revocation, but not plaintext, decryption keys, ciphertext bodies intended for the recipient, raw owner capabilities, or complete anonymous share URLs.
 
 ## Lifecycle
 
@@ -101,6 +101,24 @@ The server validates Turnstile through Siteverify and requires the expected acti
 Invalid, missing, expired, replayed, or differently bound proofs cannot reach the secret consume. Provider outage, missing configuration, or proof-storage failure also fails closed and leaves the secret `AVAILABLE`. Onceveil does not treat Turnstile as recipient authentication or cryptographic proof of humanity.
 
 Proof consumption and secret consumption are intentionally sequential rather than a cross-table lease protocol. A proof may therefore be spent by an infrastructure failure immediately before secret consume; the secret remains available and the recipient must verify again.
+
+## MCP secure browser handoff
+
+The MCP endpoint is opt-in and authenticated independently from anonymous recipient links. A correlation-only `flowId` is not sufficient to call status or revoke; the caller must also authenticate to the deployment MCP endpoint.
+
+Secret creation uses URL elicitation to move secret entry into a browser context. The browser encrypts before upload using the same client-side crypto path as the normal web UI. The `input_required` URL deliberately contains a separate short-lived browser-transition capability and is therefore visible to the MCP client. Outside that URL elicitation, tool `content`, `structuredContent`, and `requestState` contain only lifecycle/correlation metadata and never the plaintext, decryption fragment, owner capability, ciphertext intended for the recipient, or complete recipient/owner links.
+
+Reveal uses URL elicitation to move the complete recipient share link into the browser. The MCP-visible transition token alone cannot complete the reveal handoff. Completion must also present the secret identifier plus the fragment's non-decrypting reveal authorization; the server atomically checks that pair against the stored replay key of the still-`AVAILABLE`, unexpired secret while completing the handoff. The AES key and complete recipient URL remain outside MCP in the normal browser flow. This check proves possession of a valid share capability, not browser execution, and neither prepares a reveal proof nor consumes the secret, so MCP retry/failure cannot bypass the configured Turnstile, ALTCHA, or explicit trusted-network provider contract.
+
+The browser handoff itself uses a separate 256-bit short-lived capability in the URL fragment. This capability is not a reveal, owner-management, or decryption capability: by itself it can only enter one pending create or reveal handoff. The browser removes it from history immediately. Persistence stores an HMAC-SHA-256 authorization fingerprint keyed from the current MCP storage key and, only while pending, an AES-GCM-encrypted copy so an unfinished multi-round-trip elicitation can be retried. The encrypted token is bound to the handoff action and flow identifier. Handoff completion is terminal and retry-safe; successful completion discards the encrypted token copy.
+
+For MCP-created secrets the browser sends only the existing owner capability hash when it completes the handoff. The raw owner capability remains exclusively in the browser-generated owner link and is never stored by the MCP subsystem. Internal status/revoke operations reuse the existing repository authorization boundary with the stored owner hash.
+
+Create-handoff completion is orchestration state, not browser attestation. A caller holding the MCP-visible transition token can emulate the create HTTP sequence and register a secret it created itself. Preventing that would require a separate browser-attestation or out-of-band trust mechanism; cookies, fetch metadata, user-agent checks, and client-generated nonces would only create a spoofable pseudo-boundary. Onceveil therefore does not claim that completion proves the official browser UI executed. This does not let the caller recover another user's plaintext, AES key, raw owner capability, or links, and it does not weaken one-time reveal semantics.
+
+Multi-round-trip MCP `requestState` is HMAC-protected with a key derived independently from the MCP storage key and expires with the handoff window. Tampered or expired state fails before the tool handler can advance the flow.
+
+The MCP handoff browser surface clears its transition token, create plaintext, encrypted retry state, generated share/owner links, and pasted recipient URL on `pagehide` and on BFCache restoration. In-flight UI operations are generation-bound so restored or departed pages cannot repopulate cleared sensitive state. Handoff completion bodies are bounded to 1 KiB before JSON parsing to prevent a transition-token holder from forcing unbounded request buffering.
 
 ## Browser and observability hardening
 
