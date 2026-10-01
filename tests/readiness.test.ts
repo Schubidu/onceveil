@@ -105,6 +105,31 @@ describe('runtime readiness', () => {
     ).toBe('preview')
   })
 
+  it('accepts an exact configured custom origin without weakening environment isolation', () => {
+    const custom = new Request('https://secrets.example/api/mcp/handoffs/flow')
+
+    expect(
+      requiredRuntimeEnvironmentForRequest(custom, 'production', 'https://secrets.example'),
+    ).toBe('production')
+    expect(
+      requiredRuntimeEnvironmentForRequest(
+        new Request('https://other.example/api/mcp/handoffs/flow'),
+        'production',
+        'https://secrets.example',
+      ),
+    ).toBe('unavailable')
+    expect(
+      requiredRuntimeEnvironmentForRequest(
+        new Request('https://ots-preview.schult.dev/api/mcp/handoffs/flow'),
+        'production',
+        'https://secrets.example',
+      ),
+    ).toBe('unavailable')
+    expect(
+      requiredRuntimeEnvironmentForRequest(custom, 'invalid', 'https://secrets.example'),
+    ).toBe('unavailable')
+  })
+
   it('reports ready only when the bound database has the expected schema and marker', async () => {
     await expect(
       checkSecretDatabaseReadiness(
