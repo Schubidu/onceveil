@@ -346,6 +346,61 @@ describe('MCP model-context boundary', () => {
     }
   })
 
+  it('makes cancel and decline terminal for pending handoffs', async () => {
+    for (const action of ['cancel', 'decline'] as const) {
+      const db = database()
+      const runtime = context(db)
+      const handler = await createOnceveilMcpHandler(runtime)
+
+      try {
+        const first = await result(await handler.fetch(modernToolCall('create_secret_handoff')))
+        const handoffUrl = elicitation(first)
+        const flowId = handoffUrl.pathname.split('/').at(-1) ?? ''
+        const requestState = first.requestState
+
+        const cancelled = await result(
+          await handler.fetch(
+            modernToolCall(
+              'create_secret_handoff',
+              {},
+              {
+                requestState,
+                inputResponses: { browser: { action } },
+              },
+            ),
+          ),
+        )
+        expect(cancelled.structuredContent).toEqual({
+          flowId,
+          handoff: 'cancelled',
+        })
+
+        const stored = await db
+          .prepare('SELECT state FROM mcp_handoffs WHERE flow_id = ?')
+          .bind(flowId)
+          .first<{ state: string }>()
+        expect(stored).toBeNull()
+
+        const resumed = await result(
+          await handler.fetch(
+            modernToolCall(
+              'create_secret_handoff',
+              {},
+              {
+                requestState,
+                inputResponses: { browser: { action: 'accept' } },
+              },
+            ),
+          ),
+        )
+        expect(resumed.isError).toBe(true)
+      } finally {
+        await handler.close()
+        db.close()
+      }
+    }
+  })
+
   it('rejects tampered requestState before it can advance a handoff', async () => {
     const db = database()
     const runtime = context(db)
