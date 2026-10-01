@@ -97,7 +97,7 @@ Keep the MCP endpoint behind HTTPS and protect the bearer token like any adminis
 
 ## Cloudflare
 
-The committed `wrangler.jsonc` keeps MCP explicitly disabled by default and pins `ONCEVEIL_ENVIRONMENT` to `production` for Production and `preview` for Preview. That environment marker lets a configured custom `ONCEVEIL_MCP_PUBLIC_ORIGIN` participate in the same D1 environment-isolation checks without hard-coding the custom hostname.
+The committed `wrangler.jsonc` keeps MCP explicitly disabled by default and pins `ONCEVEIL_ENVIRONMENT` to `production` for Production and `preview` for Preview. Custom Cloudflare domains should additionally set `ONCEVEIL_PUBLIC_ORIGIN` to the canonical deployment origin. Readiness uses that validated origin independently of whether MCP is enabled, so optional MCP configuration cannot make a valid custom-domain deployment unavailable. When MCP is enabled, `ONCEVEIL_MCP_PUBLIC_ORIGIN` may override the browser handoff origin; otherwise the deployment origin can be reused.
 
 To enable it for a deployment:
 
