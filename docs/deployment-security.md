@@ -38,6 +38,10 @@ Application diagnostics use an allowlisted logging surface. They must not log:
 
 Infrastructure logging and tracing must be configured with the same restriction. Onceveil does not require request-body or authorization-header capture for operation.
 
+## Cloudflare custom domains
+
+Cloudflare deployments that use a custom domain should set `ONCEVEIL_PUBLIC_ORIGIN` to that exact canonical origin. The value is validated independently of optional MCP enablement and is used together with `ONCEVEIL_ENVIRONMENT` to preserve production/preview D1 isolation. Requests for unrelated origins remain unavailable.
+
 ## Browser surfaces
 
 Create, share, owner, and secret API surfaces are served with no-store/no-referrer headers and a restrictive CSP. The normal key-holding context allows only same-origin application network/script access and forbids frames and workers. The fragment-free Turnstile verification context is the only browser surface that permits `challenges.cloudflare.com`.
